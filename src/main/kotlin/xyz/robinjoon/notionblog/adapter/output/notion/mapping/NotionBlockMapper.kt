@@ -27,6 +27,7 @@ import xyz.robinjoon.notionblog.domain.post.block.style.WidthToken
 import xyz.robinjoon.notionblog.domain.source.SourceDocumentRef
 import xyz.robinjoon.notionblog.domain.source.SourceId
 import java.net.URI
+import java.net.URISyntaxException
 import java.time.Instant
 import java.time.format.DateTimeParseException
 import java.util.Locale
@@ -439,7 +440,7 @@ internal class NotionBlockMapper(
     private fun parseSafeUri(value: String): URI {
         val uri = try {
             URI(value)
-        } catch (exception: IllegalArgumentException) {
+        } catch (exception: URISyntaxException) {
             throw NotionBlockMappingException("URL is invalid", exception)
         }
         if (!uri.isAbsolute || uri.scheme.lowercase(Locale.ROOT) !in setOf("http", "https")) {

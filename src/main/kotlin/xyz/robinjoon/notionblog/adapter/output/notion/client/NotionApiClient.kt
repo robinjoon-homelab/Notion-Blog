@@ -271,7 +271,7 @@ internal class NotionApiClient(
             id = node.requiredText("id"),
             parent = parsePageParent(node.requiredObject("parent")),
             url = node.requiredText("url"),
-            publicUrl = node.optionalText("public_url"),
+            publicUrl = node.requiredNullableText("public_url"),
             inTrash = node.requiredBoolean("in_trash"),
             lastEditedTime = node.requiredText("last_edited_time"),
             properties = node.requiredObject("properties"),
@@ -409,6 +409,13 @@ internal class NotionApiClient(
         ?.takeIf(JsonNode::isString)
         ?.stringValue()
         ?.takeIf(String::isNotBlank)
+
+    private fun JsonNode.requiredNullableText(field: String): String? {
+        val value = get(field) ?: throw IllegalArgumentException("Missing required field")
+        if (value.isNull) return null
+        require(value.isString && value.stringValue().isNotBlank())
+        return value.stringValue()
+    }
 
     private fun JsonNode.nullableText(field: String): String? {
         val value = get(field)?.takeUnless(JsonNode::isNull) ?: return null

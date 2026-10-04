@@ -5,11 +5,13 @@ import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import okhttp3.mockwebserver.RecordedRequest
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
+import org.junit.jupiter.params.provider.NullSource
 import org.junit.jupiter.params.provider.ValueSource
 import org.thymeleaf.context.Context
 import org.thymeleaf.spring6.SpringTemplateEngine
@@ -20,6 +22,7 @@ import xyz.robinjoon.notionblog.adapter.output.notion.client.NotionApiClient
 import xyz.robinjoon.notionblog.application.model.BlogPage
 import xyz.robinjoon.notionblog.application.model.ImportedPost
 import xyz.robinjoon.notionblog.application.model.PresentationAssetDescriptor
+import xyz.robinjoon.notionblog.application.port.output.source.SourceConfigurationException
 import xyz.robinjoon.notionblog.domain.post.Post
 import xyz.robinjoon.notionblog.domain.post.PostId
 import xyz.robinjoon.notionblog.domain.post.block.BlockNode
@@ -129,6 +132,20 @@ class NotionDefaultDatabaseViewTest {
         assertThat(view.data.rows.single().cover).isNull()
         assertThat(view.data.toString()).doesNotContain("Hidden value", "Status", "Done")
         assertRequestedProperties("title")
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = ["false", "123", "{}", "[]", "\"\"", "\"   \""])
+    fun `fails the containing post instead of returning collected rows when a later row has invalid publication metadata`(publicUrl: String?) {
+        fixture("table", "", privateRowPublicUrl = publicUrl)
+
+        assertThatThrownBy { source().fetch(SourceDocumentRef(sourceId, ROOT)) }
+            .isInstanceOf(SourceConfigurationException::class.java)
+
+        assertThat(requests().map { it.requestUrl?.encodedPath })
+            .containsSubsequence("/v1/pages/$ROW", "/v1/pages/$PRIVATE_ROW")
+            .doesNotContain("/v1/pages/$TRASH_ROW")
     }
 
     @Test
@@ -290,7 +307,7 @@ class NotionDefaultDatabaseViewTest {
         collectionTimeout = Duration.ofSeconds(5),
     )
 
-    private fun fixture(type: String, configurationField: String, emptyRows: Boolean = false) {
+    private fun fixture(type: String, configurationField: String, emptyRows: Boolean = false, privateRowPublicUrl: String? = "null") {
         val rows = if (emptyRows) "" else """{"object":"page","id":"$ROW"},{"object":"page","id":"$PRIVATE_ROW"},{"object":"page","id":"$TRASH_ROW"}"""
         server.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse {
@@ -325,7 +342,13 @@ class NotionDefaultDatabaseViewTest {
 
                     "/v1/pages/$ROW" -> page(ROW, "Public row")
 
-                    "/v1/pages/$PRIVATE_ROW" -> page(PRIVATE_ROW, "Private row", published = false)
+                    "/v1/pages/$PRIVATE_ROW" -> page(PRIVATE_ROW, "Private row", published = false).let { response ->
+                        if (privateRowPublicUrl == null) {
+                            response.replace("\"public_url\":null,", "")
+                        } else {
+                            response.replace("\"public_url\":null", "\"public_url\":$privateRowPublicUrl")
+                        }
+                    }
 
                     "/v1/pages/$TRASH_ROW" -> page(TRASH_ROW, "Trash row", inTrash = true)
 
