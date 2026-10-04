@@ -43,7 +43,7 @@
 
 ## Kotlin conventions
 
-- package base는 scaffold에서 정한 하나의 값으로 통일한다.
+- package base는 `xyz.robinjoon.notionblog`로 통일한다.
 - constructor injection만 사용한다.
 - field injection과 `lateinit` bean injection을 사용하지 않는다.
 - 불변 `data class`와 `val`을 기본으로 한다.
@@ -71,7 +71,7 @@
 - 모든 migration은 append-only다. 이미 적용된 migration을 수정하지 않는다.
 - repository는 domain model 또는 명시적인 projection을 반환한다.
 - PostgreSQL 동작 테스트에 H2를 사용하지 않는다.
-- route/path 제약과 원자적 상태 전이는 Testcontainers로 검증한다.
+- 소스 바인딩·공개 범위의 DB 제약과 원자적 상태 전이는 Testcontainers로 검증한다.
 - JSONB에는 Notion 원본 응답이 아니라 정규화한 snapshot을 저장한다.
 
 ## Testing conventions
@@ -81,12 +81,12 @@
 ### Must test
 
 - domain invariant와 상태 전이
-- slug/canonical/alias 규칙
+- `/`와 `/posts/{postId}` 경로, 내부 ID 파싱과 공개 범위 규칙
 - 공개 상태 취소
 - Notion pagination, error classification, mapping
 - Flyway와 Exposed mapping
 - transaction rollback과 DB constraints
-- HTTP status, redirect, visibility
+- HTTP status, visibility, 내부 링크 해석
 - renderer의 지원 블록과 안전한 fallback
 
 ### Avoid
@@ -101,7 +101,7 @@
 
 ## Commands
 
-기본 검증 명령은 scaffold가 확정되면 다음을 사용한다.
+기본 검증 명령은 다음을 사용한다.
 
 ```bash
 ./gradlew test
@@ -117,7 +117,7 @@ DB 통합 테스트는 Docker가 필요할 수 있다. Docker를 사용할 수 �
 1. 애플리케이션 소스와 테스트
 2. Gradle/Flyway/런타임 설정
 3. Dockerfile
-4. 추후 추가할 GitHub Actions CI
+4. GitHub Actions CI
 
 - Helm chart, Kubernetes manifest, GitOps 및 배포 하네스 설정을 이 저장소에 추가하지 않는다.
 - runtime artifact는 단일 Spring Boot container image다.
