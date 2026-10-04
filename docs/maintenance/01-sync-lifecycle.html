@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>새 글 수정이 밀리고 첫 설치가 멈출 수 있는 이유 · Notion Blog</title>
+  <style>
+    :root{color-scheme:light;--paper:#f5f3ee;--surface:#fffefb;--ink:#1e2931;--muted:#52636d;--line:#d8dedb;--accent:#16685a;--tint:#eaf4ee;--warn:#875816;--warn-bg:#fff5df;--danger:#983e34;--code:#152b32}
+    *{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:24px}body{margin:0;background:var(--paper);color:var(--ink);font:17px/1.8 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif;word-break:keep-all;overflow-wrap:anywhere}a{color:var(--accent);text-underline-offset:4px}a:hover{text-decoration-thickness:2px}a:focus-visible,summary:focus-visible{outline:3px solid #e8a844;outline-offset:4px}header,main,footer{width:min(1120px,calc(100% - 48px));margin-inline:auto}.topnav{display:flex;flex-wrap:wrap;gap:10px 24px;align-items:center;padding:24px 0;border-bottom:1px solid var(--line);font-size:14px}.topnav strong{margin-right:auto;letter-spacing:.06em}.topnav a[aria-current=page]{font-weight:750;color:var(--ink)}.hero{padding:54px 0 30px}.eyebrow{font-size:12px;letter-spacing:.13em;font-weight:800;text-transform:uppercase;color:var(--accent)}h1{font-size:clamp(30px,4.6vw,52px);line-height:1.2;letter-spacing:-.045em;margin:16px 0 22px;max-width:950px}h2{font-size:clamp(24px,3vw,31px);line-height:1.35;letter-spacing:-.035em;margin:0 0 22px}h3{font-size:22px;line-height:1.5;letter-spacing:-.025em;margin:22px 0 12px}h4{font-size:17px;margin:20px 0 8px}p{margin:0 0 18px}p:last-child{margin-bottom:0}.lead{font-size:20px;line-height:1.8;max-width:920px;color:#3d535c}.meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:24px}.pill{padding:3px 11px;border:1px solid var(--line);border-radius:100px;font-size:12px;background:var(--surface);color:var(--muted)}.scope{padding:20px 24px;border-left:4px solid var(--accent);background:var(--tint);border-radius:0 12px 12px 0;margin:0 0 30px;font-size:15px}.toc{display:flex;flex-wrap:wrap;gap:10px 20px;margin:20px 0 34px;padding:0;list-style:none;font-size:14px}.panel{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:34px;margin:0 0 24px}.kicker{display:block;font:700 12px/1.5 ui-monospace,SFMono-Regular,monospace;letter-spacing:.09em;color:var(--accent);margin-bottom:12px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}.grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}.card{border:1px solid var(--line);border-radius:12px;padding:22px;background:#fafbf8;min-width:0}.card h3{margin-top:0;font-size:20px}.note,.warning,.recommendation{padding:20px 24px;border-radius:12px;margin:20px 0;background:var(--tint)}.warning{background:var(--warn-bg);border-left:4px solid #b98129}.recommendation{border:1px solid #a6cbbb}.muted,.caption{color:var(--muted);font-size:14px}.flow,.steps{list-style:none;counter-reset:step;padding:0;display:grid;gap:12px}.flow{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}.flow li,.steps li{counter-increment:step;padding:18px 18px 18px 48px;border:1px solid var(--line);border-radius:10px;position:relative;background:#f8faf7;min-width:0}.flow li::before,.steps li::before{content:counter(step);position:absolute;left:16px;top:19px;color:var(--accent);font:700 14px/1.6 ui-monospace,monospace}.flow strong,.steps strong{display:block;line-height:1.5;margin-bottom:7px}.flow span,.steps span{font-size:14px;color:var(--muted)}ul,ol{padding-left:24px}li+li{margin-top:7px}.flow li+li,.steps li+li{margin-top:0}.option{border-top:4px solid var(--accent)}.option-label{font:700 12px/1.4 ui-monospace,monospace;color:var(--accent);letter-spacing:.06em}.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;margin:20px 0}table{width:100%;border-collapse:collapse;font-size:15px;text-align:left}caption{text-align:left;padding:16px;background:#eff4ef;font-weight:700}th,td{padding:15px 17px;border-bottom:1px solid var(--line);vertical-align:top;min-width:110px}thead th{background:#edf3ee;color:#244a42}tbody tr:last-child>*{border-bottom:0}tbody th{font-weight:650;background:#fafbf8;min-width:120px}code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.85em;background:#edf0ed;padding:2px 5px;border-radius:4px;word-break:break-word}pre{background:var(--code);color:#e9f2ef;border-radius:12px;padding:22px;overflow-x:auto;white-space:pre-wrap;word-break:normal;overflow-wrap:anywhere;font-size:14px;line-height:1.65}pre code{background:transparent;padding:0;color:inherit;border-radius:0;font-size:inherit}details{border:1px solid var(--line);border-radius:12px;margin:18px 0;padding:15px 20px}summary{cursor:pointer;color:var(--accent);font-weight:650}details[open] summary{margin-bottom:16px}.source-list{font-size:14px}.source-list li{margin-bottom:14px}.source-list code{font-size:12px}.review-notes{border-style:dashed}.review-notes h2{font-size:24px}footer{padding:18px 0 44px;color:var(--muted);font-size:13px}.back-top{display:inline-block;margin-top:18px}
+    @media(max-width:760px){body{font-size:16px}header,main,footer{width:calc(100% - 28px)}.hero{padding-top:32px}.lead{font-size:18px}.panel{padding:23px 18px}.grid,.grid.three{grid-template-columns:1fr}.topnav{gap:9px 16px}.topnav strong{flex-basis:100%}.flow{grid-template-columns:1fr}.scope{padding:17px 18px}.card{padding:18px}th,td{padding:12px}.toc{gap:8px 16px}}
+    @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+    @media print{body{background:#fff;font-size:11pt}header,main,footer{width:100%}.topnav,.toc,.back-top{display:none}.hero{padding:10px 0 20px}.panel{border:0;border-radius:0;padding:18px 0;break-inside:auto}.card,.note,.warning,pre,tr{break-inside:avoid}h2,h3{break-after:avoid}pre{background:#f1f3f2;color:#172d31}.grid{display:block}.card{margin-bottom:10px}.table-wrap{overflow:visible}a{color:inherit}}
+  </style>
+</head>
+<body>
+<header id="top">
+  <nav class="topnav" aria-label="개선 항목 문서">
+    <strong>NOTION BLOG · 유지보수 설계 노트</strong>
+    <a href="01-sync-lifecycle.html" aria-current="page">01 갱신 목록</a>
+    <a href="02-notion-parsing.html">02 해석 규칙</a>
+    <a href="03-collection-policy.html">03 수집 한도</a>
+  </nav>
+  <div class="hero">
+    <div class="eyebrow">01 · 글을 다시 확인하는 일</div>
+    <h1>옛 글에 차례를 빼앗겨<br>새 글 수정이 밀릴 수 있습니다</h1>
+    <p class="lead">Notion에서 옛 글을 블로그 범위 밖으로 옮긴 뒤 새 글을 고쳐도, 앱이 옛 글만 계속 확인 대상으로 고를 수 있습니다. 첫 설치 도중 앱이 꺼지면 재시작 후에도 첫 화면을 준비하지 못하는 경우도 있습니다. 두 문제 모두 다음에 해야 할 일을 제대로 남기고 정리하지 못해서 생깁니다.</p>
+    <div class="meta"><span class="pill">2026-10-04</span><span class="pill">단일 사이트 · 갱신 작업은 한 번에 하나</span><a class="pill" href="../kotlin-spring-architecture.md">현재 아키텍처</a></div>
+  </div>
+</header>
+<main>
+<div class="scope"><strong>2026-10-05 반영: 범위에서 제외된 글의 예약을 함께 삭제합니다.</strong> 공개 범위를 확정하는 트랜잭션에서 빠진 글의 예약을 삭제하고, 이전에 남아 있던 예약도 실행 시 제외 여부를 확인해 정리합니다. 범위 안의 미게시 글과 부모만 바뀐 글은 계속 동기화합니다. 첫 설치 중단 후 복구는 동기화 전체 재설계의 후속 과제로 남깁니다. 아래 본문과 검토 기록은 2026-10-04의 수정 전 동작 및 당시 대안 비교입니다. 최신 계약은 <a href="../kotlin-spring-architecture.md#124-synchronizepostservice">기준 설계</a>를 따릅니다.</div>
+<ul class="toc"><li><a href="#current">원래 기대하는 동작</a></li><li><a href="#scenarios">어떻게 어긋나는가</a></li><li><a href="#principles">지켜야 할 조건</a></li><li><a href="#option-a">해결책 A</a></li><li><a href="#option-b">해결책 B</a></li><li><a href="#option-c">해결책 C</a></li><li><a href="#comparison">비교와 선택</a></li><li><a href="#sources">소스 근거</a></li></ul>
+
+<section class="panel" id="current">
+  <span class="kicker">원래 기대하는 동작</span>
+  <h2>Notion에서 고치면, 다음 확인 때 블로그도 바뀌어야 합니다</h2>
+  <p>블로그 주인이 Notion의 <strong>「여행 기록」</strong>을 블로그의 시작 페이지로 지정했다고 가정합니다. 앱은 이 페이지와 그 아래에 실제로 들어 있는 페이지를 가져옵니다. 이 문서에서는 그 묶음을 <strong>블로그 범위</strong>라고 부릅니다. 본문에 다른 페이지의 링크만 붙이는 것으로는 이 범위가 넓어지지 않습니다.</p>
+  <ol class="flow">
+    <li><strong>처음에는 내용을 가져옵니다</strong><span>앱이 「여행 기록」과 하위 페이지를 수집합니다. 확인을 마친 글 중 게시된 글을 독자에게 보여 줍니다.</span></li>
+    <li><strong>이후에는 다시 확인합니다</strong><span>앱은 무엇을 언제 다시 가져올지 목록에 기록합니다. 글이 수정되었는지, 아래에 새 페이지가 생겼는지 주기적으로 확인합니다.</span></li>
+    <li><strong>범위가 바뀌면 목록도 바뀌어야 합니다</strong><span>범위 밖으로 옮긴 글은 확인 목록에서 빠지고, 남아 있는 글은 계속 확인해야 합니다. 중간에 앱이 꺼져도 끝내지 못한 일은 다시 시작해야 합니다.</span></li>
+  </ol>
+  <div class="note">
+    <h3>이 문서에서 말하는 문제</h3>
+    <p><strong>블로그 주인:</strong> 옛 글을 정리한 뒤 「겨울 여행」을 고쳤는데 블로그에는 수정 전 내용이 남을 수 있습니다. 첫 설치 중 앱이 꺼진 경우에는 다시 켜도 초기화가 끝나지 않을 수 있습니다.</p>
+    <p><strong>독자:</strong> 새 내용을 기다려도 예전 내용만 보거나, 첫 방문부터 ‘아직 준비되지 않음’을 뜻하는 503 응답을 계속 받을 수 있습니다.</p>
+    <p><strong>개발자:</strong> 앱이 실행 중이라는 사실만으로 갱신도 진행된다고 판단할 수 없습니다. 불필요한 확인 기록이 남았는지, 필요한 첫 작업의 기록이 빠졌는지를 찾아야 합니다.</p>
+  </div>
+  <p><strong>왜 지금 살펴볼까요?</strong> 글을 옮기는 일과 앱 재시작은 평범한 운영 작업입니다. 이런 상황에서 갱신이 멈출 수 있는 틈을 남겨 두면, 새 기능이 확인 목록을 더 많이 만들 때 같은 문제가 생길 곳도 늘어납니다.</p>
+</section>
+
+<section class="panel" id="scenarios">
+  <span class="kicker">두 가지 구체적인 상황</span>
+  <h2>필요 없는 일은 남고, 꼭 필요한 첫 일은 빠집니다</h2>
+  <h3>1. 옛 여행 글을 옮겼더니 「겨울 여행」의 수정이 밀립니다</h3>
+  <p>설명을 위해 한 회차에 <strong>3개만</strong> 확인한다고 가정합니다. 실제 기본값은 100개이며, 아래 이름·시각·개수는 동작을 보여 주기 위한 예시입니다.</p>
+  <ol class="steps">
+    <li><strong>주인이 옛 글 세 개를 범위 밖으로 옮깁니다</strong><span>「여행 기록」 아래의 「봄 여행」·「여름 여행」·「가을 여행」을 다른 곳으로 옮기고 「겨울 여행」을 넣습니다. 앱이 새 구성을 수집해 반영한 뒤, 주인이 「겨울 여행」의 내용을 한 번 더 고칩니다.</span></li>
+    <li><strong>블로그 범위는 바뀌었는데 확인 목록은 덜 정리되었습니다</strong><span>옛 글 세 개는 더 이상 블로그에 속하지 않습니다. 하지만 ‘09:00에 다시 확인’이라는 기록은 남아 있습니다. 「겨울 여행」과 「여행 기록」, ‘범위 전체 확인’은 09:05에 확인할 차례입니다.</span></li>
+    <li><strong>09:10에 앱이 옛 기록 세 개를 먼저 고릅니다</strong><span>예정 시각이 가장 이른 기록부터 3개를 고르므로 옛 글이 모든 자리를 차지합니다. 앱은 고른 뒤에야 각 글이 범위 밖이라는 사실을 확인하고 작업을 건너뜁니다.</span></li>
+    <li><strong>건너뛴 기록이 그대로여서 다음에도 같은 세 개를 고릅니다</strong><span>앱은 기록을 지우지도, 다음 확인 시각을 뒤로 옮기지도 않습니다. 계속 09:00이 가장 이르므로 「겨울 여행」의 수정 내용을 가져올 차례가 오지 않을 수 있습니다.</span></li>
+  </ol>
+  <div class="table-wrap"><table>
+    <caption>한 번 건너뛴 뒤에도 다음 회차가 나아지지 않는 이유</caption>
+    <thead><tr><th scope="col">시점</th><th scope="col">정상이라면</th><th scope="col">현재 코드의 이 예시에서는</th></tr></thead>
+    <tbody>
+      <tr><th scope="row">새 범위를 반영한 뒤</th><td>옛 글 세 개의 확인 기록을 없앱니다.</td><td>블로그 범위에서만 빠지고, 확인 기록은 남습니다.</td></tr>
+      <tr><th scope="row">09:10에 고르는 3개</th><td>「겨울 여행」, 「여행 기록」, 범위 전체 확인</td><td>「봄 여행」, 「여름 여행」, 「가을 여행」 → 모두 건너뜁니다.</td></tr>
+      <tr><th scope="row">다음 회차에 고르는 목록</th><td>아직 실행할 항목이 없습니다. 「겨울 여행」·「여행 기록」·범위 전체 확인은 새 예정 시각까지 기다립니다.</td><td>다시 「봄 여행」, 「여름 여행」, 「가을 여행」 → 필요한 세 작업은 계속 뒤에 남습니다.</td></tr>
+    </tbody>
+  </table></div>
+  <p class="caption">예시에서는 바로 다음 회차에 새 작업의 차례가 오지 않고, 정상 확인한 작업도 아직 다시 확인할 때가 아니라고 가정합니다. 설정을 다시 읽을 시각은 09:20입니다. 같은 시각인 작업끼리의 내부 정렬 순서는 생략했습니다. 옛 기록이 제한 개수 이상이고 필요한 작업보다 앞에 있을 때 이런 막힘이 생깁니다. 필요한 기록이 더 이르면 먼저 실행될 수 있으므로, 글을 하나 옮길 때마다 모든 갱신이 멈춘다는 뜻은 아닙니다.</p>
+  <h3>어디가 어긋났나요?</h3>
+  <p>앱은 ‘블로그에 속한 글’과 ‘다시 확인할 목록’을 따로 저장합니다. 새 범위를 적용할 때 뒤의 목록을 정리하지 않고, 매번 <strong>개수를 먼저 자른 다음</strong> 필요 없는 일을 걸러 냅니다. 걸러 낸 자리만큼 다른 일을 다시 뽑지도 않습니다. 그래서 확인 횟수를 늘리는 것만으로는 옛 기록이 쌓이는 원인이 없어지지 않습니다.</p>
+  <div class="warning">
+    <strong>범위 밖으로 옮긴 글과, 범위 안에서 게시만 중단한 글은 다릅니다.</strong>
+    <p>「봄 여행」처럼 범위에서 빠진 글의 확인 기록은 정리해야 합니다. 반면 「겨울 여행」을 같은 위치에 두고 잠시 게시만 중단했다면 계속 확인해야 합니다. 그래야 다시 게시했을 때 알아차릴 수 있습니다.</p>
+    <p>위 예시는 새 범위 반영이 끝난 뒤의 <strong>갱신 지연 문제</strong>입니다. 남은 확인 기록 때문에 범위 밖 글이 독자에게 다시 노출되는 문제는 아닙니다. 글을 보여 줄 때는 현재 블로그 범위와 게시 여부를 별도로 확인합니다.</p>
+  </div>
+  <details>
+    <summary>개발자용 근거: 선택 순서, 건너뛰기, 수집 실패 후 남는 기록</summary>
+    <p><code>ApplyImportedPostService.apply</code>는 게시글 저장 때 <code>Post</code>의 <code>sync_state</code>도 만듭니다. 아직 새 범위 수집 중인 글에도 적용됩니다. <code>ActivatePublicationService.activate</code>는 활성 범위를 교체하고 publication의 성공 상태를 저장하지만, 탈락한 Post의 sync 행은 제거하지 않습니다. 저장소 포트에는 현재 조회·저장만 있습니다. <a href="#source-collect">수집 근거</a>, <a href="#source-stage">범위 전환 근거</a></p>
+    <p><code>ExposedSyncStateRepository.findDue</code>는 모든 종류의 행 중 <code>refresh_after ≤ now</code>인 행을 갱신 시각·종류·키 순으로 정렬한 뒤 <code>limit</code>을 적용합니다. <code>findDueTargets</code>는 그 결과를 그대로 넘깁니다. 이후 <code>loadPost</code>가 활성 범위 소속을 확인하고, 범위 밖이면 <code>SynchronizePostService</code>가 즉시 반환합니다. 이때 행 삭제와 시각 변경은 없습니다. <a href="#source-skip">건너뛰는 코드</a>, <a href="#source-batch">실제 기본 배치 크기</a></p>
+    <p>여기서 inactive는 활성 범위 밖이라는 뜻입니다. <code>loadPost</code>는 <code>UNPUBLISHED</code>를 제외하지 않습니다. 미게시 부모 아래의 후손도 수집하며, 본문 링크는 범위 구성원을 만드는 근거가 아닙니다.</p>
+    <p>새 범위를 끝내 수집하지 못한 경우에도 잔여 행이 생길 수 있습니다. 새 글 「숙소 안내」를 저장한 뒤 다른 자식 수집이 실패하면, 새 범위 버전은 폐기해도 「숙소 안내」의 Post 예약은 남습니다. 제한을 적용한 뒤 필터링하거나 배치 크기만 키우는 조치는 이 누적 원인을 없애지 못합니다.</p>
+  </details>
+
+  <h3>2. 첫 설치 도중 꺼진 뒤, 다시 켜도 블로그가 준비되지 않습니다</h3>
+  <p>이번에는 내용이 한 번도 수집되지 않은 새 설치입니다. 정상이라면 「여행 기록」을 시작 페이지로 저장하고, 곧이어 내용을 가져와 첫 화면을 준비해야 합니다.</p>
+  <ol class="steps">
+    <li><strong>앱이 ‘시작 페이지는 「여행 기록」’이라고 저장합니다</strong><span>설정을 읽는 일은 성공으로 기록합니다. 하지만 실제 내용을 가져오는 일은 아직 시작하지 않았고, 나중에 다시 실행할 작업으로도 저장하지 않았습니다.</span></li>
+    <li><strong>바로 다음 내용을 수집하려는 순간 앱이 꺼집니다</strong><span>설정 저장과 첫 내용 수집은 별개의 단계입니다. 둘 사이에서 종료되면, 저장된 시작 페이지만 남습니다.</span></li>
+    <li><strong>재시작 후 설정을 다시 읽어도 같은 페이지입니다</strong><span>현재 코드는 시작 페이지가 바뀌었을 때만 이어서 내용 수집을 요청합니다. 이미 「여행 기록」이 저장되어 있으므로 ‘변경 없음’으로 보고 수집을 요청하지 않습니다.</span></li>
+    <li><strong>설정은 맞는데, 끝내지 못한 첫 수집을 다시 맡길 곳이 없습니다</strong><span>별도로 수집을 실행하거나 시작 페이지를 바꾸는 일이 없다면, 첫 화면은 계속 초기화 중일 수 있습니다. 독자의 요청에는 503 응답이 돌아갑니다.</span></li>
+  </ol>
+  <div class="table-wrap"><table>
+    <caption>저장된 설정이 있다는 것과 첫 화면이 준비되었다는 것은 다릅니다</caption>
+    <thead><tr><th scope="col">재시작 후 확인할 것</th><th scope="col">정상이라면</th><th scope="col">현재 코드의 이 예시에서는</th></tr></thead>
+    <tbody>
+      <tr><th scope="row">시작 페이지</th><td>「여행 기록」으로 저장되어 있습니다.</td><td>똑같이 저장되어 있습니다.</td></tr>
+      <tr><th scope="row">끝내지 못한 첫 수집</th><td>남겨 둔 작업 기록을 보거나, 아직 내용이 준비되지 않은 상태를 확인해 다시 시작합니다.</td><td>다시 실행할 기록이 없고, 설정도 바뀌지 않아 시작하지 않습니다.</td></tr>
+      <tr><th scope="row">독자가 보는 결과</th><td>수집을 마치면 첫 화면을 제공합니다.</td><td>초기화 중인 상태와 503 응답이 계속될 수 있습니다.</td></tr>
+    </tbody>
+  </table></div>
+  <h3>어디가 어긋났나요?</h3>
+  <p><strong>‘설정을 저장했다’는 사실만 남기고, ‘이 설정으로 첫 내용을 가져와야 한다’는 일을 남기지 않았습니다.</strong> 같은 설정을 다시 읽는 것만으로는 이 빠진 일을 알아차리지 못합니다. 내용 수집을 완료하지 않은 상태도 찾아내거나, 수집 요청을 종료 후에도 남는 기록으로 저장해야 합니다.</p>
+  <div class="note"><p>이것은 <strong>첫 수집의 재실행 기록이 생기기 전</strong>에 끊기는 특정 공백입니다. 모든 재시작이나 모든 Notion 장애가 같은 결과를 낳는다는 뜻은 아닙니다. 이미 전체 수집의 다음 실행 기록이 있는 사이트는 그 기록으로 다시 시도할 수 있습니다.</p></div>
+  <details>
+    <summary>개발자용 근거: 첫 설정 저장, 비어 있는 공개 범위, DB 오류의 차이</summary>
+    <p>V2 migration은 <code>SITE_CONFIGURATION</code>의 due 행만 넣습니다. <code>ApplyImportedSiteConfigurationService.apply</code>는 최초 설정과 <code>activeRevisionId = null</code>인 <code>BlogPublication</code>, 설정 성공 상태를 같은 트랜잭션에서 저장합니다. publication 동기화 행은 만들지 않습니다. 첫 <code>rootChanged = true</code>는 반환값이고, 트랜잭션 종료 뒤 <code>SynchronizeSiteConfigurationService</code>가 이를 보고 직접 수집을 호출합니다. 재시작 후 같은 루트는 <code>rootChanged = false</code>입니다. <a href="#source-settings">설정 근거</a></p>
+    <p><strong>publication 행의 존재만으로 첫 수집 완료를 판단하면 안 됩니다.</strong> 행이 있어도 <code>activeRevisionId == null</code>이면 활성화한 범위가 아직 없습니다. 이때 루트와 유효한 게시글 경로의 읽기는 <code>ContentUnavailable</code>이고 웹에서는 503입니다. 잘못된 내부 ID는 별도로 404 처리됩니다. <a href="#source-http">HTTP 변환 근거</a></p>
+    <p><code>SynchronizePublicationService</code>의 <code>begin</code>은 try 밖에 있습니다. 첫 begin의 DB 저장 실패는 publication 실패 예약을 만들지 못합니다. begin 뒤 일반 DB <code>RuntimeException</code>으로 apply가 실패해도 현재 catch 대상이 아니므로 수집 중 버전인 <code>STAGING</code>이 남을 수 있습니다. 다음 begin은 이를 <code>ABANDONED</code>로 바꾸지만, 첫 예약이 없다면 다음 begin 자체를 시작하지 못합니다. <a href="#source-collect">호출 순서</a>, <a href="#source-stage">다음 begin의 정리</a></p>
+    <p>반면 현재 catch로 분류한 소스·검증 실패는 <code>abandon</code>을 통해 publication 실패 상태와 다음 재시도 시각을 저장합니다. 또한 이미 <code>SyncTarget.Publication</code> 행이 있는 경우에는 그 실행 기록이 남습니다. ‘publication 데이터가 있음’과 ‘publication 실행 예약이 있음’은 서로 다릅니다.</p>
+  </details>
+  <p class="caption">두 이야기의 결과는 현재 소스 흐름과 기존 테스트를 읽고 추론했습니다. 이번 작업에서 장애를 재현하거나 애플리케이션 테스트를 실행하지 않았습니다.</p>
+</section>
+
+<section class="panel" id="principles">
+  <span class="kicker">어느 해결책이든 지켜야 할 조건</span>
+  <h2>확인할 글은 빠뜨리지 않고, 끝내지 못한 일은 다시 시작합니다</h2>
+  <ul>
+    <li>범위 밖 글이 필요한 작업의 차례를 막아서는 안 됩니다. 범위 안에서 게시만 중단한 글은 계속 확인합니다.</li>
+    <li>첫 설치나 시작 페이지 변경으로 생긴 수집 작업은 앱이 꺼져도 잊지 않아야 합니다. DB가 복구되면 다시 시도할 수 있어야 합니다.</li>
+    <li>전체 수집이 끝나지 않은 새 범위를 완성된 것으로 취급하지 않습니다. 다음 시도에서 새로 수집하며, 그동안 기존에 확인한 범위를 유지합니다.</li>
+    <li>실패 후 정해 둔 대기 시간은 지킵니다. 정리 작업이 이를 매번 없애서 Notion에 요청을 쏟아내면 안 됩니다.</li>
+  </ul>
+  <p><strong>비교의 전제:</strong> 한 사이트의 갱신 작업은 한 번에 하나씩 실행하며, 수동 실행도 같은 규칙을 따릅니다. 여러 서버가 동시에 실행하거나 수집 도중 설정을 바꾸는 경쟁까지 이 세 제안이 해결하는 것은 아닙니다.</p>
+  <details>
+    <summary>개발자용 공통 제약: 저장 단위와 중단 후 처리</summary>
+    <p>조회는 짧은 읽기 전용 트랜잭션, 결과 반영은 application 쓰기 서비스의 짧은 트랜잭션으로 처리합니다. 외부 HTTP 호출 중 DB 트랜잭션을 유지하지 않습니다. 현재 스케줄러의 <code>AtomicBoolean</code>은 같은 인스턴스의 중복 실행만 막습니다.</p>
+    <p>게시글 하나의 불완전한 블록 트리는 저장하지 않고, 전체 범위를 검증한 뒤 활성 포인터를 교체합니다. 범위 수집 중 완성된 개별 게시글의 내용·게시 상태는 먼저 저장될 수 있습니다. 범위 버전의 원자성과 모든 게시글 내용의 동시 교체를 혼동하지 않습니다.</p>
+    <p>남은 STAGING은 다음 begin에서 폐기합니다. ABANDONED 구성원 기록, 보관된 게시글·스냅샷의 물리 삭제와 보존 기간은 별도 정책입니다. 소스 중립 도메인, 단일 Spring Boot 이미지, 기존 실패 분류와 오래된 콘텐츠 제공을 유지합니다. 별도 worker, broker, 범용 이벤트 버스, 복잡한 잠금·SQL을 전제로 하지 않습니다.</p>
+  </details>
+</section>
+
+<section class="panel option" id="option-a">
+  <span class="option-label">해결책 A</span>
+  <h2>범위가 바뀔 때 확인 목록도 함께 고칩니다</h2>
+  <p>설정이나 블로그 범위를 저장하는 코드가, 그 변화로 생기거나 없어지는 확인 작업도 함께 저장합니다. <strong>변경 내용과 다음 할 일이 둘 다 남거나, 둘 다 남지 않도록 묶는 방식</strong>입니다.</p>
+  <ul>
+    <li><strong>옛 글 이야기:</strong> 새 범위를 적용하는 순간 「봄 여행」·「여름 여행」·「가을 여행」의 확인 기록을 빼고 「겨울 여행」의 기록을 보장합니다. 다음 회차에는 필요한 일을 고를 수 있습니다.</li>
+    <li><strong>첫 설치 이야기:</strong> 「여행 기록」 설정과 ‘첫 내용 수집’ 작업을 함께 저장합니다. 그 직후 꺼져도 재시작하면 할 일이 남아 있습니다. 실제 수집을 끝내기 전에는 성공으로 처리하지 않습니다.</li>
+  </ul>
+  <h3>개발자가 기억할 일</h3>
+  <p>대상을 추가하거나 제거하는 <strong>모든 저장 경로</strong>에서 확인 목록도 바꿔야 합니다. 예를 들어 나중에 첨부파일 갱신 기능을 넣는다면, 첨부파일을 등록·제거하는 코드가 확인 작업의 등록·제거까지 맡습니다. 새 경로 하나에서 빠뜨리면 같은 문제가 다시 생길 수 있습니다.</p>
+  <p><strong>이점과 비용:</strong> 글마다 다른 확인 주기와 실패 후 대기 시간을 유지할 수 있고, 변경과 작업 기록이 함께 남는지 확인하기 쉽습니다. 대신 설정 저장·글 저장·범위 적용의 역할을 정확히 나눠야 합니다. 도입할 때는 이미 남은 옛 기록과 빠진 기록도 한 번 대조해 정리해야 합니다.</p>
+  <details>
+    <summary>개발자용 변경 범위와 검증 항목</summary>
+    <p>설정 apply는 최초 설정 또는 루트 변경 때 publication의 sync 행을 즉시 due로 만들고 설정과 함께 커밋합니다. 설정이 같으면 기존 예약과 백오프를 덮어쓰지 않습니다. begin은 예약을 소비하거나 미래로 미루지 않습니다. activate 성공 또는 분류된 실패를 기록할 때만 다음 시각을 바꾸므로, 프로세스 종료나 첫 begin의 DB 실패 뒤에도 실행 입구가 남습니다.</p>
+    <p>Post import는 콘텐츠 확인 기록과 활성 대상의 지속 예약을 구분합니다. 새 STAGING에만 속한 Post의 예약을 무조건 만들지 않습니다. activate는 새 구성원(UNPUBLISHED 포함)의 행을 보장하고 새 집합 밖의 Post 행을 제거합니다. 기존 활성 구성원의 갱신 상태는 유지할 수 있습니다. 저장소의 작은 조회·삭제·upsert와 구체적인 예약 도우미로 구성합니다.</p>
+    <p>수집 실패로 새 「숙소 안내」가 활성화되지 않았다면 지속 예약도 남기지 않습니다. 미완성 STAGING 정리는 기존 begin을 재사용합니다. <code>refresh_after</code>만으로 루트 변경 요청을 표현하므로, 실행 중 다른 쓰기가 요청을 덮어쓰는 경쟁은 앞의 직렬 실행 전제 밖입니다.</p>
+    <p><strong>구현 시 검증:</strong> 설정과 예약의 원자적 롤백, 범위 교체와 옛 예약 제거, 첫 begin 실패 후 재시작, 미게시 후 재게시 발견, 실패한 STAGING 전용 예약이 남지 않는지를 테스트합니다.</p>
+  </details>
+</section>
+
+<section class="panel option" id="option-b">
+  <span class="option-label">해결책 B</span>
+  <h2>매번 실행 전에, 오늘의 범위와 확인 목록을 맞춥니다</h2>
+  <p>확인할 3개를 고르기 전에 <strong>현재 저장된 설정·블로그 범위와 전체 확인 목록을 대조</strong>합니다. 빠진 작업은 넣고, 더 이상 필요 없는 작업은 뺍니다. 목록을 고치는 일을 매 회차의 첫 단계로 두는 방식입니다.</p>
+  <ul>
+    <li><strong>옛 글 이야기:</strong> ‘현재 「여행 기록」 아래에는 「겨울 여행」만 있다’는 사실을 기준으로 옛 글 세 개의 기록을 먼저 지웁니다. 그다음 작업을 고르므로 세 자리가 낭비되지 않습니다.</li>
+    <li><strong>첫 설치 이야기:</strong> 설정은 있지만 아직 한 번도 내용 수집을 마치지 않았다는 사실을 찾아냅니다. 빠진 ‘첫 내용 수집’ 기록을 복원하므로 같은 시작 페이지여도 다시 시작할 수 있습니다.</li>
+  </ul>
+  <h3>개발자가 기억할 일</h3>
+  <p>무엇이 지금 필요한 대상인지 판정하는 규칙을 대조 단계에 빠짐없이 넣어야 합니다. 나중에 첨부파일 갱신 기능을 넣으면, 현재 사용 중인 첨부파일 목록을 읽고 확인 목록과 맞추는 구간을 추가합니다. 첨부파일이 필요한지 판단하는 규칙은 그 기능이 맡습니다.</p>
+  <p><strong>이점과 비용:</strong> 여러 코드 경로에서 빠뜨리거나 남긴 기록을 반복해서 바로잡을 수 있습니다. 대신 매 회차 전체 대상 목록을 읽고 비교하는 비용이 들며, 이 정리에 실패하면 그 회차의 갱신도 미룹니다. 정리한 뒤 새로 생긴 잔여 기록은 다음 회차까지 남을 수 있습니다.</p>
+  <div class="note"><p><strong>주의할 두 가지:</strong> 비교 자체를 처음 3개로 잘라서는 안 됩니다. 또 실패해서 기다리기로 한 작업을 매번 ‘즉시 실행’으로 되돌려서는 안 됩니다. 시작 페이지 변경을 저장할 때는 수집 요청도 함께 기록하고, 이후 대조는 정해진 재시도 시각을 존중합니다.</p></div>
+  <details>
+    <summary>개발자용 변경 범위와 검증 항목</summary>
+    <p>application 보정 서비스가 설정 singleton, 설정에 연결된 publication, 활성 Post 집합을 원하는 대상으로 계산합니다. sync 저장소에 목록 조회·삭제를 추가하고 누락 행만 due로 생성하며, 불필요한 Post 행을 제거합니다. 기존 행의 성공 주기·백오프는 보존합니다. 스케줄러는 보정 서비스 호출과 due 실행만 맡습니다.</p>
+    <p>publication의 활성 버전이 없거나 <code>activeRevisionId == null</code>이거나, 설정 루트와 활성 루트의 소스 바인딩이 다르면 수집이 필요한 상태입니다. 루트 변경 시 설정 apply가 publication due 갱신도 함께 커밋하도록 보강합니다. 반복 보정은 누락 행을 복원하고, 이미 행이 있으면 그 시각을 지켜 실패 백오프를 무너뜨리지 않습니다. A와 호환되는 원자적 의도 기록을 포함하지만, 장기 책임의 중심은 반복 대조에 둡니다.</p>
+    <p>STAGING 전용 Post는 원하는 집합에 넣지 않습니다. 기존 import가 이런 행을 만들더라도 다음 회차에 제거할 수 있어 쓰기 경로 수정은 줄어듭니다. due 제한 전에 전체 대조를 마치며, 보정 실패 시 due 실행을 중단합니다. 규모가 커져 대조를 나눠 수행하려면 전체를 빠짐없이 확인하는 별도 설계가 필요합니다. 재진입한 begin은 미완성 STAGING을 폐기합니다.</p>
+    <p><strong>구현 시 검증:</strong> 옛 기록이 배치보다 많은 경우, 첫 publication 예약 복원, 보정을 반복해도 같은 결과가 되는지, 백오프 보존, 보정 DB 실패, STAGING 전용 대상 제외를 테스트합니다. 범용 플러그인 등록기는 추가하지 않습니다.</p>
+  </details>
+</section>
+
+<section class="panel option" id="option-c">
+  <span class="option-label">해결책 C</span>
+  <h2>사이트 전체를 확인하는 한 주기를 반복합니다</h2>
+  <p>글마다 따로 확인할 차례를 기록하는 대신, <strong>‘이 사이트를 다시 확인한다’는 작업 하나</strong>를 반복합니다. 한 주기에 설정을 읽고 시작 페이지부터 현재 하위 페이지의 내용을 가져옵니다. 여기서는 비용을 비교하기 위해 시작 페이지가 같아도 매 주기 전체를 다시 수집하는 안을 기준으로 합니다.</p>
+  <ul>
+    <li><strong>옛 글 이야기:</strong> 「여행 기록」의 현재 하위 페이지를 따라가므로 「겨울 여행」을 가져옵니다. 옛 글별 확인 기록으로 순서를 고르지 않아 「봄 여행」 등이 차례를 차지할 수 없습니다.</li>
+    <li><strong>첫 설치 이야기:</strong> 설정 저장만 끝났다고 한 주기의 성공으로 보지 않습니다. 첫 수집을 끝내기 전에 꺼졌다면, 남아 있는 사이트 작업을 통해 같은 시작 페이지에서도 다시 수집합니다.</li>
+  </ul>
+  <div class="warning">
+    <strong>첫 작업 기록은 첫 설정을 읽기 전에 저장해야 합니다.</strong>
+    <p>‘사이트 전체를 확인할 일’을 종료 후에도 남도록 먼저 저장한 뒤 설정 수집을 시작해야 합니다. 기존 설치를 이 방식으로 바꿀 때도 같은 준비가 필요합니다. 이 기록 없이 설정부터 읽으면 두 번째 이야기의 빈틈이 다시 생깁니다.</p>
+    <p>설정이나 블로그의 기본 기록이 있다는 사실만으로 완료를 판단하지 않습니다. <strong>실제로 사용할 범위를 한 번도 완성하지 못했다면 아직 할 일이 남은 상태</strong>입니다.</p>
+  </div>
+  <h3>개발자가 기억할 일</h3>
+  <p>사이트 작업의 시작·완료·실패 후 대기 시점을 한곳에서 관리해야 합니다. 나중에 첨부파일 확인 기능을 넣으면 이 주기의 한 단계로 추가합니다. 다만 첨부파일은 더 자주 확인하거나, 그 실패가 글 갱신을 늦추지 않아야 한다면 별도 상태가 늘어납니다. 그런 요구가 많아지면 A나 B를 다시 검토할 이유가 됩니다.</p>
+  <p><strong>이점과 비용:</strong> 글별 확인 목록을 맞추는 일이 줄어듭니다. 대신 매 주기 모든 하위 페이지를 읽으므로 Notion 호출과 실행 시간이 늘어납니다. 느리거나 실패한 페이지 하나가 전체 주기의 완료와 뒤에 있는 글의 갱신을 늦출 수 있고, 글마다 다른 주기와 재시도 간격을 주기도 어려워집니다.</p>
+  <p>설정을 읽지 못했을 때 이전 설정으로 내용 수집을 계속할지, 그 회차를 실패로 끝낼지는 채택 전에 정해야 합니다. 아직 저장된 설정조차 없는 첫 설치라면 기다렸다가 다시 시도합니다. 일부 수집을 생략하는 최적화는 이 비교에 포함하지 않았습니다.</p>
+  <details>
+    <summary>개발자용 변경 범위, 최초 예약, 검증 항목</summary>
+    <p>사이트 application 오케스트레이터가 저장된 사이트 수준 실행 시각·실패 상태를 보고 진입합니다. 기존 <code>sync_state</code>에 사이트 실행 종류를 추가하고 조회·실행 경로를 바꿉니다. 설정 pull 성공 시각과 사이트 전체 진행 시각을 분리하고, publication 활성화까지 끝나야 사이트 성공을 기록합니다. 외부 HTTP 동안 DB 트랜잭션을 유지하지 않습니다.</p>
+    <p>현재 V2 seed는 <code>SITE_CONFIGURATION</code>만 등록하므로 새 사이트 실행을 시작시키기에 충분하지 않습니다. <strong>새 사이트 실행 singleton의 due 행을 첫 설정 fetch보다 먼저 내구성 있게 저장</strong>해야 합니다. 기존 migration을 고치지 않고 추가 전용 부트스트랩 마이그레이션으로 보장하며, 기존 설치의 전환에도 적용합니다. 예약이 준비된 뒤에만 설정 수집을 시작합니다.</p>
+    <p>최소한 publication 행 부재, <code>activeRevisionId == null</code>, 설정 루트와 활성 루트의 소스 바인딩 불일치는 모두 수집이 필요한 상태입니다. publication 행만 있고 활성 revision이 없으면 미완료입니다. 여기서 비교하는 ‘매 주기 전체 재수집’ 정책은 이 조건들을 포함해 항상 수집하며, 모든 후손의 Post를 저장하므로 글별 갱신을 따로 반복하지 않습니다.</p>
+    <p>전환 시 옛 Post 예약을 정리하고 이후 Post apply가 실행 큐 행을 만들지 않게 합니다. STAGING 전용 게시글 저장은 가능하지만 별도 예약은 만들지 않습니다. begin의 미완성 버전 폐기는 재사용합니다. 분류된 실패에는 사이트 백오프를 기록하고, 종료나 DB 장애로 실패를 기록하지 못하면 기존 due를 남깁니다.</p>
+    <p>활성화 커밋 뒤 사이트 성공 기록 전에 중단되면 다음에 같은 내용을 다시 수집할 수 있습니다. 조회·저장과 새 revision 생성을 반복해도 안전하도록 만들며, 정확히 한 번만 실행된다고 약속하지 않습니다. 수집 실패 시 기존 활성 범위를 유지하는 것과 개별 글의 갱신 지연은 별개의 문제입니다.</p>
+    <p><strong>구현 시 검증:</strong> 빈 DB의 첫 예약과 재시작, 설정 저장 후 종료, 활성화 후 종료, 반복 실행, 느린 자식의 영향, 미게시 후 재게시, 외부 HTTP 중 트랜잭션 부재를 테스트합니다.</p>
+  </details>
+</section>
+
+<section class="panel" id="comparison">
+  <span class="kicker">세 해결책 비교</span>
+  <h2>다음 할 일을 언제 맞출지의 차이입니다</h2>
+  <div class="table-wrap"><table>
+    <caption>측정 결과가 아닌 설계 후보 비교</caption>
+    <thead><tr><th scope="col">궁금한 점</th><th scope="col">A · 변경할 때 함께 정리</th><th scope="col">B · 실행 전에 대조</th><th scope="col">C · 사이트 전체 반복</th></tr></thead>
+    <tbody>
+      <tr><th scope="row">옛 글이 차례를 막지 않게 하는 방법</th><td>새 범위를 저장할 때 옛 확인 기록도 없앱니다.</td><td>이번 작업을 고르기 전에 불필요한 기록을 찾고 없앱니다.</td><td>글별 기록으로 순서를 고르지 않습니다.</td></tr>
+      <tr><th scope="row">첫 설치 중 꺼지면</th><td>설정과 함께 저장한 수집 요청이 남습니다.</td><td>아직 수집을 끝내지 못한 상태를 찾아 요청을 복원합니다.</td><td>설정을 읽기 전에 저장한 사이트 작업이 남습니다.</td></tr>
+      <tr><th scope="row">새 기능을 붙일 때</th><td>대상 등록·제거 코드에 확인 기록 처리도 넣습니다.</td><td>현재 필요한 대상을 대조하는 규칙을 더합니다.</td><td>사이트 주기에 단계를 더합니다.</td></tr>
+      <tr><th scope="row">주의할 점</th><td>저장 경로 하나를 빠뜨리면 다시 어긋납니다.</td><td>매번 전체 목록을 비교하고 재시도 시각을 지켜야 합니다.</td><td>전체 수집 비용이 크고 한 단계의 실패가 뒤의 갱신을 늦춥니다.</td></tr>
+      <tr><th scope="row">잘 맞는 경우</th><td>대상을 바꾸는 경로가 적고 명확합니다.</td><td>생성 경로가 많고 누락을 자동으로 바로잡고 싶습니다.</td><td>글이 적고 모든 일을 비슷한 주기로 처리해도 됩니다.</td></tr>
+    </tbody>
+  </table></div>
+  <p>A와 B는 함께 쓸 수 있습니다. 변경 때 작업을 함께 저장한 뒤, 정기 대조를 더해 실수로 남거나 빠진 기록을 복구할 수 있습니다. C는 글별 실행 모델 자체를 바꾸므로 현재 흐름에 정리 단계 하나를 넣는 변경보다 범위가 큽니다.</p>
+  <details>
+    <summary>개발자용 변경 위치 비교</summary>
+    <ul>
+      <li><strong>A:</strong> 기존 sync_state를 유지하고 설정·import·활성화 쓰기 경계의 책임을 나눕니다. 작은 삭제·보장 연산이 필요하며, 변경 시 집합 비교·쓰기 비용이 듭니다.</li>
+      <li><strong>B:</strong> 기존 sync_state에 목록 조회·삭제와 구체 보정 서비스를 추가합니다. 설정의 원자적 의도 기록도 보강합니다. 매 주기 대상 ID를 읽고 대조합니다.</li>
+      <li><strong>C:</strong> 사이트 실행 상태·종류를 추가하고 Post 큐의 역할을 제거합니다. 진입점과 단계 조합을 바꾸며, 비교 기준은 매 주기 전체 구조·내용 수집입니다.</li>
+    </ul>
+  </details>
+</section>
+
+<section class="panel" id="recommendation">
+  <span class="kicker">선택 기준</span>
+  <h2>글마다 따로 갱신할 필요가 얼마나 큰지부터 봅니다</h2>
+  <div class="recommendation"><p>기존 흐름을 유지하면서 글마다 확인 주기와 실패 후 대기 시간을 다르게 관리하려면 <strong>A를 우선 검토</strong>할 수 있습니다. 대상을 만드는 경로가 늘고 자동 복구도 필요하면 <strong>B</strong>의 반복 대조 비용을 받아들일 이유가 생깁니다. 글이 적고 매번 전체를 읽는 비용을 감당할 수 있으면 <strong>C</strong>도 후보입니다.</p></div>
+  <p>실제 글 수, 허용할 갱신 지연, Notion 요청량의 한도가 주어지지 않았으므로 여기서 하나를 확정하지 않습니다. 세 안 모두 두 이야기를 해결해야 하며, ‘개수를 더 많이 뽑기’나 ‘일단 한 번 재시작하기’만으로 끝내서는 안 됩니다.</p>
+  <details>
+    <summary>구현을 선택한 뒤의 진행 순서</summary>
+    <ol>
+      <li>첫 수집 요청이 사라지는 경우와 옛 기록이 배치 크기 이상인 경우를 실패 테스트로 고정합니다. 중단 지점은 DB 커밋 전후로 나눕니다.</li>
+      <li>선택한 책임과 재시도 정책을 아키텍처 문서에 먼저 반영합니다. A/B는 요청 저장의 원자성을, C는 첫 예약과 사이트 완료 시점을 명시합니다.</li>
+      <li>짧은 트랜잭션과 작은 저장소 연산으로 구현합니다. 기존 잔여·누락 기록은 대조해 보정하고, STAGING은 다음 begin에서 폐기합니다.</li>
+      <li>설정 저장·begin·Post apply·activate 사이의 중단, DB 복구 후 재실행, 미게시 후 재게시를 검증합니다. ABANDONED 기록의 장기 보존 기간은 별도 운영 정책으로 둡니다.</li>
+    </ol>
+    <p>직접 호출은 빠른 실행 수단으로 남길 수 있지만, 저장 후 중단된 일을 복구하는 유일한 수단으로 삼지 않습니다. 특정 예약을 보장하는 작은 구체 도우미는 가능하며, 가상의 미래 기능만을 이유로 범용 프레임워크를 만들지는 않습니다.</p>
+  </details>
+  <details>
+    <summary>코드를 읽을 때 필요한 짧은 용어 풀이</summary>
+    <ul>
+      <li><code>sync_state</code>: 대상을 언제 다시 확인할지와 성공·실패 상태를 저장한 기록입니다. 본문의 ‘확인 목록’에 해당합니다.</li>
+      <li><code>due</code>: 저장된 다음 시각이 되어 지금 실행할 차례라는 뜻입니다. <code>backoff</code>는 실패 뒤 다음 시도까지 두는 대기 시간입니다.</li>
+      <li><code>publication / revision</code>: 블로그 범위와 그 범위를 수집한 버전입니다. <code>activeRevisionId</code>는 현재 사용할 완성된 버전을 가리킵니다.</li>
+      <li><code>STAGING / ACTIVE / ABANDONED</code>: 각각 수집 중인 범위, 사용할 범위, 사용하지 않기로 한 미완성 범위입니다. 범위 안 글의 게시 여부와는 별개입니다.</li>
+    </ul>
+  </details>
+</section>
+<section class="panel" id="sources"><span class="kicker">소스 근거</span><h2>소스와 테스트로 다시 따라가기</h2><p class="caption">행 번호는 2026-10-04 확인 기준입니다. 기존 테스트는 해당 동작을 설명하는 근거로 읽었으며, 이번 문서 작업에서 실행하지 않았습니다. 파일 링크가 해당 행으로 이동하지 않으면 함수명과 아래 행 범위를 참고할 수 있습니다.</p><ul class="source-list">
+<li id="source-settings"><a href="../../src/main/kotlin/xyz/robinjoon/notionblog/application/service/ApplyImportedSiteConfigurationService.kt#L39"><code>src/main/kotlin/xyz/robinjoon/notionblog/application/service/ApplyImportedSiteConfigurationService.kt</code></a> · 39–69행<br>apply: 설정·빈 publication·설정 성공 상태 저장, rootChanged 반환</li>
+<li><a href="../../src/main/kotlin/xyz/robinjoon/notionblog/application/service/SynchronizeSiteConfigurationService.kt#L15"><code>src/main/kotlin/xyz/robinjoon/notionblog/application/service/SynchronizeSiteConfigurationService.kt</code></a> · 15–21행<br>synchronize: apply 이후 rootChanged 조건의 직접 실행</li>
+<li id="source-collect"><a href="../../src/main/kotlin/xyz/robinjoon/notionblog/application/service/SynchronizePublicationService.kt#L21"><code>src/main/kotlin/xyz/robinjoon/notionblog/application/service/SynchronizePublicationService.kt</code></a> · 21–63행<br>synchronize/collectMembers: begin은 try 밖, fetch → apply → stage, 제한된 catch</li>
+<li><a href="../../src/main/kotlin/xyz/robinjoon/notionblog/application/service/ApplyImportedPostService.kt#L31"><code>src/main/kotlin/xyz/robinjoon/notionblog/application/service/ApplyImportedPostService.kt</code></a> · 31–87행<br>apply/recordSuccess: 활성 여부와 무관한 Post sync 행 생성</li>
+<li id="source-stage"><a href="../../src/main/kotlin/xyz/robinjoon/notionblog/application/service/StagePublicationMemberService.kt#L27"><code>src/main/kotlin/xyz/robinjoon/notionblog/application/service/StagePublicationMemberService.kt</code></a> · 27–63행<br>begin/abandon: 남은 STAGING 폐기와 publication 실패 예약</li>
+<li><a href="../../src/main/kotlin/xyz/robinjoon/notionblog/application/service/ActivatePublicationService.kt#L27"><code>src/main/kotlin/xyz/robinjoon/notionblog/application/service/ActivatePublicationService.kt</code></a> · 27–66행<br>activate/recordSuccess: 활성 포인터와 publication 성공 상태 반영</li>
+<li><a href="../../src/main/kotlin/xyz/robinjoon/notionblog/application/service/SynchronizationQueryService.kt#L36"><code>src/main/kotlin/xyz/robinjoon/notionblog/application/service/SynchronizationQueryService.kt</code></a> · 36–66행<br>loadPost/findDueTargets: 활성 소속 검사는 dispatch 뒤, due는 그대로 전달</li>
+<li><a href="../../src/main/kotlin/xyz/robinjoon/notionblog/adapter/output/persistence/exposed/ExposedSyncStateRepository.kt#L22"><code>src/main/kotlin/xyz/robinjoon/notionblog/adapter/output/persistence/exposed/ExposedSyncStateRepository.kt</code></a> · 22–34행<br>findDue: 전체 종류 due 정렬 후 limit</li>
+<li><a href="../../src/main/kotlin/xyz/robinjoon/notionblog/adapter/input/scheduling/SynchronizationScheduler.kt#L35"><code>src/main/kotlin/xyz/robinjoon/notionblog/adapter/input/scheduling/SynchronizationScheduler.kt</code></a> · 35–65행<br>synchronizeDue/dispatch: 인스턴스 중복 방지, 예외 로깅 후 다음 대상</li>
+<li><a href="../../src/main/kotlin/xyz/robinjoon/notionblog/application/port/output/persistence/SyncStateRepository.kt#L8"><code>src/main/kotlin/xyz/robinjoon/notionblog/application/port/output/persistence/SyncStateRepository.kt</code></a> · 8–12행<br>현재 포트: findDue/find/save, 삭제 연산 없음</li>
+<li><a href="../../src/main/kotlin/xyz/robinjoon/notionblog/application/service/GetPublishedPostService.kt#L15"><code>src/main/kotlin/xyz/robinjoon/notionblog/application/service/GetPublishedPostService.kt</code></a> · 15–40행<br>getRoot/get: 초기 ContentUnavailable과 미게시 NotFound 분리</li>
+<li><a href="../../src/main/resources/db/migration/V2__seed_default_presentation_profile.sql#L53"><code>src/main/resources/db/migration/V2__seed_default_presentation_profile.sql</code></a> · 53–67행<br>최초 SITE_CONFIGURATION due seed</li>
+<li><a href="../../src/test/kotlin/xyz/robinjoon/notionblog/application/service/SynchronizePostServiceTest.kt#L36"><code>src/test/kotlin/xyz/robinjoon/notionblog/application/service/SynchronizePostServiceTest.kt</code></a> · 36–47행<br>does nothing for an inactive post: 소스·apply 호출 없음</li>
+<li><a href="../../src/test/kotlin/xyz/robinjoon/notionblog/application/service/SynchronizePublicationServiceTest.kt#L230"><code>src/test/kotlin/xyz/robinjoon/notionblog/application/service/SynchronizePublicationServiceTest.kt</code></a> · 230–242행<br>apply failure is propagated without falsely abandoning: 일반 DB RuntimeException 사례</li>
+<li><a href="../../src/test/kotlin/xyz/robinjoon/notionblog/application/service/StagePublicationMemberServiceTest.kt#L51"><code>src/test/kotlin/xyz/robinjoon/notionblog/application/service/StagePublicationMemberServiceTest.kt</code></a> · 51–66행<br>begin abandons stale staging revisions: 다음 begin에서 복구</li>
+<li><a href="../../src/test/kotlin/xyz/robinjoon/notionblog/adapter/output/persistence/exposed/sync/ExposedSyncStateRepositoryIntegrationTest.kt#L67"><code>src/test/kotlin/xyz/robinjoon/notionblog/adapter/output/persistence/exposed/sync/ExposedSyncStateRepositoryIntegrationTest.kt</code></a> · 67–78행<br>returns due sync states in refresh order and honors the requested limit: 정렬·제한 검증</li>
+<li id="source-skip"><a href="../../src/main/kotlin/xyz/robinjoon/notionblog/application/service/SynchronizePostService.kt#L18"><code>src/main/kotlin/xyz/robinjoon/notionblog/application/service/SynchronizePostService.kt</code></a> · 18–25행<br>loadPost가 null이면 즉시 반환하며, 갱신 행 삭제·시각 변경은 하지 않습니다.</li>
+<li id="source-batch"><a href="../../src/main/kotlin/xyz/robinjoon/notionblog/config/BlogProperties.kt#L14"><code>src/main/kotlin/xyz/robinjoon/notionblog/config/BlogProperties.kt</code></a> · 14행, <a href="../../src/main/resources/application.yml#L29"><code>application.yml</code></a> · 29행<br>실제 기본 배치 크기는 100입니다. 본문의 3개는 순서를 보여 주기 위한 예시입니다.</li>
+<li id="source-http"><a href="../../src/main/kotlin/xyz/robinjoon/notionblog/adapter/input/web/BlogController.kt#L35"><code>src/main/kotlin/xyz/robinjoon/notionblog/adapter/input/web/BlogController.kt</code></a> · 35행<br>ContentUnavailable을 HTTP 503으로 변환합니다.</li>
+</ul><p>기존 설계: <a href="../kotlin-spring-architecture.md#122-synchronizesiteconfigurationservice">12.2 설정 동기화</a>, <a href="../kotlin-spring-architecture.md#123-synchronizepublicationservice">12.3 공개 범위 수집</a>, <a href="../kotlin-spring-architecture.md#16-트랜잭션과-동시성">16 트랜잭션과 동시성</a>, <a href="../kotlin-spring-architecture.md#19-스케줄링-오래된-콘텐츠와-오류">19 스케줄링</a>, <a href="../kotlin-spring-architecture.md#217-스케줄러와-운영-경계">21.7 검증 기준</a>. 설계의 실패 처리 설명은 모든 중단 상황에서 보장되는 동작으로 읽으면 안 됩니다. 현재 코드는 일반 DB 오류나 프로세스 종료 때 항상 abandon 기록을 남기지는 않습니다.</p></section>
+<section class="panel review-notes" id="review-notes">
+  <span class="kicker">독립 검토 · 설명 개정본</span>
+  <h2>다음번에도 문제가 반복되는 이유가 전달되는지 확인했습니다</h2>
+  <p>작성자와 다른 새 Codex 세션에서 접힌 기술 설명과 구현 코드를 보기 전에 정상 동작, 어긋나는 단계, 눈에 보이는 결과와 원인을 다시 설명했습니다. 옛 글의 기록이 남아 다음에도 같은 글을 고르는 과정과, 첫 수집을 시작할 기록이 없어 재시작해도 초기화가 이어지는 과정 모두 설명에서 따라갈 수 있다는 평가를 받았습니다.</p>
+  <p>세 해결책이 두 상황을 함께 해결하는지도 확인했습니다. C는 첫 설정을 가져오기 전에 사이트 점검 기록을 남겨야 하고, 설정 저장과 첫 수집 완료를 구분해야 한다는 조건을 유지했습니다. 추가 문구 수정이 필요한 지적은 없었습니다.</p>
+  <p class="caption">수행 범위는 소스 읽기와 문서 정적 확인입니다. 애플리케이션 수정, 애플리케이션 테스트 실행, 장애 재현, 해결책 채택은 수행하지 않았습니다.</p>
+</section>
+</main>
+<footer>Notion Blog · 설계 선택을 돕는 검토 문서 · 2026-10-04 <a class="back-top" href="#top">맨 위로</a></footer>
+</body>
+</html>

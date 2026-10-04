@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>너무 늦게 멈추는 글 수집 · Notion Blog</title>
+  <style>
+    :root{color-scheme:light;--paper:#f5f3ee;--surface:#fffefb;--ink:#1e2931;--muted:#52636d;--line:#d8dedb;--accent:#16685a;--tint:#eaf4ee;--warn:#875816;--warn-bg:#fff5df;--danger:#983e34;--code:#152b32}
+    *{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:24px}body{margin:0;background:var(--paper);color:var(--ink);font:17px/1.8 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif;word-break:keep-all;overflow-wrap:anywhere}a{color:var(--accent);text-underline-offset:4px}a:hover{text-decoration-thickness:2px}a:focus-visible,summary:focus-visible{outline:3px solid #e8a844;outline-offset:4px}header,main,footer{width:min(1120px,calc(100% - 48px));margin-inline:auto}.topnav{display:flex;flex-wrap:wrap;gap:10px 24px;align-items:center;padding:24px 0;border-bottom:1px solid var(--line);font-size:14px}.topnav strong{margin-right:auto;letter-spacing:.06em}.topnav a[aria-current=page]{font-weight:750;color:var(--ink)}.hero{padding:54px 0 30px}.eyebrow{font-size:12px;letter-spacing:.13em;font-weight:800;text-transform:uppercase;color:var(--accent)}h1{font-size:clamp(30px,4.6vw,52px);line-height:1.2;letter-spacing:-.045em;margin:16px 0 22px;max-width:950px}h2{font-size:clamp(24px,3vw,31px);line-height:1.35;letter-spacing:-.035em;margin:0 0 22px}h3{font-size:22px;line-height:1.5;letter-spacing:-.025em;margin:22px 0 12px}h4{font-size:17px;margin:20px 0 8px}p{margin:0 0 18px}p:last-child{margin-bottom:0}.lead{font-size:20px;line-height:1.8;max-width:920px;color:#3d535c}.meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:24px}.pill{padding:3px 11px;border:1px solid var(--line);border-radius:100px;font-size:12px;background:var(--surface);color:var(--muted)}.scope{padding:20px 24px;border-left:4px solid var(--accent);background:var(--tint);border-radius:0 12px 12px 0;margin:0 0 30px;font-size:15px}.toc{display:flex;flex-wrap:wrap;gap:10px 20px;margin:20px 0 34px;padding:0;list-style:none;font-size:14px}.panel{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:34px;margin:0 0 24px}.kicker{display:block;font:700 12px/1.5 ui-monospace,SFMono-Regular,monospace;letter-spacing:.09em;color:var(--accent);margin-bottom:12px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}.grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}.card{border:1px solid var(--line);border-radius:12px;padding:22px;background:#fafbf8;min-width:0}.card h3{margin-top:0;font-size:20px}.note,.warning,.recommendation{padding:20px 24px;border-radius:12px;margin:20px 0;background:var(--tint)}.warning{background:var(--warn-bg);border-left:4px solid #b98129}.recommendation{border:1px solid #a6cbbb}.muted,.caption{color:var(--muted);font-size:14px}.flow,.steps{list-style:none;counter-reset:step;padding:0;display:grid;gap:12px}.flow{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}.flow li,.steps li{counter-increment:step;padding:18px 18px 18px 48px;border:1px solid var(--line);border-radius:10px;position:relative;background:#f8faf7;min-width:0}.flow li::before,.steps li::before{content:counter(step);position:absolute;left:16px;top:19px;color:var(--accent);font:700 14px/1.6 ui-monospace,monospace}.flow strong,.steps strong{display:block;line-height:1.5;margin-bottom:7px}.flow span,.steps span{font-size:14px;color:var(--muted)}ul,ol{padding-left:24px}li+li{margin-top:7px}.flow li+li,.steps li+li{margin-top:0}.option{border-top:4px solid var(--accent)}.option-label{font:700 12px/1.4 ui-monospace,monospace;color:var(--accent);letter-spacing:.06em}.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;margin:20px 0}table{width:100%;border-collapse:collapse;font-size:15px;text-align:left}caption{text-align:left;padding:16px;background:#eff4ef;font-weight:700}th,td{padding:15px 17px;border-bottom:1px solid var(--line);vertical-align:top;min-width:110px}thead th{background:#edf3ee;color:#244a42}tbody tr:last-child>*{border-bottom:0}tbody th{font-weight:650;background:#fafbf8;min-width:120px}code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.85em;background:#edf0ed;padding:2px 5px;border-radius:4px;word-break:break-word}pre{background:var(--code);color:#e9f2ef;border-radius:12px;padding:22px;overflow-x:auto;white-space:pre-wrap;word-break:normal;overflow-wrap:anywhere;font-size:14px;line-height:1.65}pre code{background:transparent;padding:0;color:inherit;border-radius:0;font-size:inherit}details{border:1px solid var(--line);border-radius:12px;margin:18px 0;padding:15px 20px}summary{cursor:pointer;color:var(--accent);font-weight:650}details[open] summary{margin-bottom:16px}.source-list{font-size:14px}.source-list li{margin-bottom:14px}.source-list code{font-size:12px}.review-notes{border-style:dashed}.review-notes h2{font-size:24px}footer{padding:18px 0 44px;color:var(--muted);font-size:13px}.back-top{display:inline-block;margin-top:18px}
+    @media(max-width:760px){body{font-size:16px}header,main,footer{width:calc(100% - 28px)}.hero{padding-top:32px}.lead{font-size:18px}.panel{padding:23px 18px}.grid,.grid.three{grid-template-columns:1fr}.topnav{gap:9px 16px}.topnav strong{flex-basis:100%}.flow{grid-template-columns:1fr}.scope{padding:17px 18px}.card{padding:18px}th,td{padding:12px}.toc{gap:8px 16px}}
+    @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+    @media print{body{background:#fff;font-size:11pt}header,main,footer{width:100%}.topnav,.toc,.back-top{display:none}.hero{padding:10px 0 20px}.panel{border:0;border-radius:0;padding:18px 0;break-inside:auto}.card,.note,.warning,pre,tr{break-inside:avoid}h2,h3{break-after:avoid}pre{background:#f1f3f2;color:#172d31}.grid{display:block}.card{margin-bottom:10px}.table-wrap{overflow:visible}a{color:inherit}}
+  </style>
+</head>
+<body>
+<header id="top">
+  <nav class="topnav" aria-label="개선 항목 문서">
+    <strong>NOTION BLOG · 유지보수 설계 노트</strong>
+    <a href="01-sync-lifecycle.html">01 갱신 목록</a>
+    <a href="02-notion-parsing.html">02 해석 규칙</a>
+    <a href="03-collection-policy.html" aria-current="page">03 수집 한도</a>
+  </nav>
+<div class="hero">
+  <span class="eyebrow">유지보수 검토 03 · 글을 가져오는 양과 시간</span>
+  <h1>너무 긴 글을 끝까지 읽고 나서야<br>갱신을 포기하는 문제</h1>
+  <p class="lead">블로그는 긴 Notion 글을 여러 번 나눠 가져온 뒤, 독자에게 보여 줄 저장본을 만듭니다. 한 번의 갱신에 너무 많은 시간과 작업을 쓰지 않도록 제한이 있지만, 일반 본문은 다 가져온 뒤에야 개수를 검사합니다. 결국 실패할 갱신에 요청을 더 쓰고, 작성자가 고친 내용은 반영되지 않은 채 이전 글이 남을 수 있습니다.</p>
+  <div class="meta"><span class="pill">2026-10-04</span><span class="pill">검토용 제안 · 구현 변경/설계 확정 아님</span><a class="pill" href="../kotlin-spring-architecture.md#13-notion-어댑터-설계">현재 아키텍처 기준</a></div>
+</div>
+</header>
+<main>
+<div class="scope"><strong>2026-10-05 결정: 현재 수집 동작을 유지합니다.</strong> 이 문서의 조기 중단·공통 수집기 제안은 지금 적용하지 않고, 동기화 전체를 재설계할 때 제한의 필요성과 함께 다시 검토합니다. 현재 기본값은 블록 처리량 10,000, 중첩 32단계, 수집 시간 30초, HTTP 요청 제한 10초입니다. 아래 150개·500개와 전체 10초는 설명용 가정입니다. 처리량은 문단 수와 정확히 같지 않으며, 수집 시간은 진행 중 요청을 즉시 끊는 보장이 아닙니다.</div>
+<div class="scope"><strong>왜 지금 살펴보나요?</strong> 이미 있는 제한을 더 일찍 확인하면, 실패할 갱신에 쓰는 추가 요청과 대기 시간을 줄일 수 있습니다. 앞으로 글 안의 표나 이미지 수집 기능이 늘어날 때도 같은 제한을 빠뜨리지 않도록 하는 유지보수 문제입니다. 아래 사례는 현재 코드를 읽고 예상한 동작이며, 실제 운영 장애를 관측했다는 뜻은 아닙니다.</div>
+<ul class="toc"><li><a href="#current">평소에는 어떻게 되나요?</a></li><li><a href="#scenarios">어디서 문제가 생기나요?</a></li><li><a href="#principles">해결할 때 지킬 점</a></li><li><a href="#option-a">대안 A</a></li><li><a href="#option-b">대안 B</a></li><li><a href="#option-c">대안 C</a></li><li><a href="#comparison">세 가지 비교</a></li><li><a href="#recommendation">선택 기준</a></li><li><a href="#sources">소스 근거</a></li></ul>
+
+<section id="current" class="panel">
+  <span class="kicker">01 · 평소의 동작</span>
+  <h2>Notion에서 고친 글을 블로그 저장본으로 옮깁니다</h2>
+  <p>작성자가 Notion의 ‘제주 여행 기록’을 수정했다고 해 보겠습니다. 문단이나 이미지처럼 글을 이루는 조각을 <strong>블록</strong>이라고 합니다. 블로그는 Notion API에 이 조각들을 요청합니다. 긴 글은 응답 한 번에 끝나지 않으므로 여러 묶음으로 나눠 받습니다.</p>
+  <p>응답에는 “이 뒤에도 내용이 있으니 다음 요청에 이 표식을 보내라”는 <strong>다음 묶음 표식</strong>이 올 수 있습니다. 코드에서는 이 표식을 커서(cursor)라고 하고, 표식을 따라 나눠 읽는 일을 페이지네이션이라고 합니다. 여기서 ‘한 페이지’는 블로그 글 하나가 아니라 API 응답 한 묶음입니다.</p>
+  <ol class="flow">
+    <li><strong>작성자가 글을 수정합니다</strong><span>평범한 문단 120개로 된 글입니다. 예시의 처리 한도는 150개이고, 남은 시간도 충분합니다.</span></li>
+    <li><strong>블로그가 두 묶음을 받습니다</strong><span>첫 응답의 100개를 받고 다음 표식을 보냅니다. 두 번째 응답에서 나머지 20개를 받으면 목록이 끝납니다.</span></li>
+    <li><strong>완성된 새 저장본을 만듭니다</strong><span>120개가 한도 안에 있고 내용도 올바른지 확인한 뒤, 블로그에서 쓸 글로 변환해 저장합니다.</span></li>
+    <li><strong>독자에게 수정한 글을 보여 줍니다</strong><span>이제 블로그는 새 저장본을 제공합니다. 가져오는 중간 조각을 곧바로 공개하지 않습니다.</span></li>
+  </ol>
+  <h3>이 문서에서 말하는 문제</h3>
+  <p>현재 정책은 제한을 넘는 글의 갱신을 실패시킵니다. 이 정책을 유지한다면 <strong>실패할 만큼 많이 받았는데도 다음 묶음을 계속 요청한 뒤, 너무 늦게 실패한다는 것</strong>이 개선 대상입니다. 제한 자체가 꼭 필요한지는 별도 결정이며, 아래 대안은 제한을 유지한다고 가정합니다. 시간 제한도 이미 있지만, 일부 목록은 글 전체에서 남은 시간을 쓰지 않고 자기 시간을 새로 시작합니다.</p>
+  <div class="grid three">
+    <div class="card"><h3>작성자에게는</h3><p>Notion에서 고친 내용이 이번 갱신에 반영되지 않습니다. 실패를 확인하기까지 불필요한 시간이 더 들 수 있습니다.</p></div>
+    <div class="card"><h3>독자에게는</h3><p>기존에 공개된 글이라면 이전 저장본이 계속 보입니다. 새 글의 앞부분만 잘라서 공개하는 문제는 아닙니다.</p></div>
+    <div class="card"><h3>개발자에게는</h3><p>실패할 수집에 API 호출과 메모리를 더 씁니다. 새 수집 기능마다 같은 문제가 생기지 않도록 검사 위치를 챙겨야 합니다.</p></div>
+  </div>
+  <p class="caption">이후 사례도 이미 공개된 글의 갱신을 가정합니다. 글을 가져오는 실패와 작성자가 공개를 취소한 경우는 서로 다르게 처리합니다.</p>
+</section>
+
+<section id="scenarios" class="panel">
+  <span class="kicker">02 · 같은 글에서 문제가 생기면</span>
+  <h2>150개까지만 처리할 텐데 500개를 먼저 받습니다</h2>
+  <p>‘제주 여행 기록’의 이전 저장본에는 문단이 120개 있습니다. 작성자가 내용을 늘려, Notion에는 <strong>서로 다른 평범한 문단 500개</strong>가 같은 단계에 나란히 놓였다고 해 보겠습니다. 모두 휴지통에 있지 않고, 중첩 내용이나 별도 참조는 없습니다. 처리 한도는 여전히 150개입니다.</p>
+  <ol class="steps">
+    <li><strong>이번 갱신은 한도 때문에 실패해야 합니다</strong><span>500개를 150개로 잘라 저장할 수는 없습니다. 충분히 많이 받았다는 사실을 알게 되면 남은 요청을 멈추고 이전 저장본을 지키는 것이 기대하는 동작입니다.</span></li>
+    <li><strong>현재 코드는 먼저 다섯 묶음을 모두 받습니다</strong><span>Notion이 한 번에 100개씩 정상 응답하고 시간도 충분하면, 블로그는 1~5번째 묶음을 차례로 요청합니다. 이때까지 문단 수를 세는 처리는 시작하지 않습니다.</span></li>
+    <li><strong>500개가 모인 뒤에야 수를 셉니다</strong><span>반환된 목록을 앞에서부터 처리하다가 151번째 문단에서 한도 초과로 실패합니다. 뒤의 세 묶음을 요청하고 받아 둔 작업은 이미 끝난 상태입니다.</span></li>
+    <li><strong>새 내용은 저장하지 않습니다</strong><span>이번 갱신의 실패를 기록하고, 이전 120개 문단으로 된 저장본을 유지합니다. 독자는 수정 전 글을 계속 봅니다.</span></li>
+  </ol>
+  <h3>어디가 어긋났나요?</h3>
+  <p>“다음 묶음을 가져오는 코드”와 “가져온 문단 수를 세는 코드”가 떨어져 있습니다. 앞의 코드는 목록이 끝날 때까지 받는 일만 하고, 뒤의 코드는 전체 목록을 전달받아야 일을 시작합니다. 그래서 개수 제한이 있어도 추가 요청을 일찍 막지 못합니다.</p>
+  <p class="note"><strong>이 사례에서 비교할 개선 동작:</strong> ‘API에서 받은 항목 수’도 따로 제한하기로 하고, 예시에서는 그 한도도 150개로 정했다고 가정합니다. 첫 묶음의 100개를 확인한 뒤 두 번째 묶음까지 받으면 총 200개이므로 중단합니다. 세 번째부터 다섯 번째까지의 <strong>추가 호출 3회</strong>를 생략합니다. 두 번째 응답은 이미 받았으므로, 정확히 150개만 수신한다는 뜻은 아닙니다.</p>
+  <div class="table-wrap"><table>
+    <caption>같은 처리 한도 150개일 때, 무엇을 받고 무엇을 저장하나요?</caption>
+    <thead><tr><th>상황</th><th>본문 목록 응답</th><th>판정</th><th>독자에게 보이는 글</th></tr></thead>
+    <tbody>
+      <tr><th>정상: 문단 120개</th><td>2회 · 100 + 20개</td><td>한도 안에서 전체 수집 성공</td><td>수정된 120개 문단</td></tr>
+      <tr><th>현재: 문단 500개</th><td>5회 · 총 500개</td><td>전부 받은 뒤 151번째 처리에서 실패</td><td>이전 저장본의 120개 문단</td></tr>
+      <tr><th>제안: 문단 500개 + 수신량도 150개로 제한</th><td>2회 · 총 200개</td><td>두 번째 응답 직후 수신량 초과로 실패</td><td>같은 이전 저장본 · 남은 호출 3회 생략</td></tr>
+    </tbody>
+  </table></div>
+  <p><strong>새로 정해야 하는 정책도 있습니다.</strong> 지금 처리 개수를 셀 때는 휴지통의 블록이나 공개하지 않을 회의 녹취를 먼저 제외합니다. 받은 항목 전체를 제한하면 이런 항목도 한도를 사용합니다. 위 개선은 단순히 검사 위치만 옮기는 변경이 아니며, 무엇을 셀지 분명히 정해야 합니다. 150이라는 값은 설명용이지 권장 설정값이 아닙니다.</p>
+  <p class="caption">표의 호출 수는 본문 목록 요청만 셉니다. 글 제목·게시 여부 등을 확인하는 요청은 제외합니다. 수신량 제한은 응답 한 번의 바이트 크기까지 제한하지 않습니다.</p>
+  <details>
+    <summary>소스에서 확인한 순서와 개수의 의미</summary>
+    <p><code>NotionApiClient.fetchDirectBlockChildren</code>(206–210행)은 <code>collectPages</code>(247–260행)로 모든 응답을 <code>results += page.results</code>에 누적합니다. 이 반복에는 누적 개수 검사가 없습니다.</p>
+    <p><code>NotionPostSource.collectChildren</code>(106–119행)은 그 목록을 받은 뒤 필터를 적용하고 <code>countAndVisit</code>를 호출합니다. 이 메서드(306–313행)는 방문 ID 중복을 거부하고 <code>blockCount &gt; maxBlockCount</code>이면 실패합니다. 위처럼 중첩·복사·DB 작업이 없는 입력에서는 151번째 문단의 원본 방문량 검사에서 실패합니다.</p>
+    <p>기존 <code>blockCount</code>와 <code>materializedBlockCount</code>는 같은 <code>maxBlockCount</code>를 쓰지만 서로 다른 카운터입니다. 후자는 생성되는 일반 블록·복사본뿐 아니라 DB 뷰/행 ID·선택 열·요청 속성·합성 노드, 표지 후보 블록/파일 등에도 사용됩니다. 최종 본문 노드 개수와 일치하지 않습니다. 새 수신량 제한을 두더라도 이 의미를 몰래 바꾸지 않습니다.</p>
+    <p>기존 <code>maxDepth</code>는 재귀 진입과 캐시·합성 자식의 배치 깊이를 확인합니다. 같은 깊이에 나란히 놓인 긴 목록이나 항목 안의 긴 문자열까지 제한하지는 않습니다. 개수·깊이 검사를 응답 바이트나 메모리 사용량의 엄밀한 상한으로 설명해서는 안 됩니다.</p>
+  </details>
+
+  <h3>남은 시간이 1초인데, 자식 목록은 새 10초를 받습니다</h3>
+  <p>이번에는 글 전체를 가져오는 제한 시간이 10초라고 해 보겠습니다. ‘제주 여행 기록’의 제목·게시 여부와 앞쪽 내용을 읽는 데 이미 9초를 썼고, 이제 글 안의 접힌 목록을 읽어야 합니다.</p>
+  <ol class="steps">
+    <li><strong>전체에서 남은 시간은 1초입니다</strong><span>이 목록도 같은 글의 일부입니다. 남은 1초를 기준으로 다음 요청을 할 수 있는지 판단해야 합니다.</span></li>
+    <li><strong>현재 일반 자식 목록은 자기 10초를 새로 시작합니다</strong><span>글 전체의 요청 전 검사는 아직 통과합니다. 하지만 안쪽에서 묶음을 반복해 읽을 때는 목록 조회가 시작된 시각만 기준으로 삼습니다.</span></li>
+    <li><strong>목록에 3초를 더 썼다면, 전체는 이미 12초입니다</strong><span>안쪽 타이머에는 여유가 있어 다음 묶음을 더 요청할 수 있습니다. 목록 읽기를 마치고 바깥의 전체 시간 검사로 돌아와야 초과를 확인합니다.</span></li>
+    <li><strong>늦게 실패하며 이전 글이 남습니다</strong><span>이 사례에서도 새 저장본은 적용되지 않습니다. 같은 종료 시각을 공유했다면, 시간이 소진된 뒤의 검사에서 추가 요청을 막을 수 있습니다.</span></li>
+  </ol>
+  <p><strong>시간 제한이 없는 것은 아닙니다.</strong> 기존 제한을 검사하는 시계의 시작점이 다릅니다. 고치려는 것은 자식 목록에도 새 10초 대신 글 전체의 남은 시간을 전달하는 부분입니다. 다만 이미 진행 중인 요청은 10초가 지난 뒤에 끝날 수 있습니다. 같은 종료 시각을 검사하는 것만으로 그 요청을 즉시 취소할 수는 없습니다.</p>
+  <details>
+    <summary>기존 시간 검사와 개별 요청 제한</summary>
+    <p><code>NotionPostSource.fetch</code>(54–66행)는 전체 시작 시각을 만들고, <code>collectChildren</code>(106–108행)은 목록 호출 전후에 이를 검사합니다. 반면 <code>NotionApiClient.fetchDirectBlockChildren</code>(208행)은 새 시작 시각을 만들며, <code>collectPages</code>(254–256행)는 각 요청 전후에 그 시각으로 검사합니다. DB·표지 경로는 이미 게시글의 시간 검사 함수를 전달받습니다.</p>
+    <p>클라이언트에는 connect/read timeout도 있습니다(43–55행). 남은 전체 시간을 개별 HTTP 요청의 상한에 반영할지는 실제 HTTP 경계의 동작을 확인해 결정해야 합니다. 페이지 사이의 검사로 엄밀한 벽시계 종료나 모든 CPU 처리 지점의 즉시 중단을 보장하지 않습니다.</p>
+  </details>
+
+  <h3>다음 묶음 표식이 같은 값으로 되돌아오는 경우도 있습니다</h3>
+  <p>서버가 빈 결과와 함께 다음 묶음 표식 <code>c1</code>을 돌려주고, 그 표식으로 요청해도 다시 <code>c1</code>을 준다고 가정합니다. 현재 일반 목록 수집은 같은 표식의 재등장을 확인하지 않아 요청을 반복하다가 시간 초과로 실패합니다. <strong>끝없이 돈다는 주장이 아니라, 앞으로 나아가지 못한다는 사실을 늦게 알아차린다는 문제</strong>입니다.</p>
+  <p>이 목록에서 이미 받은 표식인지 확인하면 재등장한 응답 직후 실패시켜 다음 요청을 막을 수 있습니다. 글 안의 데이터베이스와 표지 수집에는 이미 이 검사가 있습니다.</p>
+  <details>
+    <summary>응답 형식 검사와 진행 여부 검사는 다릅니다</summary>
+    <p><code>NotionPaginationResponse.init</code>(3–13행)은 <code>hasMore</code>와 <code>nextCursor</code>가 서로 맞는지만 확인합니다. 따라서 <code>has_more=true, next_cursor="c1"</code> 자체는 올바른 형태입니다. 일반 <code>collectPages</code>는 커서 이력을 저장하지 않습니다. 결과가 비어 있지 않으면 시간 초과 전까지 누적 목록도 커질 수 있습니다.</p>
+    <p><code>NotionInlineDatabaseReader.collectIds</code>(236–254행)와 <code>NotionDataViewCoverReader.contentCover</code>(52–76행)는 반복 커서를 이미 검사합니다. 이 사례를 검증된 운영 사고나 실행한 재현 테스트로 제시하지 않습니다.</p>
+  </details>
+</section>
+
+<section id="principles" class="panel">
+  <span class="kicker">03 · 해결할 때 지킬 점</span>
+  <h2>더 읽어도 되는지 확인하고, 완성된 글만 저장합니다</h2>
+  <p>아래 세 대안은 같은 목표를 다른 코드 구조로 구현하는 선택지입니다. 어느 대안이든 위 500개 사례의 조기 중단을 얻으려면, <strong>받은 항목도 제한한다는 정책을 먼저 채택해야 합니다.</strong> 반복문을 옮기는 것만으로 수신량이 제한되지는 않습니다.</p>
+  <ul>
+    <li><strong>한 글에서 남은 허용량을 함께 씁니다.</strong> 남은 시간과 앞으로 처리할 수 있는 양을 자식 목록·표·표지에도 전달합니다. 이 묶음을 기술적으로 예산(budget)이라고 부릅니다. 어떤 작업에 필요한 양을 먼저 차감하는 검사를 reserve라고 부릅니다. 사이트 설정은 글 하나와 별도로 제한합니다.</li>
+    <li><strong>무엇을 세는지 구분합니다.</strong> API에서 받은 양, 공개할 원본을 살펴본 양, 복사하거나 가공한 양은 다릅니다. 항목 수 제한 하나로 응답 바이트 크기·중첩 깊이·요청 횟수까지 제한할 수는 없습니다.</li>
+    <li><strong>다음 묶음이 앞으로 진행하는지 확인합니다.</strong> 같은 목록에서 표식이 반복되면 멈춥니다. 다른 목록이 우연히 같은 표식을 쓴 것은 별개입니다.</li>
+    <li><strong>도중 실패를 새 글로 저장하지 않습니다.</strong> 시간·개수·내용 검증에 실패하면 전체 수집을 실패시킵니다. 기존에 공개된 글의 이전 저장본을 지키는 동작은 유지합니다.</li>
+  </ul>
+  <details>
+    <summary>공개 범위와 회의 녹취를 지키려면 보존해야 할 순서</summary>
+    <p>회의 노트는 형제 목록에서 transcript 참조를 먼저 모은 뒤 해당 블록을 제외합니다. 앞 페이지의 블록을 받자마자 본문으로 확정하면, 뒤 페이지에서 그 블록이 녹취라고 선언되는 경우를 놓칠 수 있습니다. 세 대안 모두 한도 안의 목록을 모아 이 의미를 확인하는 순서를 보존합니다. 조기 개수 검사와 모든 항목의 즉시 처리는 같은 요구가 아닙니다.</p>
+    <p>일반 <code>has_children</code> 블록은 재귀 수집합니다. 회의 노트의 공개 가능한 요약·노트는 별도 참조를 따라가지만 녹취는 제외합니다. 동기화 블록은 코드의 <code>hasChildren</code> 조건 아래 직접 수집 결과가 비고 실제 반환 자식도 없었을 때 원본을 따라갑니다. 부모별 자식 캐시는 중복 요청을 줄이고, 원본 복사 때에도 생성량·시간·배치 깊이를 다시 검사합니다.</p>
+    <p><code>child_page</code>는 부모 본문에 인라인하지 않습니다. 실제 부모 메타데이터를 확인해 <code>containedChildren</code>에 넣고 별도 게시글로 다룹니다. 확인 요청이 실패하면 공개 범위를 추측하지 않고 실패시킵니다. 일반 링크·DB 행·표지 수집은 공개 범위를 넓히지 않습니다. 공개 범위에서 빠진 글과 범위 안에서 미게시로 바뀐 글은 다르며, 어느 경우도 이 문서의 수집 개선으로 다시 공개하지 않습니다.</p>
+  </details>
+  <details>
+    <summary>설정·데이터베이스·표지의 다른 목적과 오류 처리</summary>
+    <p>설정의 <code>fetchSettingsRows</code>(228–245행)도 현재 일반 <code>collectPages</code>를 사용하지만, 시작 시각은 설정 조회 자체의 것입니다. 게시글 <code>maxBlockCount</code>가 설정 행 전체에 적용되는 것은 아닙니다. 제안에서는 설정 전용 시간·행 한도를 정하고 끝까지 읽은 뒤 필수 행을 검증합니다.</p>
+    <p>DB는 뷰/쿼리별 ID를 전부 모은 뒤 행 메타데이터를 읽습니다. 항목별 비용 차감, 중복 ID·커서 검사, 공유 시간의 요청 전후 검사가 이미 있습니다. 스키마는 한 DB 읽기 안에서 소스 ID별로 재사용합니다. 공개 가능한 행과 선택된 표시 속성만 쓰며 행을 새 공개 게시글로 만들지 않습니다.</p>
+    <p>본문에서 표지를 찾는 경로는 받은 페이지의 모든 블록을 비용으로 센 뒤 첫 활성 이미지를 고릅니다. 이미지를 찾으면 정상 완료이며, 뒤 페이지·중첩 본문·링크를 따라가지 않습니다. 파일 속성의 표지 후보도 모두 비용을 셉니다. 이런 정상 조기 종료는 일부만 읽은 DB 표를 성공으로 돌려주는 것과 다릅니다.</p>
+    <div class="table-wrap"><table><caption>지켜야 할 실패와 대체 표시의 구분</caption><thead><tr><th>상황</th><th>기존 처리</th></tr></thead><tbody>
+      <tr><th>DB 또는 뷰 접근 불가</th><td>안전한 참조나 안내를 표시합니다.</td></tr>
+      <tr><th>개별 행 또는 표지 접근 불가</th><td>행은 제외하고, 표지는 이미지 없음으로 처리합니다.</td></tr>
+      <tr><th>DB 쿼리의 후속 페이지 접근 실패</th><td>불완전한 표를 저장하지 않도록 재시도 가능한 실패로 전환합니다.</td></tr>
+      <tr><th>인증·일시 장애·깨진 응답·매핑 오류·한도 초과</th><td>전체 수집을 실패시킵니다. 접근 불가용 대체 표시로 삼키지 않습니다.</td></tr>
+      <tr><th>정상 응답으로 명시된 미게시</th><td>게시 상태를 변경합니다. 수집 실패 때 이전 공개 상태를 유지하는 규칙과 구분합니다.</td></tr>
+    </tbody></table></div>
+  </details>
+  <details>
+    <summary>기술 경계: 표식 이력, 저장 시점, 실행 방식</summary>
+    <p>커서 이력은 한 페이지네이션 스트림마다 둡니다. 부모 블록별 자식 목록, DB 뷰 목록, 특정 view/query 결과, 특정 행의 표지, 설정 데이터 소스 조회는 각각 별개입니다. 다른 스트림의 같은 문자열은 충돌이 아니며, 방문 블록 ID 집합과도 별개입니다.</p>
+    <p>완성된 <code>ImportedPost</code>를 반환한 뒤 애플리케이션 서비스가 짧은 저장 트랜잭션을 엽니다. 수집 실패는 실패 상태만 기록합니다. 외부 HTTP 중 DB 트랜잭션을 유지하지 않습니다. 게시글 예산을 공개 범위 전체 갱신의 총예산으로 바꾸지도 않습니다.</p>
+    <p>세 대안은 단일 활성 스케줄러 전제의 단일 애플리케이션 안에서 순차 실행합니다. 동시성·복제본 리더 정책은 별도 문제입니다. 도메인은 소스 중립적으로 유지하고 협력 객체는 Notion 어댑터 안의 구체 클래스로 둡니다. 별도 worker·broker·영속 작업 상태·복잡한 잠금이나 SQL은 추가하지 않습니다.</p>
+  </details>
+</section>
+<section id="option-a" class="panel option">
+  <span class="option-label">대안 A</span>
+  <h2>각 기능이 한 묶음씩 읽고, 남은 허용량을 함께 확인합니다</h2>
+  <p>본문·설정·표·표지를 읽는 코드가 각자 “받기 → 확인하기 → 다음 묶음 읽기”를 직접 작성합니다. 대신 한 글에 남은 시간과 처리량은 작은 공통 객체로 함께 관리합니다. <strong>어떤 순서로 읽고 멈추는지가 그 기능의 코드에 그대로 보이는 방식</strong>입니다.</p>
+  <h3>같은 사례에서 무엇이 달라지나요?</h3>
+  <ul>
+    <li><strong>500개 문단:</strong> 본문을 읽는 코드가 매 응답의 수신량을 확인합니다. 앞서 가정한 수신 한도 150개를 적용하면 두 번째 묶음의 총 200개에서 실패하고, 나머지 3회는 요청하지 않습니다.</li>
+    <li><strong>이미 9초를 쓴 글:</strong> 자식 목록도 같은 글의 종료 시각을 확인합니다. 새 10초를 시작하지 않고, 남은 시간이 소진된 검사 시점부터 추가 요청을 막습니다.</li>
+    <li><strong>같은 다음 표식:</strong> 각 목록을 읽는 코드가 자기가 본 표식을 기억해, 반복되면 실패시킵니다.</li>
+  </ul>
+  <div class="grid">
+    <div class="card"><h3>고치고 따라 읽기 쉽습니다</h3><p>표지는 첫 이미지를 찾으면 끝내고, 본문은 필요한 내용을 끝까지 읽는 차이가 각 코드에 드러납니다. 흐름이 서로 다른 기능이 적을 때 적합합니다.</p></div>
+    <div class="card"><h3>개발자가 같은 검사를 챙겨야 합니다</h3><p>요청 전후 시간 확인과 표식 검사가 여러 곳에 반복됩니다. 기능 하나를 새로 만들 때 검사를 빠뜨리지 않았는지 확인해야 합니다.</p></div>
+  </div>
+  <p><strong>새 기능이 생긴다면:</strong> 가령 첨부 파일 목록을 가져오는 기능이 실제로 필요해지면, 그 기능에 짧은 반복문을 추가하고 항목 하나가 허용량을 얼마나 쓰는지 정합니다. 변경 위치는 분명하지만 공통 검사를 붙이는 일도 개발자 몫입니다.</p>
+  <details>
+    <summary>구현 범위와 확인할 테스트</summary>
+    <p>읽기 담당 코드(reader)가 페이지 반복·커서 집합·의미 해석을 소유합니다. 작은 구체 <code>CollectionBudget</code> 같은 객체는 단위별 남은 허용량과 시간 검사만 맡고, 오류별 폴백이나 타입 분기를 넣지 않습니다. HTTP client는 한 페이지 요청과 안전한 오류 변환에 집중합니다.</p>
+    <p>일반 자식과 설정의 한 페이지 API를 읽기 경로에서 사용할 수 있게 하고 전량 누적 호출을 교체합니다. 요청 전후, 항목 보관·생성 전에 해당 단위를 검사합니다. 방문 ID·부모 캐시·깊이·회의 녹취 제외·원본 복사는 기존 소스에 둡니다. 설정은 독립 예산으로 끝까지 읽고 필수 행을 검증합니다.</p>
+    <p>제안 테스트는 일반 자식·설정 각각의 반복 커서, 수신 한도 초과 후 추가 요청 없음, 부모의 남은 시간 공유입니다. DB·표지의 접근 폴백과 인증·일시·매핑 실패 전파, 뒤 페이지의 transcript 선언, 캐시 복사의 깊이·생성량도 보존해야 합니다. 개별 진행 중 요청의 종료 시각은 별도 HTTP 경계에서 검증합니다.</p>
+  </details>
+</section>
+
+<section id="option-b" class="panel option">
+  <span class="option-label">대안 B</span>
+  <h2>다음 묶음으로 넘어가는 규칙만 한곳에 모읍니다</h2>
+  <p>여러 기능의 반복문이 실제로 비슷해지면, <strong>한 묶음을 받아 담당 코드에 넘기고 다음 묶음으로 넘어가는 작은 도구</strong>를 공유합니다. 이 도구는 남은 시간과 다음 표식을 확인합니다. 받은 항목을 어떻게 세고, 무엇을 글에 넣으며, 언제 정상 완료할지는 각 기능이 결정합니다.</p>
+  <h3>같은 사례에서 무엇이 달라지나요?</h3>
+  <ul>
+    <li><strong>500개 문단:</strong> 공통 도구가 두 번째 묶음을 본문 담당 코드에 넘기면, 담당 코드가 수신량 200개를 확인하고 실패시킵니다. 도구는 세 번째 묶음으로 넘어가지 않습니다.</li>
+    <li><strong>이미 9초를 쓴 글:</strong> 공통 도구가 같은 종료 시각을 요청 전후에 확인합니다. 자식 목록에 새 10초를 주지 않습니다.</li>
+    <li><strong>같은 다음 표식:</strong> 도구가 그 목록의 표식 이력을 확인합니다. 이 검사의 수정 지점이 여러 기능에서 한곳으로 모입니다.</li>
+  </ul>
+  <div class="grid">
+    <div class="card"><h3>반복되는 실수를 한곳에서 막습니다</h3><p>본문·설정 등 여러 목록이 같은 방식으로 진행된다면 시간과 표식 검사를 따로 고칠 필요가 줄어듭니다. 새 기능도 검증된 진행 규칙을 재사용합니다.</p></div>
+    <div class="card"><h3>공통 도구와 담당 코드를 함께 읽어야 합니다</h3><p>실제 흐름을 따라가려면 두 곳을 오가야 합니다. 종료 조건이 다른 기능까지 억지로 넣으면 선택 사항이 늘어 도구 자체가 복잡해질 수 있습니다.</p></div>
+  </div>
+  <p><strong>새 기능이 생긴다면:</strong> 첨부 파일 목록의 “한 묶음을 요청하는 함수”를 도구에 연결하고, 받은 파일을 세고 해석하는 코드를 작성합니다. 개발자는 정상 완료와 실패를 구분해야 합니다. 예를 들어 표지 첫 이미지를 찾은 것은 성공이지만, 표를 절반만 읽다가 오류가 난 것은 성공이 아닙니다.</p>
+  <details>
+    <summary>공통 도구가 맡을 일과 맡지 않을 일</summary>
+    <p>작은 구체 page-walker는 한 페이지 fetch 함수, 공유 budget, page visitor의 계속/종료 결과만 받습니다. 커서 이력은 호출된 스트림 안에만 둡니다. 항목별 수신·생성량 reserve와 블록/행 ID 중복 판정은 의미를 아는 reader가 수행합니다. 별도 reader의 비용 검사를 생략한 채 공통 도구만 도입하면 500개 사례는 해결되지 않습니다.</p>
+    <p>이 도구는 endpoint 종류, DB 스키마, 동기화 원본, 공개 범위를 모릅니다. 전량을 자동 리스트로 모으는 helper로 되돌아가거나, 재귀 트리·재시도까지 맡는 범용 프레임워크로 넓히지 않습니다. 지연 실행을 쓰더라도 같은 fetch 안에서 모두 소비해, 예외가 완성 결과 반환 뒤로 밀리지 않도록 합니다. 포괄적인 catch로 부분 결과를 성공 처리하지 않습니다.</p>
+    <p>도구의 제안 테스트는 반복/교차 순환 커서, deadline, 정상 조기 종료 뒤 추가 요청 없음입니다. 서로 다른 스트림에서 같은 커서 문자열을 허용하는지도 확인합니다. reader에는 비용 소진·회의 녹취·캐시·깊이·오류별 대체 처리를 검증합니다. 설정은 독립 예산을 쓰며, 개별 HTTP 요청의 엄밀한 종료 상한은 이 도구가 제공하지 않습니다.</p>
+  </details>
+</section>
+
+<section id="option-c" class="panel option">
+  <span class="option-label">대안 C</span>
+  <h2>해야 할 읽기 작업을 목록에 적고 하나씩 처리합니다</h2>
+  <p>글 안의 목록·원본 참조·표·표지가 얽혀 호출 순서를 따라가기 어려워졌다면, “다음 묶음 읽기”, “모은 내용 확인하기”, “부모 내용에 붙이기”를 대기 목록에 둡니다. <strong>같은 애플리케이션의 메모리에서 한 작업씩 순서대로 처리</strong>하며 남은 허용량을 확인합니다. 중단 후 다시 시작하면 처음부터 읽습니다.</p>
+  <h3>같은 사례에서 무엇이 달라지나요?</h3>
+  <ul>
+    <li><strong>500개 문단:</strong> 두 번째 묶음을 읽는 작업에서 수신량 200개로 한도 초과를 확인합니다. 남아 있는 다음 묶음 작업은 실행하지 않고, 조립 중인 새 글도 버립니다.</li>
+    <li><strong>이미 9초를 쓴 글:</strong> 자식 목록 작업도 같은 글의 종료 시각을 씁니다. 작업을 꺼낼 때마다 새로운 10초를 부여하지 않습니다.</li>
+    <li><strong>같은 다음 표식:</strong> 해당 목록의 진행 기록에서 반복을 확인하고 실패시킵니다. 끝내지 못한 작업을 완료로 표시하지 않습니다.</li>
+  </ul>
+  <div class="grid">
+    <div class="card"><h3>남은 일과 완료 순서를 볼 수 있습니다</h3><p>여러 참조가 같은 원본을 쓰거나, 다른 내용이 완성되어야 다음 일을 할 수 있을 때 순서를 명시할 수 있습니다. 이런 흐름이 실제로 복잡해졌을 때 도움이 됩니다.</p></div>
+    <div class="card"><h3>관리해야 할 상태가 가장 많습니다</h3><p>결과를 어디에 붙일지, 원래 순서가 맞는지, 어디까지 완성됐는지 따로 관리해야 합니다. 작업 대기 목록의 크기도 제한해야 합니다. 더 빠르거나 병렬로 실행되는 방식은 아닙니다.</p></div>
+  </div>
+  <p><strong>새 기능이 생긴다면:</strong> 다른 수집 결과를 기다렸다가 합쳐야 하는 기능은 작업 종류와 완료 조건으로 표현합니다. 개발자는 내용뿐 아니라 작업의 연결·순서·종료도 챙겨야 합니다. 단순한 첨부 파일 목록 하나를 붙이는 데는 A나 B보다 손이 많이 갑니다.</p>
+  <details>
+    <summary>작업 목록의 범위와 추가 검증 비용</summary>
+    <p>어댑터 내부 collection context가 budget·방문 상태·캐시·조립 중 결과를 소유합니다. 작업 종류는 닫힌 집합이며, 작업에는 부모/스트림 식별자·커서·깊이·결과를 붙일 위치를 둡니다. 스트림별 커서 이력과 비용을 처리 시점에 확인하고 대기 목록도 기존 비용 예약과 연계해 제한합니다. 영속 큐나 별도 worker는 만들지 않습니다.</p>
+    <p>회의 녹취 정보를 먼저 확인해야 하는 목록은 수신 작업과 해석 작업을 구분합니다. 원본 캐시는 미완성/완성을 구분해 조립 중 데이터를 재사용하지 않습니다. 오류가 발생하면 조립 중 결과와 대기 작업을 폐기하고 전체 fetch를 실패시킵니다.</p>
+    <p>DB 접근 대체 처리는 정해진 위치에서만 허용합니다. 쿼리 중단·인증·일시·매핑 실패에 성공 완료 작업을 만들지 않습니다. 설정은 별도 context로 읽습니다. 이미 진행 중인 HTTP 요청이 늦게 끝날 가능성은 여전히 남습니다.</p>
+    <p>A/B의 페이지·커서·비용·시간·오류 검증에 더해, 원래 순서로 결과 조립, 참조별 복사 비용, 더 깊은 위치의 캐시 사용 거부, 대기량 상한, 모든 필수 작업 완료 전 성공 반환 없음까지 검증해야 합니다. 이런 완료 상태 관리가 실제로 필요해진 경우에만 추가 비용을 감수할 만합니다.</p>
+  </details>
+</section>
+
+<section id="comparison" class="panel">
+  <span class="kicker">04 · 세 가지 비교</span>
+  <h2>같은 실패를 더 일찍 멈추되, 개발자가 관리할 곳이 다릅니다</h2>
+  <p>세 대안 모두 같은 수신 한도 정책을 채택하면 500개 사례의 뒤쪽 호출 3회를 줄일 수 있습니다. 실패하면 이전 저장본을 보존하고, 진행 중 요청을 즉시 취소하지 못한다는 조건도 같습니다.</p>
+  <div class="table-wrap"><table>
+    <caption>새 기능이 늘 때 어느 방식이 더 이해하기 쉬울까요?</caption>
+    <thead><tr><th>고를 때 볼 점</th><th>A · 각 기능에서 읽기</th><th>B · 묶음 진행만 공유</th><th>C · 작업 목록으로 처리</th></tr></thead>
+    <tbody>
+      <tr><th>문제가 다시 생기지 않게 하는 방식</th><td>각 반복문에서 같은 허용량을 확인합니다.</td><td>공통 도구가 시간·표식을, 각 기능이 항목 수를 확인합니다.</td><td>작업을 하나씩 처리할 때 허용량과 진행 상태를 확인합니다.</td></tr>
+      <tr><th>새 목록 기능을 붙일 때</th><td>짧은 반복문과 그 기능의 검사를 작성합니다.</td><td>한 묶음 요청과 받은 내용 처리만 연결합니다.</td><td>작업 종류·연결·완료 조건을 추가합니다.</td></tr>
+      <tr><th>개발자가 주의할 점</th><td>여러 곳의 시간·표식 검사를 빠뜨리기 쉽습니다.</td><td>공통 도구와 각 기능의 종료·실패 약속을 맞춰야 합니다.</td><td>순서·부모 연결·완성 여부·대기량을 함께 관리해야 합니다.</td></tr>
+      <tr><th>문제를 추적할 때</th><td>해당 기능의 반복문을 따라갑니다.</td><td>공통 도구와 받은 내용을 처리하는 코드를 함께 봅니다.</td><td>남은 작업과 조립 중인 결과를 함께 봅니다.</td></tr>
+      <tr><th>잘 맞는 상황</th><td>수집 기능이 적고 읽는 방식이 서로 다릅니다.</td><td>여러 기능에서 같은 묶음 반복이 확인됩니다.</td><td>여러 결과를 기다려 합치는 순서가 실제로 복잡합니다.</td></tr>
+    </tbody>
+  </table></div>
+  <details>
+    <summary>추가되는 상태와 실행 비용 비교</summary>
+    <p>A는 요청 안의 작은 budget과 로컬 cursor set을, B는 여기에 좁은 순회 도구를 더합니다. C는 작업 목록·부모 연결·완료 상태가 추가됩니다. 세 방식 모두 새 영속 상태 없이 기존 프로세스 안에서 순차 실행하며 재개 지점을 저장하지 않습니다.</p>
+    <p>A는 reader별 경계 행동, B는 공통 진행과 reader의 의미를 나눠 검증합니다. C에는 완료·순서·대기량 테스트와 조립 상태를 살피는 운영 비용이 더 듭니다. 기능 수가 늘어난다는 사실만으로 C의 비용이 회수되지는 않습니다.</p>
+  </details>
+</section>
+
+<section id="recommendation" class="panel">
+  <span class="kicker">05 · 선택 기준</span>
+  <h2>먼저 무엇을 제한할지 정하고, 반복되는 코드의 모양을 봅니다</h2>
+  <p class="recommendation"><strong>흐름을 한곳에서 읽는 것이 중요하면 A</strong>가 적합합니다. 같은 반복을 여러 기능에서 계속 수정하고 있다면 <strong>B</strong>가 도움이 됩니다. 서로 다른 수집 결과를 합치는 순서 때문에 A나 B도 따라가기 어려워졌을 때 <strong>C</strong>를 비교합니다. 앞으로 기능이 많아진다는 이유만으로 C를 먼저 선택할 필요는 없습니다.</p>
+  <p>A로 명확한 반복문을 만든 뒤, 실제로 같은 부분이 보이면 B로 모을 수도 있습니다. C는 할 일을 목록으로 펼치고 결과를 조립하는 흐름까지 바꾸므로 별도로 판단해야 합니다. 이 문서는 선택지를 비교하며, 어느 구조나 새로운 제한값을 확정하지 않습니다.</p>
+  <ol class="steps">
+    <li><strong>받은 항목을 따로 제한할지 정합니다</strong><span>휴지통 블록과 녹취처럼 나중에 제외할 항목도 받는 데 비용이 듭니다. 기존 처리 개수와 수신량을 구분하고, 설정 행의 한도와 한 요청의 남은 시간 적용 방식도 정합니다.</span></li>
+    <li><strong>앞의 실패 사례를 테스트로 고정합니다</strong><span>500개를 다 받기 전에 멈추는지, 남은 1초를 자식 목록도 쓰는지, 같은 다음 표식에서 다시 요청하지 않는지 확인하는 실패 테스트가 필요합니다.</span></li>
+    <li><strong>한 수집 기능씩 바꾸고 기존 규칙을 확인합니다</strong><span>본문부터 적용한 뒤 설정·표·표지로 넓힙니다. 새 기능의 검사뿐 아니라 공개하지 않을 내용의 제외와 실패 시 이전 저장본 보존도 확인합니다.</span></li>
+  </ol>
+  <details>
+    <summary>구현 작업에서의 검증 순서와 아직 정하지 않은 점</summary>
+    <p>구조를 채택하면 프로덕션 코드보다 <code>docs/kotlin-spring-architecture.md</code>를 먼저 갱신합니다. 일반 블록·설정의 반복 커서, 수신 한도 초과 후 요청 억제, 부모의 남은 시간 공유는 MockWebServer와 제어 가능한 시간으로 검증합니다. 후반 페이지 실패가 이전 snapshot을 보존하는 애플리케이션 테스트도 필요합니다.</p>
+    <p>뒤 페이지의 transcript 선언, 구조적 자식 부모 확인 실패, 원본 캐시와 참조별 복사 비용·깊이, DB·표지의 오류별 처리를 보존한 뒤 관련 테스트와 전체 <code>./gradlew test</code>, <code>./gradlew build</code>를 실행합니다. 이는 향후 구현의 검증 제안이며, 이번 문서 작업에서 테스트를 추가하거나 실행했다는 뜻은 아닙니다.</p>
+    <p>수신량의 단위·한도, 설정 행 상한, 반복 진행 실패의 오류 분류, HTTP 요청에 남은 시간을 반영하는 구체 방식은 구현 전에 선택하고 검증해야 합니다. 기존 테스트는 여러 경계를 다루지만, 앞의 일반 수집기 사례 세 가지를 모두 직접 재현한 근거로 삼을 수는 없습니다.</p>
+  </details>
+  <details>
+    <summary>짧은 용어 풀이</summary>
+    <ul>
+      <li><strong>저장본(snapshot):</strong> 외부 내용을 검증하고 블로그 형식으로 정리해 보관한 본문입니다.</li>
+      <li><strong>다음 묶음 표식(cursor):</strong> 다음 API 응답 묶음을 요청할 때 보내는 값입니다. 같은 목록의 진행 여부를 확인할 때 씁니다.</li>
+      <li><strong>예산(budget)·예약 검사(reserve):</strong> 남은 시간과 작업량, 그리고 새 작업이 사용할 양을 먼저 차감하는 검사입니다.</li>
+      <li><strong>읽기 담당 코드(reader):</strong> 본문·설정·표·표지처럼 특정 종류의 내용을 가져오고 해석하는 코드입니다.</li>
+      <li><strong>종료 시각(deadline):</strong> 이번 수집에 더 시간을 쓰지 않기로 한 기준 시각입니다. 이를 검사하는 것과 진행 중 요청의 취소는 별개입니다.</li>
+    </ul>
+  </details>
+</section>
+<section id="sources" class="panel"><span class="kicker">06 · 소스 근거</span><h2>현재 동작을 확인한 코드와 기존 테스트</h2><p class="caption">행 번호는 작성 시점 기준입니다. 링크의 #L fragment를 브라우저가 해석하지 않아도 파일·함수·행 범위로 찾을 수 있습니다. 기존 테스트는 내용을 읽은 근거이며 이번에 실행하지 않았습니다. 위 수치 사례는 정적 분석에 따른 예시입니다.</p><ul class="source-list">
+<li><a href="../../src/main/kotlin/xyz/robinjoon/notionblog/adapter/output/notion/client/NotionApiClient.kt#L206">NotionApiClient.fetchDirectBlockChildren / fetchSettingsRows / collectPages</a> — 206–267행: 개별 목록 타이머, 전량 누적, 요청 전후 deadline. 43–55행: connect/read timeout.</li>
+<li><a href="../../src/main/kotlin/xyz/robinjoon/notionblog/adapter/output/notion/dto/NotionPaginationResponse.kt#L3">NotionPaginationResponse.init</a> — 3–13행: hasMore와 nextCursor의 정합성; 스트림 이력과 구분.</li>
+<li><a href="../../src/main/kotlin/xyz/robinjoon/notionblog/adapter/output/notion/NotionPostSource.kt#L54">NotionPostSource.fetch / collectChildren</a> — 54–199행: 게시글 시작 시각, 필터·재귀·DB 공유 콜백. 212–261행: 복사 비용과 깊이. 306–353행: 방문·생성 카운터, 자식 부모 확인, deadline. 444–455행: 요청 내 상태.</li>
+<li><a href="../../src/main/kotlin/xyz/robinjoon/notionblog/adapter/output/notion/NotionInlineDatabaseReader.kt#L185">NotionInlineDatabaseReader.readRows / collectIds / request</a> — 185–261행: 쿼리 후속 접근 실패 전환, 공개 행 확인, reserve, 중복 ID·커서, 요청 전후 검사. 48–119행: DB/뷰 접근 폴백과 schema 재사용.</li>
+<li><a href="../../src/main/kotlin/xyz/robinjoon/notionblog/adapter/output/notion/NotionDataViewCoverReader.kt#L52">NotionDataViewCoverReader.contentCover / propertyCover</a> — 52–103행: 직접 페이지 검사, 전체 반환 항목 예약, 첫 이미지 종료, 커서 이력, 파일 예약.</li>
+<li><a href="../../src/main/kotlin/xyz/robinjoon/notionblog/adapter/output/notion/NotionFailureTranslator.kt#L10">NotionFailureTranslator.httpFailure</a> — 10–27행: 인증·접근·일시·설정 오류와 deadline 분류.</li>
+<li><a href="../../src/main/kotlin/xyz/robinjoon/notionblog/application/service/SynchronizePostService.kt#L18">SynchronizePostService.synchronize / fetch</a> — 18–45행: 수집 완료 후 적용, 실패 상태 기록. ApplyImportedPostService.apply의 public @Transactional 경계와 함께 확인.</li>
+<li><a href="../../src/main/kotlin/xyz/robinjoon/notionblog/application/service/ApplyImportedPostService.kt#L31">ApplyImportedPostService.apply / recordFailure</a> — 31–97행: 완성 snapshot 저장과 별도 실패 기록 트랜잭션.</li>
+<li><a href="../../src/test/kotlin/xyz/robinjoon/notionblog/adapter/output/notion/client/NotionApiClientTest.kt#L61">NotionApiClientTest</a> — 61–175행: 직접 자식·설정 페이지네이션, 불일치 응답, deadline 전에 요청 억제.</li>
+<li><a href="../../src/test/kotlin/xyz/robinjoon/notionblog/adapter/output/notion/NotionPostSourceTest.kt#L200">NotionPostSourceTest</a> — 200–273행: 캐시 깊이·복사 수·시간 검사. 389–463행: 회의 섹션·깊이·개수·중복 블록.</li>
+<li><a href="../../src/test/kotlin/xyz/robinjoon/notionblog/adapter/output/notion/NotionInlineDatabaseSourceTest.kt#L430">NotionInlineDatabaseSourceTest</a> — 430–466행: 반복 행·커서, 만료 쿼리 전체 실패, 합성량·전체 deadline. 249–261행: 표지 반환 블록 전체 예산.</li>
+<li><a href="../../src/test/kotlin/xyz/robinjoon/notionblog/adapter/output/notion/NotionDataViewCoverReaderTest.kt#L128">NotionDataViewCoverReaderTest</a> — 128–169행: 후속 페이지 이미지, 반복 커서, 접근 폴백과 인증/일시 전파, 공유 예산.</li>
+<li><a href="../../src/test/kotlin/xyz/robinjoon/notionblog/adapter/output/notion/NotionFailurePreservationTest.kt#L104">NotionFailurePreservationTest</a> — 104–146행: 잘못된 메타데이터·본문 매핑 실패는 이전 공개 snapshot 유지; 정상 미게시와 구분.</li><li><a href="../kotlin-spring-architecture.md#13-notion-어댑터-설계">아키텍처 13.2–13.7절</a> — client/source 책임, 페이지네이션·오류·DB/표지 전체 예산과 부분 표 저장 금지.</li><li><a href="../kotlin-spring-architecture.md#16-트랜잭션과-동시성">아키텍처 16절</a>, <a href="../kotlin-spring-architecture.md#19-스케줄링-오래된-콘텐츠와-오류">19절</a>, <a href="../kotlin-spring-architecture.md#24-런타임과-저장소-산출물-경계">24절</a> — 외부 호출과 짧은 트랜잭션 분리, 실패 시 정상 snapshot 유지, 단일 배포 경계.</li>
+</ul></section>
+<section id="review-notes" class="panel review-notes">
+  <span class="kicker">독립 검토 · 완료</span>
+  <h2>기술 설명을 펼치기 전에 문제를 이해할 수 있는지 확인했습니다</h2>
+  <p>별도 Codex 세션에서 접힌 기술 설명을 제외한 도입부부터 읽고, 정상 동작·문제가 생기는 단계·사용자에게 보이는 결과·원인을 먼저 설명하게 했습니다. 그 답변을 기록한 뒤 전체 문서와 소스를 대조했습니다.</p>
+  <ul><li>120개 문단은 정상 갱신되고, 500개 문단은 전부 받은 뒤 실패해 이전 저장본이 남는 차이를 설명할 수 있었습니다.</li><li>새 수신량 제한을 적용해도 이미 두 묶음의 200개는 받으며, 뒤쪽 요청 세 번을 줄일 뿐 큰 글의 갱신을 성공시키지는 않는다는 점을 확인했습니다.</li><li>남은 시간·반복 표식·진행 중 요청의 한계와 세 대안의 유지보수 부담을 구별할 수 있었고, 추가 수정이 필요한 핵심 사실 오류는 발견하지 못했습니다.</li></ul>
+  <p class="caption">문서의 HTML 구조·로컬 링크와 Orca 화면을 확인했습니다. 구현과의 대조는 정적 검토이며, 이번 문서 작업에서 애플리케이션 코드 변경이나 실행 테스트는 하지 않았습니다.</p>
+</section>
+
+</main>
+<footer>Notion Blog · 설계 선택을 돕는 검토 문서 · 2026-10-04 <a class="back-top" href="#top">맨 위로</a></footer>
+</body>
+</html>
