@@ -6,6 +6,7 @@ import org.thymeleaf.context.Context
 import org.thymeleaf.spring6.SpringTemplateEngine
 import org.thymeleaf.templatemode.TemplateMode
 import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver
+import xyz.robinjoon.notionblog.adapter.input.web.view.ColumnListView
 import xyz.robinjoon.notionblog.adapter.input.web.view.DataGalleryView
 import xyz.robinjoon.notionblog.adapter.input.web.view.DataListView
 import xyz.robinjoon.notionblog.adapter.input.web.view.DataTableView
@@ -14,6 +15,8 @@ import xyz.robinjoon.notionblog.adapter.input.web.view.InternalLinkView
 import xyz.robinjoon.notionblog.adapter.input.web.view.ListView
 import xyz.robinjoon.notionblog.adapter.input.web.view.MediaView
 import xyz.robinjoon.notionblog.adapter.input.web.view.ParagraphView
+import xyz.robinjoon.notionblog.adapter.input.web.view.TabContainerView
+import xyz.robinjoon.notionblog.adapter.input.web.view.TableView
 import xyz.robinjoon.notionblog.adapter.input.web.view.TextInlineView
 import xyz.robinjoon.notionblog.adapter.input.web.view.UnsupportedView
 import xyz.robinjoon.notionblog.application.model.BlogPage
@@ -74,6 +77,7 @@ import java.nio.file.Path
 import java.security.MessageDigest
 import java.time.Clock
 import java.time.Instant
+import java.time.ZoneId
 import java.time.ZoneOffset
 import java.util.Base64
 import java.util.UUID
@@ -151,6 +155,73 @@ class PostPageViewAssemblerTest {
 
         assertThat(paragraph.style.classes).contains("notion-color-red")
         assertThat(paragraph.style.classes).doesNotContain("untrusted variant")
+    }
+
+    @Test
+    fun `evaluates nested source hosted media once while assembling layout containers`() {
+        val countingClock = CountingClock(clock)
+        val source = MediaSource.SourceHosted(URI("https://example.com/nested.png"), clock.instant().plusSeconds(60))
+        val image = node("image", MediaBlockContent.Media(MediaType.IMAGE, source, "nested.png"))
+        val row = BlockNode(
+            BlockId("row"),
+            LayoutBlockContent.TableRow(listOf(listOf(InlineContent.Text("Cell")))),
+            children = listOf(image),
+        )
+        val table = BlockNode(BlockId("table"), LayoutBlockContent.Table(1), children = listOf(row))
+        val tab = BlockNode(BlockId("tab"), LayoutBlockContent.TabItem(listOf(InlineContent.Text("Tab")), null), children = listOf(table))
+        val tabs = BlockNode(BlockId("tabs"), LayoutBlockContent.TabContainer, children = listOf(tab))
+        val column = BlockNode(BlockId("column"), LayoutBlockContent.Column(null), children = listOf(tabs))
+        val columns = BlockNode(BlockId("columns"), LayoutBlockContent.ColumnList, children = listOf(column))
+
+        val view = PostPageViewAssembler(countingClock).assemble(page(listOf(columns)))
+        val columnView = (view.post.blocks.single() as ColumnListView).columns.single()
+        val tabView = (columnView.children.single() as TabContainerView).tabs.single()
+        val rowView = (tabView.children.single() as TableView).rows.single()
+
+        assertThat((rowView.children.single() as MediaView).url).isEqualTo(source.url.toASCIIString())
+        assertThat(countingClock.reads).isEqualTo(1)
+    }
+
+    @Test
+    fun `keeps repeated header body and footer document ids and navigation references distinct`() {
+        val base = page(
+            listOf(
+                node("heading", TextBlockContent.Heading(HeadingLevel.TWO, listOf(InlineContent.Text("Section")))),
+                node("toc", ReferenceBlockContent.TableOfContents),
+                node("item", ListBlockContent.BulletedItem(listOf(InlineContent.Text("Item")))),
+                BlockNode(
+                    BlockId("tabs"),
+                    LayoutBlockContent.TabContainer,
+                    children = listOf(
+                        BlockNode(
+                            BlockId("tab"),
+                            LayoutBlockContent.TabItem(listOf(InlineContent.Text("Tab")), null),
+                            children = listOf(node("panel-text", TextBlockContent.Paragraph(listOf(InlineContent.Text("Panel"))))),
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val html = render(base.copy(header = base.post, footer = base.post))
+        val idPattern = Regex("""\bid="([^"]+)"""")
+        val fragmentPattern = Regex("""href="#([^"]+)"""")
+        val ariaReferencePattern = Regex("""aria-(?:controls|labelledby)="([^"]+)"""")
+        val ids = idPattern.findAll(html).map { it.groupValues[1] }.toList()
+
+        assertThat(ids).doesNotHaveDuplicates()
+        assertThat(html.substringAfter("<article").substringBefore("</article>"))
+            .contains("id=\"heading\"", "href=\"#heading\"")
+        listOf("header", "article", "footer").forEach { element ->
+            val region = html.substringAfter("<$element").substringBefore("</$element>")
+            val regionIds = idPattern.findAll(region).map { it.groupValues[1] }.toList()
+            val fragments = fragmentPattern.findAll(region).map { it.groupValues[1] }.toList()
+            val ariaReferences = ariaReferencePattern.findAll(region).map { it.groupValues[1] }.toList()
+
+            assertThat(fragments).hasSize(2)
+            assertThat(ariaReferences).hasSize(2)
+            assertThat(regionIds).containsAll(fragments).containsAll(ariaReferences)
+        }
+        assertThat(base.post.content.roots.first().id.value).isEqualTo("heading")
     }
 
     @Test
@@ -906,5 +977,19 @@ class PostPageViewAssemblerTest {
                 isCacheable = false
             },
         )
+    }
+
+    private class CountingClock(private val delegate: Clock) : Clock() {
+        var reads = 0
+            private set
+
+        override fun getZone(): ZoneId = delegate.zone
+
+        override fun withZone(zone: ZoneId): Clock = CountingClock(delegate.withZone(zone))
+
+        override fun instant(): Instant {
+            reads += 1
+            return delegate.instant()
+        }
     }
 }

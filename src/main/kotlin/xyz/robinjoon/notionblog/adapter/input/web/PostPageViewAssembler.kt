@@ -123,14 +123,14 @@ class PostPageViewAssembler(
         profile = profileView(page),
         styleSheets = page.presentation.styleSheets.mapNotNull { assetView(page.presentationAssets, it, styleSheetMediaTypes) },
         scripts = page.presentation.scripts.mapNotNull { assetView(page.presentationAssets, it, scriptMediaTypes) },
-        header = page.header?.let { documentView(it, page.links) },
-        post = documentView(page.post, page.links),
-        footer = page.footer?.let { documentView(it, page.links) },
+        header = page.header?.let { documentView(it, page.links, idPrefix = "header-${it.id.value}-") },
+        post = documentView(page.post, page.links, idPrefix = ""),
+        footer = page.footer?.let { documentView(it, page.links, idPrefix = "footer-${it.id.value}-") },
     )
 
-    private fun documentView(post: Post, links: Map<LinkTarget.SourceDocument, LinkResolution>): PostDocumentView {
-        val tableOfContents = collectHeadings(post.content.roots)
-        return PostDocumentView(post.title, assembleBlocks(post.content.roots, links, tableOfContents, post.title))
+    private fun documentView(post: Post, links: Map<LinkTarget.SourceDocument, LinkResolution>, idPrefix: String): PostDocumentView {
+        val tableOfContents = collectHeadings(post.content.roots, idPrefix)
+        return PostDocumentView(post.title, assembleBlocks(post.content.roots, links, tableOfContents, post.title, idPrefix))
     }
 
     private fun assembleBlocks(
@@ -138,6 +138,7 @@ class PostPageViewAssembler(
         links: Map<LinkTarget.SourceDocument, LinkResolution>,
         tableOfContents: List<TableOfContentsEntryView>,
         documentTitle: String,
+        idPrefix: String,
     ): List<BlockView> {
         val views = mutableListOf<BlockView>()
         var index = 0
@@ -145,7 +146,7 @@ class PostPageViewAssembler(
             val node = nodes[index]
             val listType = (node.content as? ListBlockContent)?.listType()
             if (listType == null) {
-                views += assembleBlock(node, links, tableOfContents, documentTitle)
+                views += assembleBlock(node, links, tableOfContents, documentTitle, idPrefix)
                 index += 1
                 continue
             }
@@ -157,12 +158,12 @@ class PostPageViewAssembler(
                 if (grouped.isNotEmpty() && numberedItem?.startsNewList == true) {
                     break
                 }
-                grouped += assembleListItem(nodes[index], links, tableOfContents, documentTitle)
+                grouped += assembleListItem(nodes[index], links, tableOfContents, documentTitle, idPrefix)
                 index += 1
             }
             val startNumber = (first.content as? ListBlockContent.NumberedItem)?.startNumber
             val numberFormat = (first.content as? ListBlockContent.NumberedItem)?.displayFormat?.view()
-            views += ListView(first.id.value, listType, startNumber, numberFormat, grouped, styleView(first.style))
+            views += ListView(idPrefix + first.id.value, listType, startNumber, numberFormat, grouped, styleView(first.style))
         }
         return views
     }
@@ -172,10 +173,11 @@ class PostPageViewAssembler(
         links: Map<LinkTarget.SourceDocument, LinkResolution>,
         tableOfContents: List<TableOfContentsEntryView>,
         documentTitle: String,
+        idPrefix: String,
     ): BlockView {
-        val children = assembleBlocks(node.children, links, tableOfContents, documentTitle)
+        val children = assembleBlocks(node.children, links, tableOfContents, documentTitle, idPrefix)
         val style = styleView(node.style)
-        val id = node.id.value
+        val id = idPrefix + node.id.value
         return when (val content = node.content) {
             is TextBlockContent.Paragraph -> ParagraphView(id, inlineViews(content.richText, links), style, children)
 
@@ -191,13 +193,13 @@ class PostPageViewAssembler(
 
             is TextBlockContent.Equation -> BlockEquationView(id, content.expression, style, children)
 
-            is ListBlockContent -> assembleListItem(node, links, tableOfContents, documentTitle)
+            is ListBlockContent -> assembleListItem(node, links, tableOfContents, documentTitle, idPrefix)
 
             LayoutBlockContent.Divider -> DividerView(id, style, children)
 
             LayoutBlockContent.ColumnList -> ColumnListView(
                 id,
-                node.children.map { column -> assembleColumn(column, links, tableOfContents, documentTitle) },
+                children.map { it as ColumnView },
                 style,
             )
 
@@ -205,7 +207,7 @@ class PostPageViewAssembler(
 
             LayoutBlockContent.TabContainer -> TabContainerView(
                 id,
-                node.children.map { tab -> assembleTab(tab, links, tableOfContents, documentTitle) },
+                children.map { it as TabItemView },
                 style,
             )
 
@@ -215,7 +217,7 @@ class PostPageViewAssembler(
                 id,
                 content.hasColumnHeader,
                 content.hasRowHeader,
-                node.children.map { row -> assembleTableRow(row, links, tableOfContents, documentTitle) },
+                children.map { it as TableRowView },
                 style,
             )
 
@@ -333,37 +335,17 @@ class PostPageViewAssembler(
         links: Map<LinkTarget.SourceDocument, LinkResolution>,
         tableOfContents: List<TableOfContentsEntryView>,
         documentTitle: String,
+        idPrefix: String,
     ): ListItemView {
         val style = styleView(node.style)
-        val children = assembleBlocks(node.children, links, tableOfContents, documentTitle)
-        val id = node.id.value
+        val children = assembleBlocks(node.children, links, tableOfContents, documentTitle, idPrefix)
+        val id = idPrefix + node.id.value
         return when (val content = node.content as ListBlockContent) {
             is ListBlockContent.BulletedItem -> BulletedListItemView(id, inlineViews(content.richText, links), style, children)
             is ListBlockContent.NumberedItem -> NumberedListItemView(id, inlineViews(content.richText, links), content.displayFormat.view(), style, children)
             is ListBlockContent.ToDoItem -> TodoListItemView(id, inlineViews(content.richText, links), content.checked, style, children)
         }
     }
-
-    private fun assembleColumn(
-        node: BlockNode,
-        links: Map<LinkTarget.SourceDocument, LinkResolution>,
-        toc: List<TableOfContentsEntryView>,
-        documentTitle: String,
-    ): ColumnView = assembleBlock(node, links, toc, documentTitle) as ColumnView
-
-    private fun assembleTab(
-        node: BlockNode,
-        links: Map<LinkTarget.SourceDocument, LinkResolution>,
-        toc: List<TableOfContentsEntryView>,
-        documentTitle: String,
-    ): TabItemView = assembleBlock(node, links, toc, documentTitle) as TabItemView
-
-    private fun assembleTableRow(
-        node: BlockNode,
-        links: Map<LinkTarget.SourceDocument, LinkResolution>,
-        toc: List<TableOfContentsEntryView>,
-        documentTitle: String,
-    ): TableRowView = assembleBlock(node, links, toc, documentTitle) as TableRowView
 
     private fun dataEntries(data: DataSet, links: Map<LinkTarget.SourceDocument, LinkResolution>): List<DataEntryView> = data.rows.map { row ->
         val title = data.titleColumnIndex?.let { row.cells[it] }.orEmpty()
@@ -465,13 +447,13 @@ class PostPageViewAssembler(
         }
     }
 
-    private fun collectHeadings(nodes: List<BlockNode>): List<TableOfContentsEntryView> = buildList {
+    private fun collectHeadings(nodes: List<BlockNode>, idPrefix: String): List<TableOfContentsEntryView> = buildList {
         nodes.forEach { node ->
             val heading = node.content as? TextBlockContent.Heading
             if (heading != null) {
-                add(TableOfContentsEntryView(plainText(heading.richText), "#${node.id.value}", heading.level.view()))
+                add(TableOfContentsEntryView(plainText(heading.richText), "#$idPrefix${node.id.value}", heading.level.view()))
             }
-            addAll(collectHeadings(node.children))
+            addAll(collectHeadings(node.children, idPrefix))
         }
     }
 
