@@ -325,8 +325,31 @@ class NotionDatabaseApiClientTest {
         assertThat(row.parent.dataSourceId).isEqualTo("source-1")
         assertThat(row.publicUrl).isEqualTo("https://workspace.notion.site/row-1")
         val request = server.takeRequest()
-        assertThat(request.requestUrl?.queryParameterValues("filter_properties[]")).containsExactly("title", "f%5C%5C")
+        assertThat(request.requestUrl?.queryParameterValues("filter_properties[]")).containsExactly("title", "f\\\\")
         assertThat(request.requestUrl?.queryParameterNames).containsExactly("filter_properties[]")
+    }
+
+    @Test
+    fun `transmits encoded property identifiers once while preserving literal plus and percent characters`() {
+        enqueueJson(
+            """
+            {"object":"page","id":"row-1","parent":{"type":"data_source_id","data_source_id":"source-1"},
+             "url":"https://app.notion.com/row-1","public_url":"https://workspace.notion.site/row-1",
+             "in_trash":false,"last_edited_time":"2026-08-31T00:00:00Z","properties":{}}
+            """,
+        )
+
+        client().fetchPage("row-1", listOf("title", "A%5CrS", "b%3CD%5D", "a%2Bb", "a+b", "a%252F"))
+
+        val request = server.takeRequest()
+        assertThat(request.method).isEqualTo("GET")
+        assertThat(request.requestUrl?.encodedPath).isEqualTo("/v1/pages/row-1")
+        assertThat(request.requestUrl?.encodedQuery).isEqualTo(
+            "filter_properties%5B%5D=title&filter_properties%5B%5D=A%5CrS&filter_properties%5B%5D=b%3CD%5D" +
+                "&filter_properties%5B%5D=a%2Bb&filter_properties%5B%5D=a%2Bb&filter_properties%5B%5D=a%252F",
+        )
+        assertThat(request.requestUrl?.queryParameterValues("filter_properties[]"))
+            .containsExactly("title", "A\\rS", "b<D]", "a+b", "a+b", "a%2F")
     }
 
     @Test

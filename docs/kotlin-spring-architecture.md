@@ -1160,6 +1160,10 @@ Notion 어댑터는 다음 소스 중립 오류로 변환한다.
 
 표시용 조회는 다음 기존 계약을 유지한다.
 
+속성 ID는 스키마·페이지 응답의 URL 인코딩 표현과 뷰 설정의 원문 표현이 다를 수 있다. 뷰의 ID를 스키마 ID 자체 또는 스키마 ID를 한 번 percent-decode한 값과 비교해 유일한 속성을 찾는다. 리터럴 `+`를 공백으로 바꾸거나 원문 뷰 ID를 반복 디코딩하지 않는다. 일치하는 속성이 없거나 둘 이상이면 이름으로 추측하거나 건너뛰지 않고 실패한다. 같은 스키마 속성을 두 표현으로 중복 선택해도 실패한다. API 요청과 행 속성 조회에는 응답에서 받은 스키마 ID를 그대로 사용하며, 갤러리의 파일 커버 속성도 같은 규칙으로 먼저 해석한다.
+
+HTTP 클라이언트는 전달받은 스키마 속성 ID를 URI에 넣을 때만 한 번 percent-decode한 뒤 엄격하게 URI 변수로 인코딩한다. 인코딩된 `%`를 다시 `%25`로 감싸거나 리터럴 `+`가 쿼리의 공백으로 해석되게 두지 않는다. 이는 공식 SDK의 배열 쿼리 처리와 같으며, DTO에 보관한 ID나 행 속성 비교값을 변경하지 않는다.
+
 - 데이터베이스 메타데이터와 뷰 목록을 읽고 각 뷰가 해당 표시 데이터베이스에 속하는지 확인한다. 뷰가 지정한 데이터 소스의 스키마를 조회한다. 연결된 데이터 소스도 이 명시적 참조와 접근 가능 여부로 확인하며 표시 데이터베이스의 소유 소스라고 가정하지 않는다. 지원 뷰의 `configuration` 생략/null은 사용자 지정 설정 없음으로 해석하고 기존 타입별 기본 옵션을 적용한다. `configuration.properties` 전체가 생략/null이면 세 레이아웃 모두 스키마의 유일한 제목 속성만 표시하는 보수적인 기본값을 사용한다. 이는 Notion 화면의 모든 기본 속성을 추측하는 정책이 아니며 표의 나머지 열도 자동 공개하지 않는다. 명시적인 속성 배열이 있으면 `visible: true`인 열의 순서·폭·줄바꿈만 적용하며 빈 배열, 전부 숨김, `visible` 생략을 기본 제목/전체 스키마로 대체하지 않는다. 제목을 유일하게 확인할 수 없는 기본 뷰의 스키마는 매핑 실패로 처리한다. 이 기본값 해석은 Notion 어댑터에만 두고 도메인과 스냅샷의 세 뷰 모델은 유지한다.
 - 뷰 쿼리를 생성하고 커서를 끝까지 읽어 저장된 필터·정렬을 적용한 행 ID를 얻는다. 각 행은 표시 속성 ID와 갤러리의 명시적 커버 속성 ID만 요청하고, `public_url`이 명시적인 JSON `null`이거나 `in_trash == true`인 정상 행은 표시 스냅샷에서 제외한다. 잘못된 `public_url`은 기존 `SourceConfigurationException` / `CONFIGURATION` 실패로 처리한다. 커버용 숨긴 속성은 셀에 넣지 않는다. 표시용 뷰 쿼리 결과나 관계 속성으로 `containedChildren`을 추가하지 않으며, 앞의 소유 관계 확인과 독립 열거 결과만 사용한다.
 - 여러 지원 뷰는 기존 탭 모델로 표현한다. 지원 뷰가 하나뿐이면 전환할 대상이 없으므로 탭 목록과 패널 테두리를 만들지 않고 본문을 직접 표시한다. 여러 뷰일 때만 이름을 가진 탭 전환 UI를 제공하고, 필터링 후 API 반환 순서의 첫 지원 탭을 초기 표시한다. 이를 Notion 사용자의 현재 선택/기본 뷰라고 간주하지 않는다. 표는 열별 폭·줄바꿈, 전체 줄바꿈, 고정 열 수, 세로선 설정을 반영한다. 그룹 배치·하위 항목은 평면 행으로 표시한다. 리스트는 제목과 속성 목록, 갤러리는 커버와 속성을 가진 카드 그리드로 표시한다. 셀 수정·행 추가·드래그 이동 같은 편집 기능은 제공하지 않는다.
@@ -1772,6 +1776,9 @@ Helm chart, Kubernetes manifest, GitOps 설정, 복제본과 스케줄러 리더
 - [Notion Data source](https://developers.notion.com/reference/data-source)
 - [Query a data source](https://developers.notion.com/reference/query-a-data-source)
 - [Query large data sources](https://developers.notion.com/guides/data-apis/query-large-data-sources)
+- [Notion Property object](https://developers.notion.com/reference/property-object)
+- [Retrieve a view](https://developers.notion.com/reference/retrieve-a-view)
+- [Notion SDK 배열 쿼리의 속성 ID 인코딩](https://github.com/makenotion/notion-sdk-js/blob/37d6d24b56dfb15633164fb1eaffd8d836360500/src/Client.ts#L350-L369)
 - [Notion API `2026-03-11` upgrade guide](https://developers.notion.com/guides/get-started/upgrade-guide-2026-03-11)
 - [Notion API `2025-09-03` data source upgrade guide](https://developers.notion.com/guides/get-started/upgrade-guide-2025-09-03)
 

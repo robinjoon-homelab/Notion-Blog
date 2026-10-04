@@ -28,7 +28,9 @@ import xyz.robinjoon.notionblog.adapter.output.notion.dto.NotionViewConfiguratio
 import xyz.robinjoon.notionblog.adapter.output.notion.dto.NotionViewQueryResponse
 import xyz.robinjoon.notionblog.adapter.output.notion.mapping.NotionIdNormalizer
 import java.net.URI
+import java.net.URLDecoder
 import java.net.http.HttpClient
+import java.nio.charset.StandardCharsets
 import java.time.Duration
 import java.util.Locale
 
@@ -66,17 +68,25 @@ internal class NotionApiClient(
     fun fetchPage(pageId: String, propertyIds: List<String> = emptyList()): NotionPageResponse {
         require(pageId.isNotBlank()) { "Notion page ID must not be blank" }
         require(propertyIds.all(String::isNotBlank)) { "Notion property IDs must not be blank" }
+        val uriVariables = buildMap {
+            put("pageId", pageId)
+            propertyIds.forEachIndexed { index, propertyId -> put("property$index", decodePropertyId(propertyId)) }
+        }
         val response = execute {
             restClient.get()
                 .uri { builder ->
                     builder.path("/pages/{pageId}")
-                        .apply { propertyIds.forEach { queryParam("filter_properties[]", it) } }
-                        .build(pageId)
+                        .apply { propertyIds.indices.forEach { queryParam("filter_properties[]", "{property$it}") } }
+                        .build(uriVariables)
                 }
                 .retrieve()
                 .body(JsonNode::class.java)
         }
         return parsePage(response)
+    }
+
+    private fun decodePropertyId(propertyId: String): String = parseResponse {
+        URLDecoder.decode(propertyId.replace("+", "%2B"), StandardCharsets.UTF_8)
     }
 
     fun fetchDatabase(databaseId: String): NotionDatabaseResponse {

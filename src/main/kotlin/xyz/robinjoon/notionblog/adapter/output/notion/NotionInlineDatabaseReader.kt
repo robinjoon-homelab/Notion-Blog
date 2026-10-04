@@ -34,6 +34,8 @@ import xyz.robinjoon.notionblog.domain.post.block.inline.InlineContent
 import xyz.robinjoon.notionblog.domain.source.SourceDocumentRef
 import xyz.robinjoon.notionblog.domain.source.SourceId
 import java.net.URI
+import java.net.URLDecoder
+import java.nio.charset.StandardCharsets
 
 /** Keeps structural membership discovery separate from a saved display view. */
 internal class NotionInlineDatabaseReader(
@@ -116,8 +118,8 @@ internal class NotionInlineDatabaseReader(
                 requireMatchingId(schema.id, sourceId)
                 val columns = view.columns ?: defaultColumns(schema)
                 val selected = selectedColumns(columns, schema, reserve)
-                validateCoverProperty(configuration, schema)
-                val rows = readRows(viewId, sourceId, selected, configuration, checkDeadline, reserve)
+                val resolvedConfiguration = resolveCoverProperty(configuration, schema)
+                val rows = readRows(viewId, sourceId, selected, resolvedConfiguration, checkDeadline, reserve)
                 val data = DataSet(
                     name,
                     selected.zip(columns) { property, column -> DataColumn(property.name, column.widthPixels, column.wrap) },
@@ -125,7 +127,7 @@ internal class NotionInlineDatabaseReader(
                     selected.indexOfFirst { it.type == "title" }.takeIf { it >= 0 },
                 )
                 reserve()
-                BlockNode(BlockId("$id:data"), viewContent(data, view.type, configuration))
+                BlockNode(BlockId("$id:data"), viewContent(data, view.type, resolvedConfiguration))
             }
         } catch (_: SourceAccessException) {
             unavailable(id, reserve)
@@ -133,10 +135,12 @@ internal class NotionInlineDatabaseReader(
         return BlockNode(BlockId(id), LayoutBlockContent.TabItem(listOf(InlineContent.Text(name)), null), children = listOf(preview))
     }
 
-    private fun validateCoverProperty(configuration: NotionViewConfiguration, schema: NotionDataSourceResponse) {
-        val cover = (configuration as? NotionViewConfiguration.Gallery)?.cover as? NotionGalleryCover.Property ?: return
-        val property = schema.properties.singleOrNull { it.id == cover.propertyId }
-        if (property?.type != "files") throw SourceMappingException("Notion gallery cover must refer to a files property")
+    private fun resolveCoverProperty(configuration: NotionViewConfiguration, schema: NotionDataSourceResponse): NotionViewConfiguration {
+        if (configuration !is NotionViewConfiguration.Gallery) return configuration
+        val cover = configuration.cover as? NotionGalleryCover.Property ?: return configuration
+        val property = resolveProperty(cover.propertyId, schema)
+        if (property.type != "files") throw SourceMappingException("Notion gallery cover must refer to a files property")
+        return configuration.copy(cover = NotionGalleryCover.Property(property.id))
     }
 
     private fun viewContent(data: DataSet, type: String, configuration: NotionViewConfiguration): DataViewContent = when (configuration) {
@@ -188,12 +192,22 @@ internal class NotionInlineDatabaseReader(
         if (properties.size != schema.properties.size) throw SourceMappingException("Notion database property IDs must be unique")
         val seen = mutableSetOf<String>()
         return columns.map { column ->
-            if (!seen.add(column.propertyId)) throw SourceMappingException("Notion view property IDs must be unique")
             reserve()
-            val property = properties[column.propertyId]
-                ?: throw SourceMappingException("Notion view refers to an unknown property")
+            val property = resolveProperty(column.propertyId, schema)
+            if (!seen.add(property.id)) throw SourceMappingException("Notion view property IDs must be unique")
             property.copy(name = column.name?.takeIf(String::isNotBlank) ?: property.name.ifBlank { "Untitled" })
         }
+    }
+
+    private fun resolveProperty(viewPropertyId: String, schema: NotionDataSourceResponse): NotionDatabaseProperty = schema.properties.singleOrNull { property ->
+        property.id == viewPropertyId || decodedPropertyId(property.id) == viewPropertyId
+    } ?: throw SourceMappingException("Notion view refers to an unknown or ambiguous property")
+
+    private fun decodedPropertyId(wireId: String): String? = try {
+        // Views can expose decoded IDs; API requests and row values still use the schema's original ID.
+        URLDecoder.decode(wireId.replace("+", "%2B"), StandardCharsets.UTF_8)
+    } catch (_: IllegalArgumentException) {
+        null
     }
 
     private fun readRows(
