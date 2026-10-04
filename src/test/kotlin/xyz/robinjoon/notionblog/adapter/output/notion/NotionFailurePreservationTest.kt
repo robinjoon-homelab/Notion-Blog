@@ -20,6 +20,7 @@ import xyz.robinjoon.notionblog.application.port.output.persistence.SyncStateRep
 import xyz.robinjoon.notionblog.application.port.output.source.SourceConfigurationException
 import xyz.robinjoon.notionblog.application.port.output.source.SourceMappingException
 import xyz.robinjoon.notionblog.application.service.ApplyImportedPostService
+import xyz.robinjoon.notionblog.application.service.CancelInactivePostSynchronizationService
 import xyz.robinjoon.notionblog.application.service.SynchronizationQueryService
 import xyz.robinjoon.notionblog.application.service.SynchronizePostService
 import xyz.robinjoon.notionblog.application.service.SynchronizePublicationService
@@ -164,7 +165,13 @@ class NotionFailurePreservationTest {
             Clock.fixed(now, ZoneOffset.UTC),
             RefreshPolicy(Duration.ofMinutes(15), Duration.ofMinutes(2), Duration.ofMinutes(30)),
         ) { error("existing post must keep its identity") }
-        return SynchronizePostService(queries, source, applyService, mockk<SynchronizePublicationService>())
+        return SynchronizePostService(
+            queries,
+            source,
+            applyService,
+            mockk<SynchronizePublicationService>(),
+            mockk<CancelInactivePostSynchronizationService>(),
+        )
     }
 
     private fun enqueuePage(publicUrl: String?) {

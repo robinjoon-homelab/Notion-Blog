@@ -87,6 +87,40 @@ class ActivatePublicationServiceTest {
     }
 
     @Test
+    fun `activation removes only the reservation of a member leaving the publication`() {
+        val removedPostId = PostId(UUID.randomUUID())
+        val publicationRepository = RecordingPublicationRepository(
+            publication = BlogPublication(publicationId, rootPostId, previousRevisionId),
+            revisions = listOf(
+                PublicationRevision(previousRevisionId, publicationId, PublicationRevisionState.ACTIVE),
+                PublicationRevision(stagingRevisionId, publicationId, PublicationRevisionState.STAGING),
+            ),
+            members = listOf(
+                PublicationMember(previousRevisionId, rootPostId, null, 0),
+                PublicationMember(previousRevisionId, unpublishedPostId, rootPostId, 1),
+                PublicationMember(previousRevisionId, removedPostId, rootPostId, 1),
+                PublicationMember(stagingRevisionId, rootPostId, null, 0),
+                PublicationMember(stagingRevisionId, unpublishedPostId, rootPostId, 1),
+            ),
+        )
+        val postRepository = RecordingPostRepository(
+            mapOf(rootPostId to published(rootPostId), unpublishedPostId to unpublished(unpublishedPostId)),
+            setOf(rootPostId),
+        )
+        val syncStateRepository = RecordingSyncStateRepository()
+        val removedState = SyncState(SyncTarget.Post(removedPostId), now, now.plusSeconds(3_600), 0, null)
+        val retainedStates = listOf(rootPostId, unpublishedPostId).map {
+            SyncState(SyncTarget.Post(it), now, now.plusSeconds(600), 0, null)
+        }
+        (retainedStates + removedState).forEach(syncStateRepository::save)
+
+        service(publicationRepository, postRepository, syncStateRepository).activate(stagingRevisionId)
+
+        assertThat(syncStateRepository.find(removedState.target)).isNull()
+        retainedStates.forEach { assertThat(syncStateRepository.find(it.target)).isEqualTo(it) }
+    }
+
+    @Test
     fun `activation rejects published members without snapshots before changing any state`() {
         val publicationRepository = RecordingPublicationRepository(
             publication = BlogPublication(publicationId, rootPostId, previousRevisionId),
@@ -246,13 +280,19 @@ class ActivatePublicationServiceTest {
 
     private class RecordingSyncStateRepository : SyncStateRepository {
         var saved: SyncState? = null
+        private val states = mutableMapOf<SyncTarget, SyncState>()
 
         override fun findDue(now: Instant, limit: Int): List<SyncState> = emptyList()
 
-        override fun find(target: SyncTarget): SyncState? = saved?.takeIf { it.target == target }
+        override fun find(target: SyncTarget): SyncState? = states[target]
 
         override fun save(state: SyncState) {
             saved = state
+            states[state.target] = state
+        }
+
+        override fun delete(target: SyncTarget) {
+            states.remove(target)
         }
     }
 }

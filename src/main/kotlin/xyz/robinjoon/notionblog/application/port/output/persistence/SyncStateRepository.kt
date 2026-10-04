@@ -10,4 +10,6 @@ interface SyncStateRepository {
     fun find(target: SyncTarget): SyncState?
 
     fun save(state: SyncState)
+
+    fun delete(target: SyncTarget)
 }

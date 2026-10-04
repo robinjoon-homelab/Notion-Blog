@@ -31,15 +31,18 @@ class SynchronizePostServiceTest {
     private val source = mockk<PostSource>()
     private val applyService = mockk<ApplyImportedPostService>()
     private val publicationService = mockk<SynchronizePublicationService>()
-    private val service = SynchronizePostService(queries, source, applyService, publicationService)
+    private val cancelService = mockk<CancelInactivePostSynchronizationService>()
+    private val service = SynchronizePostService(queries, source, applyService, publicationService, cancelService)
 
     @Test
-    fun `does nothing for an inactive post`() {
+    fun `checks cancellation without fetching when the post context is unavailable`() {
         val postId = postId()
         every { queries.loadPost(postId) } returns null
+        every { cancelService.cancelIfInactive(postId) } just runs
 
         service.synchronize(postId)
 
+        verify(exactly = 1) { cancelService.cancelIfInactive(postId) }
         verify(exactly = 0) { source.fetch(any()) }
         verify(exactly = 0) { applyService.apply(any()) }
         verify(exactly = 0) { publicationService.synchronize() }

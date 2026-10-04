@@ -42,6 +42,10 @@ class ActivatePublicationService(
         val now = clock.instant()
         publicationRepository.findActiveRevision(publication.id)?.let { activeRevision ->
             require(activeRevision.id != revision.id) { "a staging revision cannot already be active" }
+            val previousPostIds = publicationRepository.findMembers(activeRevision.id).mapTo(linkedSetOf()) { it.postId }
+            (previousPostIds - memberPostIds).forEach { postId ->
+                syncStateRepository.delete(SyncTarget.Post(postId))
+            }
             publicationRepository.updateRevision(activeRevision.supersede(), now)
         }
         publicationRepository.updateRevision(revision.activate(), now)

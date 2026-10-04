@@ -77,6 +77,25 @@ class ExposedSyncStateRepositoryIntegrationTest {
     }
 
     @Test
+    fun `deleting a post reservation preserves other target kinds and tolerates repeated deletion`() = inTransaction {
+        val sharedId = UUID.randomUUID()
+        val now = Instant.parse("2026-08-25T01:02:03Z")
+        val removed = SyncState(SyncTarget.Post(PostId(sharedId)), now, now, 0, null)
+        val retained = listOf(
+            SyncState(SyncTarget.Publication(PublicationId(sharedId)), now, now, 0, null),
+            SyncState(SyncTarget.SiteConfiguration, now, now, 0, null),
+            SyncState(SyncTarget.Post(PostId(UUID.randomUUID())), now, now, 0, null),
+        )
+        (retained + removed).forEach(repository::save)
+
+        repository.delete(removed.target)
+        repository.delete(removed.target)
+
+        assertThat(repository.find(removed.target)).isNull()
+        assertThat(repository.findDue(now, 10)).containsExactlyInAnyOrderElementsOf(retained)
+    }
+
+    @Test
     fun `upserts an existing target state`() = inTransaction {
         val target = SyncTarget.Post(PostId(UUID.randomUUID()))
         val first = SyncState(target, null, Instant.parse("2026-08-25T01:02:03Z"), 0, null)

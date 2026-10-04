@@ -99,6 +99,7 @@ class ServiceTransactionIntegrationTest(
         val originalPublication = seedActivePublication(originalRootId)
         val replacementRevision = stagingRevision(originalPublication.id)
         val previousState = failedState(SyncTarget.Publication(originalPublication.id))
+        val previousPostState = failedState(SyncTarget.Post(originalRootId))
         inTransaction {
             publications.createRevision(replacementRevision, NOW)
             publications.saveMembers(
@@ -106,6 +107,7 @@ class ServiceTransactionIntegrationTest(
                 listOf(PublicationMember(replacementRevision.id, replacementRootId, parentPostId = null, depth = 0)),
             )
             states.save(previousState)
+            states.save(previousPostState)
         }
         states.failAfterSaveFor = previousState.target
 
@@ -119,7 +121,111 @@ class ServiceTransactionIntegrationTest(
                 .isEqualTo(PublicationRevisionState.ACTIVE)
             assertThat(publications.findRevision(replacementRevision.id)).isEqualTo(replacementRevision)
             assertThat(states.find(previousState.target)).isEqualTo(previousState)
+            assertThat(states.find(previousPostState.target)).isEqualTo(previousPostState)
         }
+    }
+
+    @Test
+    fun `activation removes excluded post reservations while preserving unpublished and moved members`() {
+        val rootId = applyService.apply(imported("root", "Root", "revision-1"))
+        val removedId = applyService.apply(imported("removed", "Removed", "revision-1"))
+        val unpublishedId = applyService.apply(
+            imported("unpublished", "Unpublished", "revision-1").copy(publicationStatus = ImportedPublicationStatus.UNPUBLISHED),
+        )
+        val movedId = applyService.apply(imported("moved", "Moved", "revision-1"))
+        val publication = seedActivePublication(rootId)
+        val originalRevisionId = requireNotNull(publication.activeRevisionId)
+        val replacement = stagingRevision(publication.id)
+        val retainedStates = listOf(rootId, unpublishedId, movedId).map { failedState(SyncTarget.Post(it)) }
+        val excludedState = SyncState(SyncTarget.Post(removedId), NOW, NOW.plusSeconds(3_600), 0, null)
+        val settingsState = failedState(SyncTarget.SiteConfiguration)
+        inTransaction {
+            publications.saveMembers(
+                originalRevisionId,
+                listOf(removedId, unpublishedId, movedId).map { PublicationMember(originalRevisionId, it, rootId, 1) },
+            )
+            publications.createRevision(replacement, NOW)
+            publications.saveMembers(
+                replacement.id,
+                listOf(
+                    PublicationMember(replacement.id, rootId, null, 0),
+                    PublicationMember(replacement.id, unpublishedId, rootId, 1),
+                    PublicationMember(replacement.id, movedId, unpublishedId, 2),
+                ),
+            )
+            (retainedStates + excludedState + settingsState).forEach(states::save)
+        }
+
+        activateService.activate(replacement.id)
+
+        inTransaction {
+            assertThat(publications.findCurrent()?.activeRevisionId).isEqualTo(replacement.id)
+            assertThat(states.find(excludedState.target)).isNull()
+            (retainedStates + settingsState).forEach { assertThat(states.find(it.target)).isEqualTo(it) }
+            assertThat(posts.find(removedId)?.post?.title).isEqualTo("Removed")
+            assertThat(posts.findBinding(removedId)).isNotNull()
+            assertThat(posts.findAvailability(removedId)?.status).isEqualTo(PostAvailabilityStatus.PUBLISHED)
+        }
+    }
+
+    @Test
+    fun `skipping an old excluded reservation frees the next due slot without fetching or deleting content`() {
+        val rootId = applyService.apply(imported("root", "Root", "revision-1"))
+        val excludedId = applyService.apply(imported("excluded", "Excluded", "revision-1"))
+        val publication = seedActivePublication(rootId)
+        val activeState = SyncState(SyncTarget.Post(rootId), NOW, NOW, 0, null)
+        val excludedState = failedState(SyncTarget.Post(excludedId))
+        val publicationState = SyncState(SyncTarget.Publication(publication.id), NOW, NOW.plusSeconds(600), 0, null)
+        inTransaction {
+            listOf(activeState, excludedState, publicationState).forEach(states::save)
+            assertThat(states.findDue(NOW, 1)).containsExactly(excludedState)
+        }
+
+        synchronizePostService.synchronize(excludedId)
+
+        assertThat(source.transactionStates).isEmpty()
+        inTransaction {
+            assertThat(states.find(excludedState.target)).isNull()
+            assertThat(states.findDue(NOW, 1)).containsExactly(activeState)
+            assertThat(states.find(publicationState.target)).isEqualTo(publicationState)
+            assertThat(posts.find(excludedId)?.post?.title).isEqualTo("Excluded")
+        }
+
+        val returnedId = applyService.apply(imported("excluded", "Returned", "revision-2"))
+        assertThat(returnedId).isEqualTo(excludedId)
+        inTransaction {
+            assertThat(states.find(excludedState.target)?.lastSuccessAt).isEqualTo(NOW)
+            assertThat(states.find(excludedState.target)?.refreshAfter).isAfter(NOW)
+        }
+    }
+
+    @Test
+    fun `missing initialization or an active source binding does not cancel a post reservation`() {
+        val postId = applyService.apply(imported("post", "Post", "revision-1"))
+        val reservation = failedState(SyncTarget.Post(postId))
+        inTransaction { states.save(reservation) }
+
+        synchronizePostService.synchronize(postId)
+        inTransaction { assertThat(states.find(reservation.target)).isEqualTo(reservation) }
+
+        val publicationId = PublicationId(UUID.randomUUID())
+        inTransaction { publications.save(BlogPublication(publicationId, null, null)) }
+        synchronizePostService.synchronize(postId)
+        inTransaction { assertThat(states.find(reservation.target)).isEqualTo(reservation) }
+
+        val revision = stagingRevision(publicationId)
+        inTransaction {
+            publications.createRevision(revision, NOW)
+            publications.saveMembers(revision.id, listOf(PublicationMember(revision.id, postId, null, 0)))
+            publications.updateRevision(revision.activate(), NOW)
+            publications.save(BlogPublication(publicationId, postId, revision.id))
+        }
+        jdbc.update("delete from post_source_binding where post_id = ?", postId.value)
+
+        synchronizePostService.synchronize(postId)
+
+        assertThat(source.transactionStates).isEmpty()
+        inTransaction { assertThat(states.find(reservation.target)).isEqualTo(reservation) }
     }
 
     @Test

@@ -171,6 +171,10 @@ class StagePublicationMemberServiceTest {
     private class RecordingSyncStateRepository : SyncStateRepository {
         var saved: SyncState? = null
 
+        override fun delete(target: SyncTarget) {
+            saved = saved?.takeUnless { it.target == target }
+        }
+
         override fun findDue(now: Instant, limit: Int): List<SyncState> = emptyList()
 
         override fun find(target: SyncTarget): SyncState? = saved?.takeIf { it.target == target }

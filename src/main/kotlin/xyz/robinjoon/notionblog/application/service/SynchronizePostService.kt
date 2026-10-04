@@ -14,9 +14,14 @@ class SynchronizePostService(
     private val source: PostSource,
     private val applyService: ApplyImportedPostService,
     private val publicationService: SynchronizePublicationService,
+    private val cancelService: CancelInactivePostSynchronizationService,
 ) {
     fun synchronize(postId: PostId) {
-        val context = queryService.loadPost(postId) ?: return
+        val context = queryService.loadPost(postId)
+        if (context == null) {
+            cancelService.cancelIfInactive(postId)
+            return
+        }
         val imported = fetch(postId, context.sourceDocument)
         apply(postId, context.sourceDocument, imported)
 

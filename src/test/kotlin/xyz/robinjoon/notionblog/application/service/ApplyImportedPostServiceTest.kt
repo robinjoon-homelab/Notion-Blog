@@ -331,6 +331,11 @@ class ApplyImportedPostServiceTest {
         var existing: SyncState? = null
         var saved: SyncState? = null
 
+        override fun delete(target: SyncTarget) {
+            existing = existing?.takeUnless { it.target == target }
+            saved = saved?.takeUnless { it.target == target }
+        }
+
         override fun findDue(now: Instant, limit: Int): List<SyncState> = emptyList()
 
         override fun find(target: SyncTarget): SyncState? {

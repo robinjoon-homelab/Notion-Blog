@@ -5,6 +5,7 @@ import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.lessEq
+import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.upsert
 import xyz.robinjoon.notionblog.adapter.output.persistence.exposed.table.SyncStateTable
@@ -54,6 +55,13 @@ class ExposedSyncStateRepository : SyncStateRepository {
             it[refreshAfter] = state.refreshAfter.asOffsetDateTime()
             it[failureCount] = state.failureCount
             it[lastErrorKind] = state.lastErrorKind?.name
+        }
+    }
+
+    override fun delete(target: SyncTarget) {
+        val persistedTarget = target.toPersistedTarget()
+        SyncStateTable.deleteWhere {
+            (targetKind eq persistedTarget.kind) and (targetKey eq persistedTarget.key)
         }
     }
 
