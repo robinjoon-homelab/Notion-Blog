@@ -5,6 +5,8 @@ internal data class NotionDatabaseResponse(
     val title: String,
     val url: String?,
     val inTrash: Boolean,
+    val parent: NotionParentResponse,
+    val dataSourceIds: List<String>,
 )
 
 internal data class NotionDatabaseViewResponse(
@@ -59,6 +61,8 @@ internal enum class NotionGalleryLayout { LIST, COMPACT }
 internal data class NotionDataSourceResponse(
     val id: String,
     val properties: List<NotionDatabaseProperty>,
+    val parent: NotionParentResponse,
+    val inTrash: Boolean,
 )
 
 internal data class NotionDatabaseProperty(

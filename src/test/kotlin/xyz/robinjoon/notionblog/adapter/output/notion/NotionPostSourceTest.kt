@@ -14,6 +14,7 @@ import xyz.robinjoon.notionblog.adapter.output.notion.dto.NotionDatabaseViewResp
 import xyz.robinjoon.notionblog.adapter.output.notion.dto.NotionPageParentResponse
 import xyz.robinjoon.notionblog.adapter.output.notion.dto.NotionPageResponse
 import xyz.robinjoon.notionblog.adapter.output.notion.dto.NotionPaginationResponse
+import xyz.robinjoon.notionblog.adapter.output.notion.dto.NotionParentResponse
 import xyz.robinjoon.notionblog.application.model.ImportedPublicationStatus
 import xyz.robinjoon.notionblog.application.port.output.source.RetryableSourceException
 import xyz.robinjoon.notionblog.application.port.output.source.SourceAccessException
@@ -184,7 +185,7 @@ class NotionPostSourceTest {
         every { client.fetchDirectBlockChildren(SYNCED_REFERENCE) } returns listOf(
             block(CHILD, "child_database", hasChildren = true, payload = """{"title":"Excluded database"}"""),
         )
-        every { client.fetchDatabase(CHILD) } returns NotionDatabaseResponse(CHILD, "Excluded database", null, false)
+        every { client.fetchDatabase(CHILD) } returns NotionDatabaseResponse(CHILD, "Excluded database", null, false, NotionParentResponse.Workspace, emptyList())
         every { client.fetchDatabaseViews(CHILD, null) } returns NotionPaginationResponse(listOf(OUTSIDE), false, null)
         every { client.fetchDatabaseView(OUTSIDE) } returns NotionDatabaseViewResponse(OUTSIDE, CHILD, "Board", "board", null, null)
         every { client.fetchDirectBlockChildren(SYNCED_ORIGIN) } throws SourceAccessException("origin must not be read")

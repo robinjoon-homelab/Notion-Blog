@@ -20,6 +20,7 @@ import xyz.robinjoon.notionblog.adapter.output.notion.dto.NotionGallerySize
 import xyz.robinjoon.notionblog.adapter.output.notion.dto.NotionPageParentResponse
 import xyz.robinjoon.notionblog.adapter.output.notion.dto.NotionPageResponse
 import xyz.robinjoon.notionblog.adapter.output.notion.dto.NotionPaginationResponse
+import xyz.robinjoon.notionblog.adapter.output.notion.dto.NotionParentResponse
 import xyz.robinjoon.notionblog.adapter.output.notion.dto.NotionViewColumn
 import xyz.robinjoon.notionblog.adapter.output.notion.dto.NotionViewConfiguration
 import xyz.robinjoon.notionblog.adapter.output.notion.dto.NotionViewQueryResponse
@@ -70,7 +71,7 @@ class NotionInlineDatabaseSourceTest {
         assertThat(table.title).isEqualTo("Published projects")
         assertThat(table.columns.map { it.name }).containsExactly("Name", "Status")
         assertThat(table.titleColumnIndex).isZero()
-        assertThat(table.rows.first().link).isEqualTo(LinkTarget.ExternalUrl(URI("https://site.notion.site/$ROW")))
+        assertThat(table.rows.first().link).isEqualTo(LinkTarget.SourceDocument(SourceDocumentRef(sourceId, ROW), URI("https://site.notion.site/$ROW")))
         assertThat(table.rows.map { text(it.cells[0]) }).containsExactly("First", "Second")
         assertThat(table.rows.map { text(it.cells[1]) }).containsExactly("Done", "Done")
         assertThat(table.toString()).doesNotContain("Hidden secret", PRIVATE_ROW, TRASH_ROW)
@@ -269,6 +270,8 @@ class NotionInlineDatabaseSourceTest {
         every { client.fetchDataSource(DATA_SOURCE) } returns NotionDataSourceResponse(
             DATA_SOURCE,
             listOf(NotionDatabaseProperty("title", "Name", "title"), NotionDatabaseProperty("status", "Status", "status"), NotionDatabaseProperty("art", "Hidden art", "files")),
+            NotionParentResponse.Database(SECOND_VIEW),
+            false,
         )
         fun covered(expiry: String) = row(ROW).copy(
             properties = json.readTree(
@@ -332,7 +335,7 @@ class NotionInlineDatabaseSourceTest {
             listOf(NotionDatabaseProperty("title", "Name", "title"), NotionDatabaseProperty("second-title", "Other", "title")),
             listOf(NotionDatabaseProperty("title", "Name", "title"), NotionDatabaseProperty("title", "Duplicate", "rich_text")),
         ).forEach { properties ->
-            every { client.fetchDataSource(DATA_SOURCE) } returns NotionDataSourceResponse(DATA_SOURCE, properties)
+            every { client.fetchDataSource(DATA_SOURCE) } returns NotionDataSourceResponse(DATA_SOURCE, properties, NotionParentResponse.Database(SECOND_VIEW), false)
 
             assertThatThrownBy { source().fetch(reference()) }.isInstanceOf(SourceMappingException::class.java)
         }
@@ -340,14 +343,21 @@ class NotionInlineDatabaseSourceTest {
     }
 
     @Test
-    fun `keeps an inaccessible database as a safe link and propagates temporary failures`() {
+    fun `keeps inaccessible display views as a safe link after ownership is checked`() {
         fixture()
-        every { client.fetchDatabase(DATABASE) } throws SourceAccessException()
+        every { client.fetchDatabaseViews(DATABASE, null) } throws SourceAccessException()
 
         val database = source().fetch(reference()).content.roots.single()
 
         assertThat(dataSets(database)).isEmpty()
         assertThat((database.content as ReferenceBlockContent.DatabaseLink).originalUrl).isEqualTo(URI("https://www.notion.so/$DATABASE"))
+    }
+
+    @Test
+    fun `propagates inaccessible database metadata and temporary failures`() {
+        fixture()
+        every { client.fetchDatabase(DATABASE) } throws SourceAccessException()
+        assertThatThrownBy { source().fetch(reference()) }.isInstanceOf(SourceAccessException::class.java)
 
         every { client.fetchDatabase(DATABASE) } throws RetryableSourceException()
         assertThatThrownBy { source().fetch(reference()) }.isInstanceOf(RetryableSourceException::class.java)
@@ -497,12 +507,14 @@ class NotionInlineDatabaseSourceTest {
                 NotionDatabaseProperty("status", "Status", "status"),
                 NotionDatabaseProperty("title", "Name", "title"),
             ),
+            NotionParentResponse.Database(SECOND_VIEW),
+            false,
         )
         every { client.createViewQuery(VIEW) } returns query(listOf(ROW))
         every { client.fetchPage(ROW, listOf("title", "status")) } returns row(ROW)
     }
 
-    private fun database() = NotionDatabaseResponse(DATABASE, "Projects", "https://www.notion.so/$DATABASE", false)
+    private fun database() = NotionDatabaseResponse(DATABASE, "Projects", "https://www.notion.so/$DATABASE", false, NotionParentResponse.Workspace, emptyList())
 
     private fun view(id: String = VIEW) = NotionDatabaseViewResponse(
         id,

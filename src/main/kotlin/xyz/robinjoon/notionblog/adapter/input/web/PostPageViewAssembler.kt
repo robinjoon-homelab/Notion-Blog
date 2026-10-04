@@ -290,7 +290,7 @@ class PostPageViewAssembler(
             is ReferenceBlockContent.DatabaseLink -> DatabaseLinkView(
                 id,
                 content.title,
-                linkView(LinkTarget.SourceDocument(content.reference, content.originalUrl), links),
+                if (hasDataView(node.children)) null else linkView(LinkTarget.SourceDocument(content.reference, content.originalUrl), links),
                 safeExternalUrl(content.originalUrl),
                 style,
                 children.map { child ->
@@ -346,6 +346,8 @@ class PostPageViewAssembler(
             is ListBlockContent.ToDoItem -> TodoListItemView(id, inlineViews(content.richText, links), content.checked, style, children)
         }
     }
+
+    private fun hasDataView(nodes: List<BlockNode>): Boolean = nodes.any { it.content is DataViewContent || hasDataView(it.children) }
 
     private fun dataEntries(data: DataSet, links: Map<LinkTarget.SourceDocument, LinkResolution>): List<DataEntryView> = data.rows.map { row ->
         val title = data.titleColumnIndex?.let { row.cells[it] }.orEmpty()

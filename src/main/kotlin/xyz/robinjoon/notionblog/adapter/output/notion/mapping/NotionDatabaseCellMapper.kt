@@ -6,6 +6,8 @@ import xyz.robinjoon.notionblog.adapter.output.notion.dto.NotionPageResponse
 import xyz.robinjoon.notionblog.domain.post.block.content.DataRow
 import xyz.robinjoon.notionblog.domain.post.block.inline.InlineContent
 import xyz.robinjoon.notionblog.domain.post.block.inline.LinkTarget
+import xyz.robinjoon.notionblog.domain.source.SourceDocumentRef
+import xyz.robinjoon.notionblog.domain.source.SourceId
 import java.net.URI
 import java.net.URISyntaxException
 import java.time.DateTimeException
@@ -18,9 +20,14 @@ import java.util.Locale
 
 internal class NotionDatabaseCellMapper(
     private val blockMapper: NotionBlockMapper,
+    private val sourceId: SourceId,
 ) {
     fun mapRow(page: NotionPageResponse, columns: List<NotionDatabaseProperty>): DataRow {
         if (!page.properties.isObject) throw NotionBlockMappingException("page properties must be an object")
+        val pageLink = LinkTarget.SourceDocument(
+            SourceDocumentRef(sourceId, NotionIdNormalizer.normalize(page.id)),
+            page.publicUrl?.let(::safeUrl)?.url,
+        )
         return DataRow(
             columns.map { column ->
                 val properties = page.properties.filter { it.get("id")?.stringValue() == column.id }
@@ -32,17 +39,17 @@ internal class NotionDatabaseCellMapper(
                     if (property.requiredText("type") != column.type) {
                         throw NotionBlockMappingException("selected property type differs from its schema")
                     }
-                    if (property.hasMore()) incomplete() else mapValue(column.type, property.path(column.type), page.publicUrl)
+                    if (property.hasMore()) incomplete() else mapValue(column.type, property.path(column.type), pageLink)
                 }
             },
-            link = page.publicUrl?.let(::safeUrl),
+            link = pageLink,
         )
     }
 
-    private fun mapValue(type: String, value: JsonNode, publicUrl: String?): List<InlineContent> {
+    private fun mapValue(type: String, value: JsonNode, pageLink: LinkTarget.SourceDocument): List<InlineContent> {
         if (value.isNull) return emptyList()
         return when (type) {
-            "title", "rich_text" -> richText(type, value, publicUrl)
+            "title", "rich_text" -> richText(type, value, pageLink)
 
             "number" -> text(number(value))
 
@@ -88,7 +95,7 @@ internal class NotionDatabaseCellMapper(
         }
     }
 
-    private fun richText(type: String, value: JsonNode, publicUrl: String?): List<InlineContent> {
+    private fun richText(type: String, value: JsonNode, pageLink: LinkTarget.SourceDocument): List<InlineContent> {
         val richText = try {
             blockMapper.mapRichText(value)
         } catch (_: URISyntaxException) {
@@ -99,9 +106,8 @@ internal class NotionDatabaseCellMapper(
                 entry.get("mention")?.get("type")?.stringValue() in setOf("page", "user")
         }
         if (referenceCount >= 25) return incomplete()
-        val target = publicUrl?.let(::safeUrl)
-        return if (type == "title" && target != null) {
-            richText.map { if (it is InlineContent.Text) it.copy(link = target) else it }
+        return if (type == "title") {
+            richText.map { if (it is InlineContent.Text) it.copy(link = pageLink) else it }
         } else {
             richText
         }

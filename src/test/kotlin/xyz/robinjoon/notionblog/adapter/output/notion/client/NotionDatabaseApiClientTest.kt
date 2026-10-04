@@ -14,6 +14,7 @@ import xyz.robinjoon.notionblog.adapter.output.notion.dto.NotionGalleryAspect
 import xyz.robinjoon.notionblog.adapter.output.notion.dto.NotionGalleryCover
 import xyz.robinjoon.notionblog.adapter.output.notion.dto.NotionGalleryLayout
 import xyz.robinjoon.notionblog.adapter.output.notion.dto.NotionGallerySize
+import xyz.robinjoon.notionblog.adapter.output.notion.dto.NotionParentResponse
 import xyz.robinjoon.notionblog.adapter.output.notion.dto.NotionViewColumn
 import xyz.robinjoon.notionblog.adapter.output.notion.dto.NotionViewConfiguration
 import xyz.robinjoon.notionblog.application.port.output.source.SourceAccessException
@@ -39,7 +40,9 @@ class NotionDatabaseApiClientTest {
         enqueueJson(
             """
             {"object":"database","id":"database-1","title":[{"plain_text":"진행 "},{"plain_text":"현황"}],
-             "url":"https://app.notion.com/database-1","public_url":null,"in_trash":false}
+             "url":"https://app.notion.com/database-1","public_url":null,"in_trash":false,
+             "parent":{"type":"page_id","page_id":"parent-page"},
+             "data_sources":[{"id":"source-1","name":"글"},{"id":"source-2","name":"기록"}]}
             """,
         )
 
@@ -49,6 +52,8 @@ class NotionDatabaseApiClientTest {
         assertThat(database.title).isEqualTo("진행 현황")
         assertThat(database.url).isEqualTo("https://app.notion.com/database-1")
         assertThat(database.inTrash).isFalse()
+        assertThat(database.parent).isEqualTo(NotionParentResponse.Page("parent-page"))
+        assertThat(database.dataSourceIds).containsExactly("source-1", "source-2")
         val request = server.takeRequest()
         assertThat(request.method).isEqualTo("GET")
         assertThat(request.path).isEqualTo("/v1/databases/database-1")
@@ -253,7 +258,8 @@ class NotionDatabaseApiClientTest {
     fun `reads stable schema identifiers separately from display names`() {
         enqueueJson(
             """
-            {"object":"data_source","id":"source-1","properties":{
+            {"object":"data_source","id":"source-1","parent":{"type":"database_id","database_id":"database-1"},
+             "in_trash":false,"properties":{
               "새 이름":{"id":"title","name":"새 이름","type":"title","title":{}},
               "상태":{"id":"status-id","name":"상태","type":"status","status":{"options":[]}}}}
             """,
@@ -262,6 +268,8 @@ class NotionDatabaseApiClientTest {
         val schema = client().fetchDataSource("source-1")
 
         assertThat(schema.id).isEqualTo("source-1")
+        assertThat(schema.parent).isEqualTo(NotionParentResponse.Database("database-1"))
+        assertThat(schema.inTrash).isFalse()
         assertThat(schema.properties).containsExactly(
             NotionDatabaseProperty("title", "새 이름", "title"),
             NotionDatabaseProperty("status-id", "상태", "status"),

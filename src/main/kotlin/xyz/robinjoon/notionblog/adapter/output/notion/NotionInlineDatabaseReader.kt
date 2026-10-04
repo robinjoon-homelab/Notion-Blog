@@ -31,21 +31,27 @@ import xyz.robinjoon.notionblog.domain.post.block.content.LayoutBlockContent
 import xyz.robinjoon.notionblog.domain.post.block.content.ReferenceBlockContent
 import xyz.robinjoon.notionblog.domain.post.block.content.UnsupportedBlockContent
 import xyz.robinjoon.notionblog.domain.post.block.inline.InlineContent
+import xyz.robinjoon.notionblog.domain.source.SourceDocumentRef
+import xyz.robinjoon.notionblog.domain.source.SourceId
 import java.net.URI
 
-/** Reads a view snapshot without expanding the blog's publication membership. */
+/** Keeps structural membership discovery separate from a saved display view. */
 internal class NotionInlineDatabaseReader(
     private val client: NotionApiClient,
     blockMapper: NotionBlockMapper,
+    sourceId: SourceId,
+    maxDepth: Int,
 ) {
-    private val cellMapper = NotionDatabaseCellMapper(blockMapper)
+    private val cellMapper = NotionDatabaseCellMapper(blockMapper, sourceId)
+    private val childrenReader = NotionDatabaseChildrenReader(client, maxDepth)
     private val coverReader = NotionDataViewCoverReader(client, blockMapper)
 
     fun read(
         block: BlockNode,
+        sourceDocument: SourceDocumentRef,
         checkDeadline: () -> Unit,
         reserve: () -> Unit,
-    ): BlockNode? {
+    ): Result {
         val reference = block.content as ReferenceBlockContent.DatabaseLink
         val databaseId = NotionIdNormalizer.normalize(reference.reference.externalId)
         var result = block.copy(
@@ -55,28 +61,36 @@ internal class NotionInlineDatabaseReader(
             ),
             children = emptyList(),
         )
+        val database = request(checkDeadline) { client.fetchDatabase(databaseId) }
+        requireMatchingId(database.id, databaseId)
+        if (database.inTrash) return Result(result, emptyList())
+        val schemas = mutableMapOf<String, NotionDataSourceResponse>()
+        // Ownership failures must not become display fallbacks that shrink publication membership.
+        val children = childrenReader.read(database, sourceDocument, schemas, checkDeadline, reserve)
+        val fallback = result.content as ReferenceBlockContent.DatabaseLink
+        result = result.copy(
+            content = fallback.copy(
+                title = database.title.ifBlank { fallback.title ?: "Database" },
+                originalUrl = safeUrl(database.url) ?: fallback.originalUrl,
+            ),
+        )
         try {
-            val database = request(checkDeadline) { client.fetchDatabase(databaseId) }
-            requireMatchingId(database.id, databaseId)
-            if (database.inTrash) return result
-            val fallback = result.content as ReferenceBlockContent.DatabaseLink
-            result = result.copy(
-                content = fallback.copy(
-                    title = database.title.ifBlank { fallback.title ?: "Database" },
-                    originalUrl = safeUrl(database.url) ?: fallback.originalUrl,
-                ),
-            )
             val viewIds = collectIds(checkDeadline, reserve) { cursor -> client.fetchDatabaseViews(databaseId, cursor) }
-            if (viewIds.isEmpty()) return null
-            val schemas = mutableMapOf<String, NotionDataSourceResponse>()
+            if (viewIds.isEmpty()) return Result(null, children)
             val tabs = viewIds.mapNotNull { viewId -> readView(databaseId, viewId, schemas, checkDeadline, reserve) }
-            if (tabs.isEmpty()) return null
+            if (tabs.isEmpty()) return Result(null, children)
             reserve()
-            return result.copy(children = listOf(BlockNode(BlockId("database:$databaseId:views"), LayoutBlockContent.TabContainer, children = tabs)))
+            val displayed = result.copy(children = listOf(BlockNode(BlockId("database:$databaseId:views"), LayoutBlockContent.TabContainer, children = tabs)))
+            return Result(displayed, children)
         } catch (_: SourceAccessException) {
-            return result
+            return Result(result, children)
         }
     }
+
+    data class Result(
+        val block: BlockNode?,
+        val containedChildren: List<SourceDocumentRef>,
+    )
 
     private fun readView(
         databaseId: String,

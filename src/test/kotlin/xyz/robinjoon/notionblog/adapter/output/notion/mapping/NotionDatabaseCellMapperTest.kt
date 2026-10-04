@@ -10,12 +10,13 @@ import xyz.robinjoon.notionblog.adapter.output.notion.dto.NotionPageResponse
 import xyz.robinjoon.notionblog.domain.post.block.inline.InlineContent
 import xyz.robinjoon.notionblog.domain.post.block.inline.LinkTarget
 import xyz.robinjoon.notionblog.domain.post.block.style.ColorToken
+import xyz.robinjoon.notionblog.domain.source.SourceDocumentRef
 import xyz.robinjoon.notionblog.domain.source.SourceId
 import java.net.URI
 
 class NotionDatabaseCellMapperTest {
     private val json = JsonMapper.builder().build()
-    private val mapper = NotionDatabaseCellMapper(NotionBlockMapper(SourceId("notion-main")))
+    private val mapper = NotionDatabaseCellMapper(NotionBlockMapper(SourceId("notion-main")), SourceId("notion-main"))
 
     @Test
     fun `maps only visible columns by stable property ids in view order after renaming`() {
@@ -40,21 +41,46 @@ class NotionDatabaseCellMapperTest {
         assertThat(row.cells).hasSize(2)
         assertThat(row.cells.map(::label)).containsExactly("Public title", "42")
         assertThat((row.cells.first().single() as InlineContent.Text).link)
-            .isEqualTo(LinkTarget.ExternalUrl(URI("https://example.com/public-page")))
-        assertThat(row.link).isEqualTo(LinkTarget.ExternalUrl(URI("https://example.com/public-page")))
+            .isEqualTo(pageLink())
+        assertThat(row.link).isEqualTo(pageLink())
         assertThat(row.icon).isNull()
         assertThat(row.cover).isNull()
         assertThat(row.toString()).doesNotContain("hidden", "Secret property", "not-public")
     }
 
     @Test
-    fun `keeps a row link without a visible title and never emits an unsafe public URL`() {
+    fun `keeps the page reference without a visible title and drops unsafe fallback URLs`() {
         val source = page("""{"Amount":{"id":"amount","type":"number","number":42}}""")
         val columns = listOf(NotionDatabaseProperty("amount", "Amount", "number"))
 
-        assertThat(mapper.mapRow(source, columns).link).isEqualTo(LinkTarget.ExternalUrl(URI("https://example.com/public-page")))
+        assertThat(mapper.mapRow(source, columns).link).isEqualTo(pageLink())
         listOf("javascript:alert(1)", "https://name:password@example.com", "data:text/html,x", "//example.com").forEach { unsafe ->
-            assertThat(mapper.mapRow(source.copy(publicUrl = unsafe), columns).link).isNull()
+            assertThat(mapper.mapRow(source.copy(publicUrl = unsafe), columns).link).isEqualTo(pageLink(null))
+        }
+    }
+
+    @Test
+    fun `normalizes row page ids and uses the page reference for every title segment`() {
+        val source = page(
+            """{"Name":{"id":"title","type":"title","title":[${richText("First ")},${richText("second")}]}}""",
+        ).copy(id = "A1B2C3D4-E5F6-4A5B-8C9D-0E1F2A3B4C5D")
+
+        val row = mapper.mapRow(source, listOf(NotionDatabaseProperty("title", "Name", "title")))
+
+        assertThat(row.link).isEqualTo(pageLink())
+        assertThat(row.cells.single().map { (it as InlineContent.Text).link }).containsExactly(pageLink(), pageLink())
+    }
+
+    @Test
+    fun `retains row and title page references when no safe public fallback exists`() {
+        val source = page("""{"Name":{"id":"title","type":"title","title":[${richText("Read in blog")}]}}""")
+        val columns = listOf(NotionDatabaseProperty("title", "Name", "title"))
+
+        listOf(null, "javascript:alert(1)", "https://user:secret@example.com").forEach { url ->
+            val row = mapper.mapRow(source.copy(publicUrl = url), columns)
+
+            assertThat(row.link).isEqualTo(pageLink(null))
+            assertThat((row.cells.single().single() as InlineContent.Text).link).isEqualTo(pageLink(null))
         }
     }
 
@@ -152,7 +178,7 @@ class NotionDatabaseCellMapperTest {
             assertThat(unsafe.text).isEqualTo(value)
             assertThat(unsafe.link).describedAs(value).isNull()
             val title = cell("title", "[${richText("Title")}]", publicUrl = value).single() as InlineContent.Text
-            assertThat(title.link).describedAs(value).isNull()
+            assertThat(title.link).describedAs(value).isEqualTo(pageLink(null))
         }
         assertThatThrownBy {
             cell("rich_text", """[{"type":"text","text":{"content":"Unsafe","link":{"url":"javascript:alert(1)"}},"annotations":{}}]""")
@@ -297,6 +323,11 @@ class NotionDatabaseCellMapperTest {
         inTrash = false,
         lastEditedTime = "2026-08-31T12:00:00Z",
         properties = json.readTree(properties),
+    )
+
+    private fun pageLink(publicUrl: String? = "https://example.com/public-page"): LinkTarget.SourceDocument = LinkTarget.SourceDocument(
+        SourceDocumentRef(SourceId("notion-main"), "a1b2c3d4e5f64a5b8c9d0e1f2a3b4c5d"),
+        publicUrl?.let(::URI),
     )
 
     private fun richText(value: String): String = """{"type":"text","text":{"content":${json.writeValueAsString(value)},"link":null},"annotations":{}}"""

@@ -81,7 +81,7 @@ class NotionDefaultDatabaseViewTest {
         assertThat(view.data.columns.map { it.name }).containsExactly("Name")
         assertThat(view.data.titleColumnIndex).isZero()
         assertThat(view.data.rows).hasSize(1)
-        assertThat(view.data.rows.single().cells.single()).containsExactly(InlineContent.Text("Public row", link = LinkTarget.ExternalUrl(URI("https://site.notion.site/$ROW"))))
+        assertThat(view.data.rows.single().cells.single()).containsExactly(InlineContent.Text("Public row", link = LinkTarget.SourceDocument(SourceDocumentRef(sourceId, ROW), URI("https://site.notion.site/$ROW"))))
         assertThat(view.data.toString()).doesNotContain("Private row", "Trash row", "Hidden value", "Status", "Done")
         assertThat(imported.containedChildren).isEmpty()
         if (type == "gallery") {
@@ -128,7 +128,7 @@ class NotionDefaultDatabaseViewTest {
 
         assertLayout(view, type)
         assertThat(view.data.columns.map { it.name }).containsExactly("Name")
-        assertThat(view.data.rows.single().cells.single()).containsExactly(InlineContent.Text("Public row", link = LinkTarget.ExternalUrl(URI("https://site.notion.site/$ROW"))))
+        assertThat(view.data.rows.single().cells.single()).containsExactly(InlineContent.Text("Public row", link = LinkTarget.SourceDocument(SourceDocumentRef(sourceId, ROW), URI("https://site.notion.site/$ROW"))))
         assertThat(view.data.rows.single().cover).isNull()
         assertThat(view.data.toString()).doesNotContain("Hidden value", "Status", "Done")
         assertRequestedProperties("title")
@@ -321,7 +321,7 @@ class NotionDefaultDatabaseViewTest {
 
                     "/v1/databases/$DATABASE" ->
                         """{"object":"database","id":"$DATABASE","title":[{"plain_text":"Projects"}],
-                      "url":"https://www.notion.so/$DATABASE","public_url":null,"in_trash":false}"""
+                      "url":"https://www.notion.so/$DATABASE","public_url":null,"in_trash":false,"parent":{"type":"workspace","workspace":true},"data_sources":[]}"""
 
                     "/v1/views" -> """{"object":"list","type":"view","view":{},"results":[{"object":"view","id":"$VIEW"}],"has_more":false,"next_cursor":null}"""
 
@@ -330,7 +330,7 @@ class NotionDefaultDatabaseViewTest {
                       "name":"Default view","type":"$type","data_source_id":"$DATA_SOURCE"$configurationField}"""
 
                     "/v1/data_sources/$DATA_SOURCE" ->
-                        """{"object":"data_source","id":"$DATA_SOURCE","properties":{
+                        """{"object":"data_source","id":"$DATA_SOURCE","parent":{"type":"database_id","database_id":"$QUERY"},"in_trash":false,"properties":{
                       "Hidden":{"id":"secret","name":"Hidden","type":"rich_text"},
                       "Status":{"id":"status","name":"Status","type":"status"},
                       "Name":{"id":"title","name":"Name","type":"title"},

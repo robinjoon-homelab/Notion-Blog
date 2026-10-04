@@ -21,10 +21,12 @@ import xyz.robinjoon.notionblog.adapter.output.notion.dto.NotionGallerySize
 import xyz.robinjoon.notionblog.adapter.output.notion.dto.NotionPageParentResponse
 import xyz.robinjoon.notionblog.adapter.output.notion.dto.NotionPageResponse
 import xyz.robinjoon.notionblog.adapter.output.notion.dto.NotionPaginationResponse
+import xyz.robinjoon.notionblog.adapter.output.notion.dto.NotionParentResponse
 import xyz.robinjoon.notionblog.adapter.output.notion.dto.NotionSettingsRowResponse
 import xyz.robinjoon.notionblog.adapter.output.notion.dto.NotionViewColumn
 import xyz.robinjoon.notionblog.adapter.output.notion.dto.NotionViewConfiguration
 import xyz.robinjoon.notionblog.adapter.output.notion.dto.NotionViewQueryResponse
+import xyz.robinjoon.notionblog.adapter.output.notion.mapping.NotionIdNormalizer
 import java.net.URI
 import java.net.http.HttpClient
 import java.time.Duration
@@ -94,6 +96,8 @@ internal class NotionApiClient(
                 },
                 url = response.nullableText("public_url") ?: response.nullableText("url"),
                 inTrash = response.requiredBoolean("in_trash"),
+                parent = parseParent(response.requiredObject("parent")),
+                dataSourceIds = response.requiredArray("data_sources").toList().map { it.requiredText("id") },
             )
         }
     }
@@ -161,7 +165,49 @@ internal class NotionApiClient(
                         type = property.requiredText("type"),
                     )
                 },
+                parent = parseParent(response.requiredObject("parent")),
+                inTrash = response.requiredBoolean("in_trash"),
             )
+        }
+    }
+
+    fun queryDataSourcePage(dataSourceId: String, cursor: String? = null): NotionPaginationResponse<NotionPageResponse> {
+        require(dataSourceId.isNotBlank()) { "Notion data source ID must not be blank" }
+        require(cursor == null || cursor.isNotBlank()) { "Notion data source cursor must not be blank" }
+        val requestBody = buildMap<String, Any> {
+            put("result_type", "page")
+            put(PAGE_SIZE_PARAMETER, PAGE_SIZE)
+            cursor?.let { put(START_CURSOR_PARAMETER, it) }
+        }
+        val response = execute {
+            restClient.post()
+                .uri("/data_sources/{dataSourceId}/query", dataSourceId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(requestBody)
+                .retrieve()
+                .body(JsonNode::class.java)
+        }
+        return parseResponse {
+            require(response.requiredText("object") == "list")
+            parsePagination(response) { page ->
+                require(page.requiredText("object") == "page")
+                parsePage(page)
+            }
+        }
+    }
+
+    fun fetchBlockParent(blockId: String): NotionParentResponse {
+        val requestedId = NotionIdNormalizer.normalize(blockId)
+        val response = execute {
+            restClient.get()
+                .uri("/blocks/{blockId}", blockId)
+                .retrieve()
+                .body(JsonNode::class.java)
+        }
+        return parseResponse {
+            require(response.requiredText("object") == "block")
+            require(NotionIdNormalizer.normalize(response.requiredText("id")) == requestedId)
+            parseParent(response.requiredObject("parent"))
         }
     }
 
@@ -287,6 +333,23 @@ internal class NotionApiClient(
         pageId = node.optionalText("page_id"),
         dataSourceId = node.nullableText("data_source_id"),
     )
+
+    private fun parseParent(node: JsonNode): NotionParentResponse = when (val type = node.requiredText("type")) {
+        "page_id" -> NotionParentResponse.Page(node.requiredText("page_id"))
+
+        "block_id" -> NotionParentResponse.Block(node.requiredText("block_id"))
+
+        "database_id" -> NotionParentResponse.Database(node.requiredText("database_id"))
+
+        "data_source_id" -> NotionParentResponse.DataSource(node.requiredText("data_source_id"))
+
+        "workspace" -> {
+            require(node.requiredBoolean("workspace"))
+            NotionParentResponse.Workspace
+        }
+
+        else -> NotionParentResponse.Unsupported(type)
+    }
 
     private fun parseViewColumns(configuration: JsonNode): List<NotionViewColumn>? {
         val properties = configuration.get("properties")?.takeUnless(JsonNode::isNull) ?: return null

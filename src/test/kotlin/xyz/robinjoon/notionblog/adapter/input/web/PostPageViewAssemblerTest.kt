@@ -481,6 +481,7 @@ class PostPageViewAssemblerTest {
     @Test
     fun `keeps database titles and view tabs around tables without unavailable announcements`() {
         val reference = SourceDocumentRef(SourceId("notion"), "database")
+        val originalUrl = URI("https://notion.so/database")
         val tabs = listOf("Active", "Archive").mapIndexed { index, title ->
             BlockNode(
                 BlockId("database-view-$index"),
@@ -490,22 +491,25 @@ class PostPageViewAssemblerTest {
         }
         val database = BlockNode(
             BlockId("database"),
-            ReferenceBlockContent.DatabaseLink(reference, null, "Team tasks"),
+            ReferenceBlockContent.DatabaseLink(reference, originalUrl, "Team tasks"),
             children = listOf(BlockNode(BlockId("database-views"), LayoutBlockContent.TabContainer, children = tabs)),
         )
 
-        val html = render(page(listOf(database)))
+        val html = render(page(listOf(database), mapOf(LinkTarget.SourceDocument(reference, originalUrl) to LinkResolution.External(originalUrl))))
         val markup = html.substringAfter("id=\"database\"").substringBefore("</aside>")
 
         assertThat(html).contains("notion-database")
         assertThat(markup).contains("Team tasks", "role=\"tablist\"", "aria-selected=\"true\"", "aria-selected=\"false\"", "Active", "Archive")
         assertThat(Regex("class=\"notion-table notion-data-table\"").findAll(markup).count()).isEqualTo(2)
         assertThat(markup).doesNotContain(" unavailable")
+        assertThat(markup.substringBefore("</h2>")).contains("<span>Team tasks</span>").doesNotContain("<a", "href=")
     }
 
     @Test
     fun `renders a single database view directly with its repeated name available only to assistive technology`() {
         val viewName = "Untitled <script>unsafe</script>"
+        val reference = SourceDocumentRef(SourceId("notion"), "database")
+        val originalUrl = URI("https://notion.so/database")
         val tab = BlockNode(
             BlockId("database-view"),
             LayoutBlockContent.TabItem(listOf(InlineContent.Text(viewName)), null),
@@ -525,11 +529,11 @@ class PostPageViewAssemblerTest {
         )
         val database = BlockNode(
             BlockId("database"),
-            ReferenceBlockContent.DatabaseLink(SourceDocumentRef(SourceId("notion"), "database"), null, "Blog posts"),
+            ReferenceBlockContent.DatabaseLink(reference, originalUrl, "Blog posts"),
             children = listOf(BlockNode(BlockId("database-views"), LayoutBlockContent.TabContainer, children = listOf(tab))),
         )
 
-        val html = render(page(listOf(database)))
+        val html = render(page(listOf(database), mapOf(LinkTarget.SourceDocument(reference, originalUrl) to LinkResolution.External(originalUrl))))
         val markup = html.substringAfter("id=\"database\"").substringBefore("</aside>")
 
         assertThat(markup).contains(
@@ -543,6 +547,107 @@ class PostPageViewAssemblerTest {
             "Untitled &lt;script&gt;unsafe&lt;/script&gt;",
         )
         assertThat(markup).doesNotContain("<h3 class=\"notion-data-view-title", "<script>unsafe</script>")
+        assertThat(markup.substringBefore("</h2>")).doesNotContain("<a", "href=")
+    }
+
+    @Test
+    fun `keeps the safe external database heading link when no inline body is available`() {
+        val reference = SourceDocumentRef(SourceId("notion"), "database")
+        val originalUrl = URI("https://notion.so/database")
+        val database = node("database-fallback", ReferenceBlockContent.DatabaseLink(reference, originalUrl, "Original database"))
+        val html = render(page(listOf(database), mapOf(LinkTarget.SourceDocument(reference, originalUrl) to LinkResolution.External(originalUrl))))
+        val heading = html.substringAfter("class=\"notion-database-title\"").substringBefore("</h2>")
+
+        assertThat(heading).contains("href=\"https://notion.so/database\"", "target=\"_blank\"", "rel=\"noopener noreferrer\"", ">Original database</a>")
+        assertThat(heading).doesNotContain("<span>")
+    }
+
+    @Test
+    fun `keeps the original database link when every view contains only an unavailable placeholder`() {
+        val reference = SourceDocumentRef(SourceId("notion"), "database")
+        val originalUrl = URI("https://notion.so/database")
+        val resolutions = mapOf(LinkTarget.SourceDocument(reference, originalUrl) to LinkResolution.External(originalUrl))
+
+        listOf(1, 2).forEach { viewCount ->
+            val tabs = (1..viewCount).map { index ->
+                BlockNode(
+                    BlockId("view-$index"),
+                    LayoutBlockContent.TabItem(listOf(InlineContent.Text("Unavailable view $index")), null),
+                    children = listOf(node("view-$index-unavailable", UnsupportedBlockContent("database_view"))),
+                )
+            }
+            val database = BlockNode(
+                BlockId("database-fallback"),
+                ReferenceBlockContent.DatabaseLink(reference, originalUrl, "Original database"),
+                children = listOf(BlockNode(BlockId("database-views"), LayoutBlockContent.TabContainer, children = tabs)),
+            )
+
+            val html = render(page(listOf(database), resolutions))
+            val heading = html.substringAfter("class=\"notion-database-title\"").substringBefore("</h2>")
+
+            assertThat(heading).describedAs("%s unavailable views", viewCount)
+                .contains("href=\"https://notion.so/database\"", "target=\"_blank\"", "rel=\"noopener noreferrer\"", ">Original database</a>")
+            assertThat(html).contains("Unsupported block: database_view")
+        }
+    }
+
+    @Test
+    fun `keeps the database heading plain when an available view accompanies a placeholder`() {
+        val reference = SourceDocumentRef(SourceId("notion"), "database")
+        val originalUrl = URI("https://notion.so/database")
+        val tabs = listOf(
+            BlockNode(
+                BlockId("unavailable-view"),
+                LayoutBlockContent.TabItem(listOf(InlineContent.Text("Unavailable")), null),
+                children = listOf(node("unavailable-content", UnsupportedBlockContent("database_view"))),
+            ),
+            BlockNode(
+                BlockId("available-view"),
+                LayoutBlockContent.TabItem(listOf(InlineContent.Text("Available")), null),
+                children = listOf(node("available-table", dataTable("Available", listOf("Title"), emptyList()))),
+            ),
+        )
+        val database = BlockNode(
+            BlockId("database"),
+            ReferenceBlockContent.DatabaseLink(reference, originalUrl, "Blog posts"),
+            children = listOf(BlockNode(BlockId("database-views"), LayoutBlockContent.TabContainer, children = tabs)),
+        )
+
+        val html = render(page(listOf(database), mapOf(LinkTarget.SourceDocument(reference, originalUrl) to LinkResolution.External(originalUrl))))
+        val heading = html.substringAfter("class=\"notion-database-title\"").substringBefore("</h2>")
+
+        assertThat(heading).contains("<span>Blog posts</span>").doesNotContain("<a", "href=")
+        assertThat(html).contains("Unsupported block: database_view", "No published rows in this view.")
+    }
+
+    @Test
+    fun `renders member row links internally and outside rows externally in every database layout`() {
+        val internal = LinkTarget.SourceDocument(SourceDocumentRef(SourceId("notion"), "member-row"), URI("https://notion.so/member-row"))
+        val external = LinkTarget.SourceDocument(SourceDocumentRef(SourceId("notion"), "outside-row"), URI("https://notion.so/outside-row"))
+        val postId = PostId(UUID.fromString("00000000-0000-0000-0000-000000000123"))
+        val data = DataSet(
+            "Blog posts",
+            listOf(DataColumn("Title")),
+            listOf(
+                DataRow(listOf(listOf(InlineContent.Text("Member article", link = internal))), link = internal),
+                DataRow(listOf(listOf(InlineContent.Text("Outside article", link = external))), link = external),
+            ),
+            titleColumnIndex = 0,
+        )
+        val resolutions = mapOf(internal to LinkResolution.Internal(postId), external to LinkResolution.External(checkNotNull(external.originalUrl)))
+
+        listOf(DataViewContent.Table(data), DataViewContent.ListView(data), DataViewContent.Gallery(data)).forEach { layout ->
+            val html = render(page(listOf(node("view", layout)), resolutions))
+            val internalAnchor = Regex("<a\\b[^>]*href=\"/posts/${postId.value}\"[^>]*>").find(html)?.value
+            val externalAnchor = Regex("<a\\b[^>]*href=\"https://notion.so/outside-row\"[^>]*>").find(html)?.value
+
+            assertThat(internalAnchor).describedAs(layout.javaClass.simpleName).isNotNull().doesNotContain("target=", "rel=")
+            assertThat(externalAnchor).describedAs(layout.javaClass.simpleName).isNotNull().contains("target=\"_blank\"", "rel=\"noopener noreferrer\"")
+            assertThat(html).contains("Member article", "Outside article").doesNotContain("href=\"https://notion.so/member-row\"")
+            assertThat(Regex("href=\"/posts/${postId.value}\"").findAll(html).count()).isEqualTo(1)
+            assertThat(Regex("href=\"https://notion.so/outside-row\"").findAll(html).count()).isEqualTo(1)
+            assertThat(Regex("<a\\b[^>]*>(?:(?!</a>).)*<a\\b", RegexOption.DOT_MATCHES_ALL).containsMatchIn(html)).isFalse()
+        }
     }
 
     @Test

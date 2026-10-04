@@ -43,7 +43,7 @@ internal class NotionPostSource(
     private val collectionTimeout: Duration,
     private val nanoTime: () -> Long = System::nanoTime,
 ) : PostSource {
-    private val databaseReader = NotionInlineDatabaseReader(client, blockMapper)
+    private val databaseReader = NotionInlineDatabaseReader(client, blockMapper, sourceId, maxDepth)
 
     init {
         require(maxDepth > 0) { "Notion maximum block depth must be positive" }
@@ -120,17 +120,24 @@ internal class NotionPostSource(
                 if (block.type == CHILD_DATABASE_TYPE) {
                     val database = databaseReader.read(
                         blockMapper.map(block, sourceDocument = sourceDocument),
+                        sourceDocument,
                         checkDeadline = { checkDeadline(startedAt) },
                         reserve = {
                             checkDeadline(startedAt)
                             reserveMaterializedBlock(state)
                         },
                     )
-                    if (database != null) {
-                        validateDepth(database.children, depth + 1)
-                        state.inlineDatabases += database
+                    database.containedChildren.forEach { child ->
+                        if (!state.visitedPageIds.add(child.externalId)) {
+                            throw SourceMappingException("Notion child page collection contains a cycle or duplicate page")
+                        }
+                        state.containedChildren += child
                     }
-                    return@mapNotNull database
+                    database.block?.let { displayed ->
+                        validateDepth(displayed.children, depth + 1)
+                        state.inlineDatabases += displayed
+                    }
+                    return@mapNotNull database.block
                 }
                 val ordinaryChildren = if (block.hasChildren && block.type != CHILD_PAGE_TYPE) {
                     collectChildren(
