@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "kind": "block_tree_snapshot",
+  "blocks": [{
+    "id": "legacy-table",
+    "kind": "data_table",
+    "style": {},
+    "content": {
+      "title": "Legacy tasks",
+      "columns": ["Name", "Status"],
+      "rows": [{"cells": [[{
+        "kind": "text",
+        "text": "Published row",
+        "annotations": {"bold": true, "italic": false, "strikethrough": false, "underline": false, "code": false},
+        "link": {"kind": "external_url", "url": "https://example.com/row"}
+      }], []]}]
+    },
+    "children": []
+  }]
+}

@@ -151,28 +151,9 @@ class JsonBlockTreeSnapshotCodecTest {
     @Test
     fun `decodes an existing data table snapshot into the canonical table layout`() {
         val decoded = codec.decode(
-            """
-            {
-              "schemaVersion": 1,
-              "kind": "block_tree_snapshot",
-              "blocks": [{
-                "id": "legacy-table",
-                "kind": "data_table",
-                "style": {},
-                "content": {
-                  "title": "Legacy tasks",
-                  "columns": ["Name", "Status"],
-                  "rows": [{"cells": [[{
-                    "kind": "text",
-                    "text": "Published row",
-                    "annotations": {"bold": true, "italic": false, "strikethrough": false, "underline": false, "code": false},
-                    "link": {"kind": "external_url", "url": "https://example.com/row"}
-                  }], []]}]
-                },
-                "children": []
-              }]
-            }
-            """.trimIndent(),
+            checkNotNull(javaClass.getResourceAsStream("/snapshot/schema-v1/legacy-data-table.json"))
+                .bufferedReader()
+                .use { it.readText() },
         )
 
         val expected = DataViewContent.Table(

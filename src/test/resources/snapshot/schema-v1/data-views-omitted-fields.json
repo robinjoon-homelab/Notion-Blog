@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 1,
+  "kind": "block_tree_snapshot",
+  "blocks": [
+    {
+      "id": "views",
+      "kind": "tab_container",
+      "style": {},
+      "content": {},
+      "children": [
+        {
+          "id": "table-tab",
+          "kind": "tab_item",
+          "style": {},
+          "content": {"title": [], "icon": {"kind": "emoji", "value": "📋"}},
+          "children": [
+            {
+              "id": "table-view",
+              "kind": "data_view",
+              "style": {},
+              "content": {
+                "data": {
+                  "title": "Tasks",
+                  "titleColumnIndex": 1,
+                  "columns": [{"name": "Status", "widthPixels": 0, "wrap": true}, {"name": "Name", "widthPixels": 260, "wrap": false}],
+                  "rows": [
+                    {
+                      "cells": [
+                        [],
+                        [
+                          {
+                            "annotations": {"bold": false, "italic": false, "strikethrough": false, "underline": false, "code": false},
+                            "kind": "text",
+                            "text": "Publish"
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                },
+                "layout": "table",
+                "options": {"wrapCells": false, "frozenColumns": 1, "showVerticalLines": false}
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "list-tab",
+          "kind": "tab_item",
+          "style": {},
+          "content": {"title": [], "icon": {"kind": "native", "name": "list", "color": "blue"}},
+          "children": [
+            {
+              "id": "list-view",
+              "kind": "data_view",
+              "style": {},
+              "content": {"data": {"title": "No tasks", "columns": [{"name": "Name"}], "rows": []}, "layout": "list"},
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "gallery-tab",
+          "kind": "tab_item",
+          "style": {},
+          "content": {"title": []},
+          "children": [
+            {
+              "id": "gallery-view",
+              "kind": "data_view",
+              "style": {},
+              "content": {
+                "data": {
+                  "title": "Gallery",
+                  "titleColumnIndex": 0,
+                  "columns": [{"name": "Name"}],
+                  "rows": [
+                    {
+                      "cells": [
+                        [
+                          {
+                            "annotations": {"bold": false, "italic": false, "strikethrough": false, "underline": false, "code": false},
+                            "kind": "text",
+                            "text": "Preview"
+                          }
+                        ]
+                      ],
+                      "link": {
+                        "kind": "source_document",
+                        "reference": {"sourceId": "notion-main", "externalId": "preview"},
+                        "originalUrl": "https://example.com/preview"
+                      },
+                      "icon": {
+                        "kind": "custom_emoji",
+                        "externalId": "parrot-id",
+                        "name": "parrot",
+                        "source": {"kind": "external", "url": "https://example.com/parrot.png"}
+                      },
+                      "cover": {"kind": "source_hosted", "url": "https://example.com/cover.png", "expiresAt": "2026-09-01T00:00:00Z"}
+                    }
+                  ]
+                },
+                "layout": "gallery",
+                "options": {"size": "large", "aspect": "contain", "layout": "compact"}
+              },
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

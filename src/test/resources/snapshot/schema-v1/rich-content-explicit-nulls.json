@@ -1,0 +1,169 @@
+{
+  "schemaVersion": 1,
+  "kind": "block_tree_snapshot",
+  "blocks": [
+    {
+      "id": "heading",
+      "kind": "heading",
+      "style": {"foreground": "red", "background": "blue", "alignment": "center", "width": 0.75, "variant": "featured"},
+      "content": {
+        "level": "four",
+        "richText": [
+          {
+            "annotations": {"bold": false, "italic": false, "strikethrough": false, "underline": false, "code": false, "foreground": null, "background": null},
+            "kind": "text",
+            "text": "Guide",
+            "link": null
+          }
+        ],
+        "isToggleable": true
+      },
+      "children": [
+        {
+          "id": "paragraph",
+          "kind": "paragraph",
+          "style": {"foreground": null, "background": null, "alignment": null, "width": null, "variant": null},
+          "content": {
+            "richText": [
+              {
+                "annotations": {
+                  "bold": true,
+                  "italic": true,
+                  "strikethrough": true,
+                  "underline": true,
+                  "code": true,
+                  "foreground": "orange",
+                  "background": "purple"
+                },
+                "kind": "text",
+                "text": "Linked text",
+                "link": {"kind": "source_document", "reference": {"sourceId": "notion-main", "externalId": "guide"}, "originalUrl": "https://example.com/guide"}
+              },
+              {
+                "annotations": {
+                  "bold": false,
+                  "italic": true,
+                  "strikethrough": false,
+                  "underline": false,
+                  "code": false,
+                  "foreground": null,
+                  "background": null
+                },
+                "kind": "equation",
+                "expression": "x^2"
+              },
+              {
+                "annotations": {
+                  "bold": false,
+                  "italic": false,
+                  "strikethrough": false,
+                  "underline": false,
+                  "code": false,
+                  "foreground": null,
+                  "background": null
+                },
+                "kind": "mention",
+                "label": "Tomorrow",
+                "mentionKind": "date",
+                "target": {"kind": "external_url", "url": "https://example.com/calendar"}
+              },
+              {
+                "annotations": {
+                  "bold": false,
+                  "italic": false,
+                  "strikethrough": false,
+                  "underline": false,
+                  "code": false,
+                  "foreground": null,
+                  "background": null
+                },
+                "kind": "mention",
+                "label": "Draft",
+                "mentionKind": "document",
+                "target": {"kind": "source_document", "reference": {"sourceId": "notion-main", "externalId": "draft"}, "originalUrl": null}
+              }
+            ]
+          },
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": "columns",
+      "kind": "column_list",
+      "style": {"foreground": null, "background": null, "alignment": null, "width": null, "variant": null},
+      "content": {},
+      "children": [
+        {
+          "id": "column",
+          "kind": "column",
+          "style": {"foreground": null, "background": null, "alignment": null, "width": null, "variant": null},
+          "content": {"width": 0.5},
+          "children": [
+            {
+              "id": "pdf",
+              "kind": "media",
+              "style": {"foreground": null, "background": null, "alignment": null, "width": null, "variant": null},
+              "content": {
+                "mediaType": "pdf",
+                "source": {"kind": "source_hosted", "url": "https://example.com/guide.pdf", "expiresAt": "2026-09-01T00:00:00Z"},
+                "fileName": "guide.pdf",
+                "caption": [
+                  {
+                    "annotations": {
+                      "bold": false,
+                      "italic": false,
+                      "strikethrough": false,
+                      "underline": false,
+                      "code": false,
+                      "foreground": null,
+                      "background": null
+                    },
+                    "kind": "text",
+                    "text": "Download",
+                    "link": null
+                  }
+                ]
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "auto-column",
+          "kind": "column",
+          "style": {"foreground": null, "background": null, "alignment": null, "width": null, "variant": null},
+          "content": {"width": null},
+          "children": [
+            {
+              "id": "image",
+              "kind": "media",
+              "style": {"foreground": null, "background": null, "alignment": null, "width": null, "variant": null},
+              "content": {
+                "mediaType": "image",
+                "source": {"kind": "source_hosted", "url": "https://example.com/image.png", "expiresAt": null},
+                "fileName": null,
+                "caption": []
+              },
+              "children": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "numbered",
+      "kind": "numbered_list_item",
+      "style": {"foreground": null, "background": null, "alignment": null, "width": null, "variant": null},
+      "content": {"richText": [], "startNumber": 3, "displayFormat": "upper_roman", "startsNewList": true},
+      "children": []
+    },
+    {
+      "id": "meeting",
+      "kind": "meeting_notes",
+      "style": {"foreground": null, "background": null, "alignment": null, "width": null, "variant": null},
+      "content": {"title": "Planning", "status": "in_progress", "summary": [], "notesReference": null},
+      "children": []
+    }
+  ]
+}
