@@ -117,6 +117,8 @@ Notion API가 기본 뷰의 설정이나 표시 속성 목록을 생략/null로 
 ./gradlew build
 ```
 
+`test`와 `build`는 컴파일·테스트 전에 `ktlintFormat` → `ktlintCheck` 순서로 실행합니다. main/test Kotlin 소스와 Gradle Kotlin 스크립트에서 자동 수정 가능한 위반은 파일에 반영하며, 자동 수정할 수 없는 위반이 남으면 중단합니다. `ktlintCheck`를 단독 실행하면 파일 수정 없이 검사만 합니다. ktlint 엔진은 `1.8.0`, Gradle 플러그인은 `14.2.0`으로 고정합니다.
+
 테스트는 다음 경계를 검증합니다.
 
 - domain: 게시글·블록 트리 불변식, 공개 범위와 게시 상태, 링크와 동기화 상태
@@ -137,7 +139,7 @@ TESTCONTAINERS_HOST_OVERRIDE=127.0.0.1 \
 
 `TESTCONTAINERS_HOST_OVERRIDE` 값은 Rancher Desktop 구성에 따라 달라질 수 있습니다.
 
-Kotlin 포맷을 자동 수정하려면 다음 명령을 사용합니다.
+컴파일·테스트 없이 Kotlin 포맷만 자동 수정하려면 다음 명령을 사용합니다.
 
 ```bash
 ./gradlew ktlintFormat

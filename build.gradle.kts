@@ -1,3 +1,6 @@
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import org.jlleitschuh.gradle.ktlint.tasks.KtLintCheckTask
+
 plugins {
     kotlin("jvm") version "2.3.21"
     kotlin("plugin.spring") version "2.3.21"
@@ -77,6 +80,15 @@ kotlin {
     }
 }
 
-tasks.withType<Test> {
+tasks.withType<KtLintCheckTask>().configureEach {
+    mustRunAfter(tasks.named("ktlintFormat"))
+}
+
+tasks.withType<KotlinCompile>().configureEach {
+    dependsOn(tasks.named("ktlintFormat"), tasks.named("ktlintCheck"))
+}
+
+tasks.withType<Test>().configureEach {
+    dependsOn(tasks.named("ktlintFormat"), tasks.named("ktlintCheck"))
     useJUnitPlatform()
 }
