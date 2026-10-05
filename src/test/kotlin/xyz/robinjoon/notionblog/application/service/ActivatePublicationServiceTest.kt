@@ -4,6 +4,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 import org.junit.jupiter.api.Test
 import org.springframework.transaction.annotation.Transactional
+import xyz.robinjoon.notionblog.application.model.PostFeedEntry
 import xyz.robinjoon.notionblog.application.model.StoredPost
 import xyz.robinjoon.notionblog.application.port.output.persistence.PostRepository
 import xyz.robinjoon.notionblog.application.port.output.persistence.PublicationRepository
@@ -266,6 +267,16 @@ class ActivatePublicationServiceTest {
         override fun saveIdentity(binding: PostSourceBinding, title: String, changedAt: Instant) = Unit
 
         override fun saveSnapshot(post: Post, sourceRevision: SourceRevision, capturedAt: Instant) = Unit
+
+        override fun recordFirstPublication(postId: PostId, observedAt: Instant) {
+            error("publication activation does not record first publication times")
+        }
+
+        override fun findRecentPublishedPosts(
+            publicationId: PublicationId,
+            excludedPostIds: Set<PostId>,
+            limit: Int,
+        ): List<PostFeedEntry> = error("publication activation does not read the post feed")
 
         override fun findAvailability(postId: PostId): PostAvailability? = availabilities[postId]
 

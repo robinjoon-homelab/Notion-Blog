@@ -12,6 +12,7 @@ data class PostPageView(
     val header: PostDocumentView?,
     val post: PostDocumentView,
     val footer: PostDocumentView?,
+    val feedUrl: String? = null,
 )
 
 data class PostDocumentView(

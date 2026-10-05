@@ -52,6 +52,7 @@ import xyz.robinjoon.notionblog.domain.sync.SyncState
 import xyz.robinjoon.notionblog.domain.sync.SyncTarget
 import java.time.Clock
 import java.time.Instant
+import java.time.ZoneId
 import java.time.ZoneOffset
 import java.util.UUID
 import javax.sql.DataSource
@@ -75,6 +76,7 @@ class ServiceTransactionIntegrationTest(
     @Autowired private val publications: PublicationRepository,
     @Autowired private val states: FailingSyncStateRepository,
     @Autowired private val source: RecordingPostSource,
+    @Autowired private val clock: MutableClock,
     @Autowired transactionManager: PlatformTransactionManager,
     @Autowired dataSource: DataSource,
 ) {
@@ -83,6 +85,7 @@ class ServiceTransactionIntegrationTest(
 
     @BeforeEach
     fun clearDatabaseAndFailures() {
+        clock.currentInstant = NOW
         states.failAfterSaveFor = null
         source.imports.clear()
         source.transactionStates.clear()
@@ -253,6 +256,49 @@ class ServiceTransactionIntegrationTest(
     }
 
     @Test
+    fun `failed first publication rolls back its timestamp and content before a later retry commits`() {
+        val unpublished = imported("post", "Unpublished title", "revision-1")
+            .copy(publicationStatus = ImportedPublicationStatus.UNPUBLISHED)
+        val postId = applyService.apply(unpublished)
+        val originalAvailability = PostAvailability(postId, PostAvailabilityStatus.UNPUBLISHED, NOW)
+        val previousState = failedState(SyncTarget.Post(postId))
+        inTransaction {
+            states.save(previousState)
+            assertThat(posts.find(postId)).isNull()
+            assertThat(posts.findAvailability(postId)).isEqualTo(originalAvailability)
+        }
+        assertThat(firstPublicationAt(postId)).isNull()
+        states.failAfterSaveFor = previousState.target
+        clock.currentInstant = NOW.plusSeconds(60)
+        val published = imported("post", "Published title", "revision-2")
+
+        assertThatThrownBy { applyService.apply(published) }
+            .isInstanceOf(InjectedWriteFailure::class.java)
+
+        assertThat(firstPublicationAt(postId)).isNull()
+        inTransaction {
+            assertThat(posts.find(postId)).isNull()
+            assertThat(posts.findAvailability(postId)).isEqualTo(originalAvailability)
+            assertThat(states.find(previousState.target)).isEqualTo(previousState)
+        }
+
+        states.failAfterSaveFor = null
+        val retriedAt = NOW.plusSeconds(120)
+        clock.currentInstant = retriedAt
+
+        assertThat(applyService.apply(published)).isEqualTo(postId)
+
+        assertThat(firstPublicationAt(postId)).isEqualTo(retriedAt)
+        inTransaction {
+            assertThat(posts.find(postId))
+                .isEqualTo(StoredPost(Post(postId, published.title, published.content), published.sourceRevision, retriedAt))
+            assertThat(posts.findAvailability(postId))
+                .isEqualTo(PostAvailability(postId, PostAvailabilityStatus.PUBLISHED, retriedAt))
+            assertThat(states.find(previousState.target)?.lastSuccessAt).isEqualTo(retriedAt)
+        }
+    }
+
+    @Test
     fun `post synchronization fetches outside Spring and Exposed transactions and commits the imported content`() {
         val original = imported("post", "Original title", "revision-1")
         val postId = applyService.apply(original)
@@ -308,11 +354,17 @@ class ServiceTransactionIntegrationTest(
 
     private fun inTransaction(block: () -> Unit) = transactions.executeWithoutResult { block() }
 
+    private fun firstPublicationAt(postId: PostId): Instant? = jdbc.queryForObject(
+        "select first_published_at from post where post_id = ?",
+        { row, _ -> row.getTimestamp("first_published_at")?.toInstant() },
+        postId.value,
+    )
+
     @TestConfiguration(proxyBeanMethods = false)
     class TransactionTestConfiguration {
         @Bean
         @Primary
-        fun integrationClock(): Clock = Clock.fixed(NOW, ZoneOffset.UTC)
+        fun integrationClock(): MutableClock = MutableClock()
 
         @Bean
         @Primary
@@ -321,6 +373,16 @@ class ServiceTransactionIntegrationTest(
         @Bean
         @Primary
         fun recordingPostSource(): RecordingPostSource = RecordingPostSource()
+    }
+
+    class MutableClock : Clock() {
+        var currentInstant: Instant = NOW
+
+        override fun getZone(): ZoneId = ZoneOffset.UTC
+
+        override fun withZone(zone: ZoneId): Clock = Clock.fixed(currentInstant, zone)
+
+        override fun instant(): Instant = currentInstant
     }
 
     class FailingSyncStateRepository(private val delegate: SyncStateRepository) : SyncStateRepository by delegate {

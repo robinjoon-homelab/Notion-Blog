@@ -115,7 +115,7 @@ class TargetArchitectureBoundaryTest {
     }
 
     @Test
-    fun `web production mappings are limited to the root and post id routes`() {
+    fun `web production mappings are limited to the root post id and RSS routes`() {
         val routes = productionFiles()
             .filter { it.relativePath.isWebFile() }
             .flatMap { source ->
@@ -160,7 +160,7 @@ class TargetArchitectureBoundaryTest {
         val snapshotClassMetadataRegex = Regex(
             "\\\"(?:xyz\\.|java\\.|kotlin\\.)[^\\\"]+\\\"|(?:javaClass\\.name|::class\\.qualifiedName|Class\\.forName|qualifiedName)",
         )
-        val allowedWebRoutes = setOf("/", "/posts/{postId}")
+        val allowedWebRoutes = setOf("/", "/posts/{postId}", "/feed.xml")
 
         fun productionFiles(): List<ProductionSource> = Files.walk(productionRoot).use { paths ->
             paths.iterator().asSequence()

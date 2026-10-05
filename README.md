@@ -43,6 +43,7 @@ NOTION_SETTINGS_DATA_SOURCE_ID
 
 ```text
 SERVER_PORT
+BLOG_PUBLIC_BASE_URL     # 기본값: https://blog.homelab.robinjoon.xyz
 NOTION_SOURCE_ID
 NOTION_API_VERSION       # 2026-03-11만 지원
 NOTION_BASE_URL
@@ -76,7 +77,7 @@ set +a
 
 ## Runtime Behavior
 
-웹 공개 경로는 두 개뿐입니다.
+HTML 게시글 경로는 다음 두 개입니다. RSS 구독 피드는 `GET /feed.xml`로 제공합니다.
 
 - `GET /`: 활성 공개 범위의 루트 게시글
 - `GET /posts/{postId}`: 내부 `PostId`로 조회하는 게시글
@@ -86,6 +87,22 @@ set +a
 공개 범위 구성원이라도 정상 Notion 응답에서 `public_url`이 명시적인 JSON `null`이거나 `in_trash == true`이면 `UNPUBLISHED`로 기록되고 해당 내부 경로는 `404`를 반환합니다. `public_url` 필드 누락·비문자열 값·빈 문자열(공백만 있는 문자열 포함)은 미게시가 아니라 잘못된 응답으로 처리하여 `SourceConfigurationException`과 `CONFIGURATION` 동기화 실패로 기록합니다. 미게시 부모의 구조적 후손 탐색은 계속됩니다. 외부 장애나 매핑 실패는 미게시로 바꾸지 않고 마지막 게시 상태와 스냅샷을 보존합니다.
 
 동기화는 `BLOG_SYNCHRONIZATION_*` 설정에 따라 due `sync_state` 대상을 처리합니다. 성공 시 다음 성공 주기를 예약하고, 실패 시 분류된 오류와 지수 백오프를 기록합니다. 외부 HTTP 호출과 PostgreSQL transaction은 분리되어 있으며, Notion 장애는 readiness 실패로 연결하지 않습니다.
+
+### RSS Subscription
+
+기본 공개 주소는 `https://blog.homelab.robinjoon.xyz`입니다. 별도 환경 변수 설정 없이 페이지 하단의 **RSS 구독** 링크와 HTML 자동 탐색 태그가 나타나며, 구독기에는 `https://blog.homelab.robinjoon.xyz/feed.xml`을 등록합니다. 다른 주소로 운영하거나 로컬에서 확인할 때는 다음 환경 변수로 재정의할 수 있습니다.
+
+```text
+BLOG_PUBLIC_BASE_URL=https://blog.homelab.robinjoon.xyz
+```
+
+HTTP(S) 원점만 허용하며 하위 경로, 사용자 정보, query, fragment는 넣지 않습니다. 명시적으로 빈 값이나 공백을 설정하면 기존 HTML 블로그는 동작하고 RSS는 `503`을 반환하며 구독 링크를 표시하지 않습니다. 비어 있지 않은 잘못된 값을 설정하면 애플리케이션 시작 시 오류로 처리합니다.
+
+RSS 2.0 피드는 현재 공개 범위의 게시글 중 루트·헤더·푸터 문서를 제외한 최근 **20개**의 제목, 최대 **280자(Unicode code point)** 요약, 원문 링크를 담습니다. 공개된 소유 DB 행 게시글도 포함합니다. 요청은 저장된 스냅샷만 읽으므로 Notion을 직접 호출하지 않습니다. 대상 글이 없으면 정상적인 빈 피드를 반환합니다.
+
+GUID와 최초 게시 확인 시각은 글 수정·재동기화·게시 취소 후 재게시에도 유지합니다. 이 시각은 블로그가 게시된 본문을 처음 저장한 시각이며 Notion의 원래 작성일은 아닙니다. V7 도입 전 글의 최초 게시 이력은 복원할 수 없어 기존 스냅샷의 마지막 저장 시각을 한 번 이관합니다.
+
+게시 취소나 범위 제외가 저장된 뒤의 새 요청에서는 해당 글을 제외합니다. 이미 구독기가 받은 내용까지 삭제할 수는 없습니다. 피드는 매 요청에서 공개 조건을 확인한 뒤 ETag로 재검증하며, 변경이 없으면 `304`를 반환합니다. 초기화 전이나 선택된 스냅샷이 손상된 경우에는 `503`을 반환합니다.
 
 ### Inline Databases
 
@@ -126,6 +143,7 @@ Notion API가 기본 뷰의 설정이나 표시 속성 목록을 생략/null로 
 - application: 공개 범위 staging/activation, 미게시 취소, 링크 해석, 외부 호출과 transaction 분리, 설정 적용
 - persistence: Flyway, PostgreSQL 제약, Exposed 매핑, JSONB 스냅샷 왕복과 rollback
 - web/rendering: `/` 및 `/posts/{postId}`의 `200`·`404`·`503`, 의미론적 HTML, escaping, CSP, 안전한 미디어와 표현 자산
+- RSS: `/feed.xml`의 공개 범위·최초 게시 시각·요약·XML 안전성, 조건부 요청과 게시 취소, 구독 링크와 공개 주소 설정
 - scheduling/configuration: due 대상 선택, 주입된 clock 기준 상태 전이, seed된 최초 site sync, 타입 안전한 환경 설정
 
 PostgreSQL 경계 테스트는 H2로 대체하지 않으며 Docker가 필요합니다. Rancher Desktop에서 Testcontainers가 기본 socket을 찾지 못하는 경우에는 로컬 환경에 맞는 Docker socket을 지정한 뒤 실행합니다.

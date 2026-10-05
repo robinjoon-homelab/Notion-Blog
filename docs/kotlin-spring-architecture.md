@@ -75,7 +75,7 @@ AND renderable snapshot exists
 
 ### ADR-006: 사람에게 읽기 쉬운 URL을 만들지 않는다
 
-웹 경로는 다음 두 가지로 고정한다.
+HTML 게시글 경로는 다음 두 가지로 고정한다. RSS 구독은 17.4절의 별도 `/feed.xml` 표현을 제공한다.
 
 ```text
 GET /                 -> 활성 BlogPublication의 루트 Post
@@ -610,6 +610,8 @@ enum class PostAvailabilityStatus {
 - `UNPUBLISHED` 확인은 즉시 반영하며 기존 스냅샷이 있어도 조회하지 않는다.
 - 외부 소스 오류는 상태를 바꾸지 않는다.
 
+RSS의 안정적인 정렬과 날짜를 위해 `post.first_published_at`에 최초 게시 확인 시각을 별도로 저장한다. 이는 외부 소스에서 `PUBLISHED`인 본문을 블로그가 처음 저장한 시각이며, Notion의 원래 작성일이나 공개 범위 활성화 시각을 추정한 값이 아니다. 최초 저장 후에는 수정·동기화·미게시·재게시로 바꾸지 않는다. 기록과 이관 계약은 17.4절을 따른다.
+
 ### 8.10 사이트 설정과 표현
 
 ```kotlin
@@ -863,6 +865,7 @@ PostRepository
   - `Post`, `SourceRevision`, 포착 시각을 가진 최신 스냅샷 조회와 저장
   - 게시 상태 단건·일괄 조회와 변경
   - 여러 게시글의 렌더링 가능한 스냅샷 존재 여부 조회
+  - 최초 게시 확인 시각을 한 번만 기록하고 활성 공개 범위의 최근 게시글을 제한 개수로 조회
 
 PublicationRepository
   - `BlogPublication`과 활성 버전 조회
@@ -1192,6 +1195,7 @@ post
   title
   created_at
   updated_at
+  first_published_at TIMESTAMPTZ NULL
 
 post_source_binding
   source_id
@@ -1385,7 +1389,7 @@ PostSource.fetch                    // DB transaction 없음
 
 게시글 상태 변경은 다음 단위로 원자적이어야 한다.
 
-- 새 제목과 스냅샷 저장 및 `PUBLISHED` 전환
+- 새 제목·스냅샷·최초 게시 확인 시각 저장 및 `PUBLISHED` 전환
 - `UNPUBLISHED` 전환
 - 동기화 성공 상태와 다음 갱신 시각 갱신
 - 실패 횟수와 다음 재시도 시각 갱신
@@ -1449,6 +1453,62 @@ Thymeleaf 프래그먼트는 뷰 하위 타입의 명시적 계약을 사용한�
 - 임베드는 제공자 허용 목록, `sandbox`, `title` 정책이 마련된 타입만 `DEGRADED` 또는 `FULL`로 지원한다.
 - 수식은 신뢰된 KaTeX 자산으로 렌더링하고 실패하면 원문 표현식을 표시한다. `mermaid` 등 실행형 코드 언어는 별도 보안 정책이 생기기 전까지 일반 코드로 표시한다.
 - 지원하지 않는 블록은 타입과 자식을 보존하는 안전한 폴백을 렌더링한다.
+
+### 17.4 RSS 구독
+
+#### 범위와 성공 조건
+
+`GET /feed.xml`은 RSS 2.0으로 최근 공개 게시글 최대 20개의 제목, 280 Unicode code point 이내 평문 요약, 원문 링크를 제공한다. 기존 공개 범위와 게시 취소 규칙을 그대로 적용하며, 매 동기화마다 날짜나 GUID가 달라져 같은 글이 새 글로 나타나지 않아야 한다. HTML의 자동 탐색 메타데이터와 눈에 보이는 구독 링크로 피드를 찾을 수 있어야 한다.
+
+RSS 요청은 PostgreSQL의 정규화된 스냅샷만 읽고 Notion을 호출하지 않는다. 구독자 계정, 이메일, 알림 발송, 별도 worker, Atom, 카테고리별 피드와 전체 본문 제공은 이번 범위에 넣지 않는다.
+
+#### 조회 경계와 공개 규칙
+
+- `RssFeedController`는 `GetPostFeedService`에 조회를 위임한다. 서비스의 public 조회 메서드는 `@Transactional(readOnly = true, isolation = REPEATABLE_READ)`로 사이트 설정, 활성 공개 범위와 게시글을 하나의 일관된 DB snapshot에서 읽는다.
+- `GetBlogPageService`나 루트 게시글의 공개 여부를 선행 조건으로 삼지 않는다. 루트가 미게시여도 공개된 후손을 제공할 수 있고 RSS는 표현 프로필·CSS 자산 조회에 의존하지 않는다.
+- `PostRepository.findRecentPublishedPosts(publicationId, excludedPostIds, limit)`는 `PostFeedEntry(post, firstPublishedAt)` 목록을 반환한다. XML, URL, Exposed 타입은 이 포트에 노출하지 않는다.
+- SQL은 publication의 활성 revision 포인터, 동일 publication 소유의 `ACTIVE` revision, 구성원, `PUBLISHED` 게시 상태, 스냅샷, 최초 게시 확인 시각을 함께 확인한다. `first_published_at DESC, post_id ASC`로 정렬하고 DB에서 최대 20개만 선택한다. 전체 공개 트리나 모든 스냅샷을 읽은 뒤 메모리에서 제한하지 않는다.
+- 서비스는 현재 활성 publication의 루트, 현재 사이트 설정의 header/footer에 바인딩된 게시글을 제외한다. 구성원 중 소유 DB 행 게시글도 같은 조건으로 포함한다. 외부 링크나 연결 DB의 범위 밖 행은 포함하지 않는다.
+- 사이트 설정이나 활성 publication이 없거나 설정의 publication ID와 조회한 publication이 불일치하면 `ContentUnavailable`이다. `findActiveRevision`으로 포인터가 같은 publication 소유의 실제 `ACTIVE` revision을 가리키는지도 확인하며, 잘못된 포인터를 빈 피드로 위장하지 않는다. 정상 초기화 후 대상 게시글이 없으면 항목이 없는 정상 피드를 반환한다.
+- 스냅샷 행이 없는 게시글은 조회에서 제외한다. 선택한 스냅샷이 손상되어 디코딩할 수 없으면 일부 제목만 공개하거나 임의로 건너뛰지 않고 피드 전체를 `ContentUnavailable`로 처리한다.
+- 미게시·범위 제외는 변경이 commit된 뒤 DB snapshot을 시작한 다음 요청부터 반영한다. 이미 진행 중인 요청은 이전의 일관된 snapshot으로 완료할 수 있다. 서버에 피드 목록이나 XML을 장기 캐시하지 않는다. 이미 구독기가 내려받은 콘텐츠를 원격으로 삭제하는 기능은 제공하지 않는다.
+- 사이트 설정 변경과 공개 범위 활성화 사이에는 새 메타데이터와 이전 활성 범위가 함께 유지되는 정상 중간 상태가 있다. 이때도 현재 활성 루트와 현재 설정된 header/footer ID를 제외하며 설정의 새 희망 루트와 활성 루트가 같다고 요구하지 않는다. 이전 header/footer는 그 역할에서 해제됐고 공개 범위에 남아 있다면 일반 게시글로 취급한다.
+
+#### 최초 게시 확인 시각
+
+- V7 추가 전용 Flyway migration으로 `post.first_published_at TIMESTAMPTZ NULL`을 추가한다. 아직 게시된 본문을 저장한 적 없는 identity는 null이다. `first_published_at IS NOT NULL` 조건의 부분 B-tree 인덱스 `(first_published_at DESC, post_id ASC)`도 추가하고 조회에 같은 조건을 사용한다. 인덱스는 정렬 접근 경로를 제공하지만 공개 조건에서 탈락하는 행의 검사까지 20개로 제한한다고 주장하지 않는다.
+- `ApplyImportedPostService`가 `PUBLISHED` 본문 저장/확인 후 `PostRepository.recordFirstPublication(postId, observedAt)`를 호출한다. 스냅샷·최초 게시 시각·게시 상태는 같은 쓰기 트랜잭션에서 저장한다. 저장소는 `first_published_at IS NULL`일 때만 갱신해 동시 쓰기에서도 기존 값을 덮어쓰지 않는다.
+- 내용 수정, 변경 없는 재동기화, 게시 취소와 재게시 모두 기존 최초 시각을 보존한다. 현재 `created_at`, `updated_at`, `confirmed_at`이나 불투명한 `SourceRevision`을 발행일로 재사용하지 않는다.
+- 기존 스냅샷이 있는 글은 migration 시점의 `post_snapshot.captured_at`을 이관 값으로 한 번 저장한다. 현재 미게시인 글도 스냅샷이 있다면 같은 방식으로 보존한다. 과거 최초 게시 이력은 없으므로 이관 값은 기존 본문의 마지막 저장 시각에 근거한 근사치이며, 정확한 과거 발행일로 설명하지 않는다.
+- PostgreSQL Testcontainers에서 V6까지 이관한 DB에 게시/미게시 스냅샷과 미게시 identity를 SQL로 넣은 뒤 V7로 올려 backfill과 인덱스 정의를 검증한다. 두 연결의 경쟁 쓰기에서 먼저 commit한 최초 시각이 보존되는지, 선행 쓰기가 rollback하면 후행 쓰기가 기록되는지도 검증한다. 초깃값이 null인 미게시 글의 첫 게시 처리에 실패를 주입하여 스냅샷·시각·게시 상태가 함께 rollback되고 성공한 재시도의 시각이 기록되는지 확인한다.
+
+#### RSS 표현과 URL
+
+- 웹 어댑터의 `RssFeedRenderer`가 JDK StAX로 UTF-8 XML을 생성한다. 새 RSS 라이브러리나 템플릿 프레임워크를 추가하지 않는다.
+- channel에는 `SiteMetadata`의 사이트명, 기본 설명(없으면 사이트명), 언어, 블로그 루트 절대 URL을 넣는다. `atom:link` self 링크는 같은 피드의 절대 URL과 `application/rss+xml`을 사용한다.
+- item은 제목, 요약, `/posts/{PostId}` 절대 URL, `guid isPermaLink="false"`인 `urn:uuid:{PostId}`, 최초 게시 확인 시각의 RFC 822 호환 GMT `pubDate`를 가진다. 수정이나 도메인 변경으로 GUID가 바뀌지 않는다. 정확한 의미를 보장하지 못하는 `lastBuildDate`는 넣지 않는다.
+- 평문 요약은 웹 어댑터의 `RssSummaryExtractor`가 문단·제목·글머리/번호/할 일 목록·인용·콜아웃·토글 제목의 rich text를 문서 순서로 추출한다. inline은 `Text.text`, `Mention.label`, `Equation.expression`을 원래 run 순서로 이어 붙이고 서로 다른 블록 사이에는 공백을 둔다. 자식 블록은 같은 게시글 안에서만 순회하고 다른 게시글을 조회하지 않는다. 링크 URL, 미디어 URL, DB 셀, 코드, 미지원 블록의 원시 데이터를 요약에 넣지 않는다. XML 문자 정리와 NBSP를 포함한 공백 정규화 후 Unicode surrogate pair를 자르지 않고 길이를 제한한다. 280 code point를 넘으면 앞의 279개와 단일 말줄임표로 총 280개를 만든다. HTML/XML escape 후의 문자열 길이로 제한하지 않는다. 추출할 텍스트가 없으면 제목을 같은 제한으로 사용한다.
+- 외부 텍스트는 XML 1.0의 `U+0009`, `U+000A`, `U+000D`, `U+0020..U+D7FF`, `U+E000..U+FFFD`, `U+10000..U+10FFFF`만 남긴다. 금지 제어문자, `U+FFFE`, `U+FFFF`, 고립 surrogate는 제거하며 정상 emoji는 보존한다. 정리 후 사이트명/제목이 비면 각각 `Blog`/`제목 없는 글`로, 채널 설명이 비면 정리한 사이트명으로 대체한다. 제목/채널 텍스트는 XML escape한다. item `description`은 구독기가 HTML로 해석하므로 평문을 먼저 HTML escape한 뒤 XML escape한다. 원문에 `<script>`, `&`, `]]>`가 있어도 마크업으로 실행되거나 XML이 깨지면 안 된다.
+- 신뢰할 절대 URL은 `blog.public-base-url` / `BLOG_PUBLIC_BASE_URL` 설정에서만 만든다. `application.yml`에 `public-base-url: ${BLOG_PUBLIC_BASE_URL:https://blog.homelab.robinjoon.xyz}`를 명시해 기존 운영 블로그 주소를 기본값으로 사용하고 환경 변수로 재정의할 수 있게 한다. HTTP(S) scheme과 host가 필요하고 user-info, query, fragment(각각 빈 구문도 포함), 루트 이외 path와 잘못된 port는 허용하지 않는다. 명시된 port는 1..65535이며 빈 port와 0은 거부한다. 정상 IPv6 origin은 허용하고 끝의 `/`는 정규화한다. `Host`, `Forwarded`, `X-Forwarded-*` 요청 헤더로 피드 링크를 만들지 않는다.
+- 별도 환경 변수가 없으면 기존 운영 주소의 `/feed.xml`과 HTML RSS 링크를 제공한다. 명시적으로 public base URL을 빈 문자열이나 공백으로 재정의한 경우에는 기동을 허용하되 RSS 요청은 `503`, HTML RSS 링크와 자동 탐색 태그는 생략한다. 비어 있지 않은 잘못된 URI는 설정 오류로 기동에 실패한다.
+
+#### HTTP와 발견 가능성
+
+- 정상 응답은 `200`, `application/rss+xml; charset=UTF-8`이다. 초기화/설정/스냅샷 오류는 `503`과 `Cache-Control: no-store`로 반환한다.
+- 정상 응답은 `Cache-Control: no-cache`를 사용한다. 실제 전송할 UTF-8 XML 바이트의 SHA-256 ETag를 만들고, 현재 공개 조건을 다시 평가한 후 Spring의 조건부 요청 지원으로 `If-None-Match`를 처리한다. weak validator, 여러 후보와 `*`를 지원한다. 정상 빈 피드도 표현이 존재하므로 같은 규칙을 따른다. 일치하면 빈 body의 `304`와 같은 ETag/no-cache, 게시 취소·범위 변경·본문/메타 변경으로 표현이 달라지면 `200`과 새 ETag를 반환한다. 오류이면 과거 ETag나 `*`가 있어도 `503`/no-store를 유지한다. 요약 밖 본문 수정처럼 피드 표현이 같으면 304가 맞다. 시각 기반 `Last-Modified` 최적화는 추가하지 않는다.
+- 기존 HTML 템플릿 `blog/post.html`의 head에 절대 피드 URL을 가진 `<link rel="alternate" type="application/rss+xml">`을 추가한다. 본문 하단의 `RSS 구독` 링크는 설정된 footer 문서가 없어도 표시한다. 새 스크립트나 표현 자산 버전은 만들지 않는다.
+
+#### 검증과 구현 경계
+
+1. DB 테스트: 활성 revision/소유 관계, 공개 상태, 스냅샷, 루트·header·footer 제외, 동일 시각 순서, 20개 제한, 최초 시각과 migration/rollback.
+2. application 테스트: 초기화 전 503 결과, 빈 피드, 미게시 루트의 공개 후손, 제외 ID 일괄 조회, 손상 snapshot, 일관된 읽기 transaction. 실제 Spring 프록시를 거친 읽기를 latch로 멈춘 사이 다른 DB 연결에서 사이트 설정·활성 범위·게시 상태를 commit한다. 진행 중인 읽기는 일관된 이전 결과를, 새 읽기는 바뀐 결과를 반환해야 한다. 실제 연결의 REPEATABLE_READ도 확인하며 annotation 확인이나 sleep 기반 테스트로 대체하지 않는다.
+3. 웹 테스트: namespace-aware XML 파싱, 필수 메타, GUID와 GMT 날짜, 절대 URL, 279/280/281 code point 요약과 emoji·금지 문자·HTML/XML escaping, 공격적 Host/Forwarded 무시, weak/list/wildcard ETag와 빈 body 304. 실제 DB→HTTP 통합 경로에서 게시 취소·범위 제외·메타·표시 본문 변경 뒤 이전 ETag로 200과 새 표현을 받고, 마지막 항목 제거는 빈 RSS 200, 선택 snapshot 손상은 503으로 확인한다.
+4. HTML/config 테스트: 실제 Thymeleaf 렌더링에서 footer 있음/없음 × base URL 있음/없음 네 조합의 자동 탐색과 본문 구독 링크를 확인한다. root/post 화면에 같은 모델이 전달되는지도 검증한다. 실제 application.yml과 `systemEnvironment`에 `BLOG_PUBLIC_BASE_URL`만 넣어 환경 변수 연결을 확인하고 URI 경계값과 미설정/빈/공백 값을 검증한다.
+5. 실패 테스트를 먼저 작성하고 최소 구현 후 관련 테스트와 전체 `test`/`build`를 실행한다. Gradle은 주 에이전트만 실행하고, 자동 포맷이 다른 작업자의 편집과 충돌하지 않도록 작성 완료 시점을 맞춘다.
+
+2026-10-05 독립 Codex 두 세션의 DB/공개 범위 리뷰와 RSS/웹 리뷰에서 제안한 정렬 인덱스, 실제 동시성·rollback 검증, XML 문자 허용 범위, 환경 변수 연결, 조건부 요청 및 Thymeleaf 검증 보강을 반영했다. 코드 작성자는 DB/저장소, application 서비스, RSS 웹 표현, HTML/config의 파일 경계를 나누며 공용 설정은 주 에이전트가 통합한다.
+
+참고: [RSS 2.0](https://www.rssboard.org/rss-specification), [RSS Profile](https://www.rssboard.org/rss-profile), [RSS autodiscovery](https://www.rssboard.org/rss-autodiscovery), [JDK XMLStreamWriter](https://docs.oracle.com/en/java/javase/25/docs/api/java.xml/javax/xml/stream/XMLStreamWriter.html).
 
 ## 18. CSS와 표현 계층
 

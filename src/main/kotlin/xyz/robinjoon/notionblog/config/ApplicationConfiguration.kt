@@ -4,6 +4,9 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import xyz.robinjoon.notionblog.adapter.input.web.PostPageViewAssembler
+import xyz.robinjoon.notionblog.adapter.input.web.PublicBlogUrls
+import xyz.robinjoon.notionblog.adapter.input.web.RssFeedRenderer
+import xyz.robinjoon.notionblog.adapter.input.web.RssSummaryExtractor
 import xyz.robinjoon.notionblog.adapter.output.notion.NotionPostSource
 import xyz.robinjoon.notionblog.adapter.output.notion.NotionSiteConfigurationSource
 import xyz.robinjoon.notionblog.adapter.output.notion.client.NotionApiClient
@@ -112,7 +115,16 @@ internal class ApplicationConfiguration {
     ): ResolvePostLinksService = ResolvePostLinksService(posts, publications)
 
     @Bean
-    fun postPageViewAssembler(clock: Clock): PostPageViewAssembler = PostPageViewAssembler(clock)
+    fun publicBlogUrls(properties: BlogProperties): PublicBlogUrls = PublicBlogUrls(properties.publicBaseUri)
+
+    @Bean
+    fun rssSummaryExtractor(): RssSummaryExtractor = RssSummaryExtractor()
+
+    @Bean
+    fun rssFeedRenderer(summaryExtractor: RssSummaryExtractor): RssFeedRenderer = RssFeedRenderer(summaryExtractor)
+
+    @Bean
+    fun postPageViewAssembler(clock: Clock, urls: PublicBlogUrls): PostPageViewAssembler = PostPageViewAssembler(clock, urls.feedUrl)
 
     @Bean
     fun postIdFactory(): (SourceDocumentRef) -> PostId = { PostId(UUID.randomUUID()) }

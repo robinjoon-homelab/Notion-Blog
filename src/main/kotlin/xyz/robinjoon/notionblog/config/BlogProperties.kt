@@ -1,13 +1,30 @@
 package xyz.robinjoon.notionblog.config
 
 import org.springframework.boot.context.properties.ConfigurationProperties
+import java.net.URI
 import java.time.Duration
 
 @ConfigurationProperties("blog")
 data class BlogProperties(
     val synchronization: Synchronization = Synchronization(),
     val presentation: Presentation = Presentation(),
+    val publicBaseUrl: String = "",
 ) {
+    val publicBaseUri: URI? = publicBaseUrl.takeUnless(String::isBlank)?.let { value ->
+        val uri = URI.create(value)
+        require(
+            uri.scheme?.lowercase() in setOf("http", "https") &&
+                uri.host != null &&
+                uri.rawUserInfo == null &&
+                uri.rawQuery == null &&
+                uri.rawFragment == null &&
+                uri.rawPath in setOf("", "/") &&
+                (uri.port == -1 || uri.port in 1..65535) &&
+                uri.rawAuthority?.endsWith(':') == false,
+        ) { "blog.public-base-url must be an HTTP(S) origin without credentials, query, fragment or a non-root path" }
+        uri.resolve("/")
+    }
+
     data class Synchronization(
         val enabled: Boolean = true,
         val intervalMs: Long = 60_000,

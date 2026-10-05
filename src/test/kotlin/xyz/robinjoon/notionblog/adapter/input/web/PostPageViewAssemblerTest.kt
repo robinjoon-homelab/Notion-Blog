@@ -2,6 +2,8 @@ package xyz.robinjoon.notionblog.adapter.input.web
 
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.CsvSource
 import org.thymeleaf.context.Context
 import org.thymeleaf.spring6.SpringTemplateEngine
 import org.thymeleaf.templatemode.TemplateMode
@@ -85,6 +87,42 @@ import java.util.UUID
 class PostPageViewAssemblerTest {
     private val clock = Clock.fixed(Instant.parse("2026-08-25T00:00:00Z"), ZoneOffset.UTC)
     private val assembler = PostPageViewAssembler(clock)
+
+    @ParameterizedTest
+    @CsvSource("true, true", "true, false", "false, true", "false, false")
+    fun `renders RSS discovery and subscription only with a configured feed regardless of footer document`(
+        configuredFeed: Boolean,
+        footerDocument: Boolean,
+    ) {
+        val feedUrl = "https://blog.example:8443/feed.xml".takeIf { configuredFeed }
+        val footer = Post(
+            PostId(UUID.fromString("00000000-0000-0000-0000-000000000004")),
+            "Site footer",
+            BlockTree(listOf(node("footer-content", TextBlockContent.Paragraph(listOf(InlineContent.Text("Footer text")))))),
+        ).takeIf { footerDocument }
+        val page = page(emptyList()).copy(footer = footer)
+        val view = PostPageViewAssembler(clock, feedUrl).assemble(page)
+
+        val html = templateEngine().process("blog/post", Context().apply { setVariable("page", view) })
+        val head = html.substringAfter("<head>").substringBefore("</head>")
+        val body = html.substringAfter("<body>").substringBefore("</body>")
+        val alternateLinks = Regex("<link\\b[^>]*rel=\"alternate\"[^>]*>").findAll(head).map { it.value }.toList()
+        val subscriptionLinks = Regex("<a\\b[^>]*>\\s*RSS 구독\\s*</a>").findAll(body).map { it.value }.toList()
+
+        assertThat(view.feedUrl).isEqualTo(feedUrl)
+        if (configuredFeed) {
+            assertThat(alternateLinks).hasSize(1)
+            assertThat(alternateLinks.single()).contains("type=\"application/rss+xml\"", "href=\"$feedUrl\"")
+            assertThat(subscriptionLinks).hasSize(1)
+            assertThat(subscriptionLinks.single()).contains("href=\"$feedUrl\"")
+            assertThat(body.indexOf(subscriptionLinks.single())).isGreaterThan(body.indexOf("</article>"))
+        } else {
+            assertThat(alternateLinks).isEmpty()
+            assertThat(subscriptionLinks).isEmpty()
+            assertThat(html).doesNotContain("application/rss+xml", "RSS 구독")
+        }
+        assertThat(body.contains("Footer text")).isEqualTo(footerDocument)
+    }
 
     @Test
     fun `renders only resolved internal or safe external links and expires source hosted media`() {

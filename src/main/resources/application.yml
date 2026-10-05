@@ -23,6 +23,7 @@ notion:
   max-block-count: ${NOTION_MAX_BLOCK_COUNT:10000}
 
 blog:
+  public-base-url: ${BLOG_PUBLIC_BASE_URL:https://blog.homelab.robinjoon.xyz}
   synchronization:
     enabled: ${BLOG_SYNCHRONIZATION_ENABLED:true}
     interval-ms: ${BLOG_SYNCHRONIZATION_INTERVAL_MS:60000}

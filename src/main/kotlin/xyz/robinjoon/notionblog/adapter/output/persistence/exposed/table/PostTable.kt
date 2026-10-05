@@ -9,6 +9,7 @@ object PostTable : Table("post") {
     val title = text("title")
     val createdAt = timestampWithTimeZone("created_at")
     val updatedAt = timestampWithTimeZone("updated_at")
+    val firstPublishedAt = timestampWithTimeZone("first_published_at").nullable()
 
     override val primaryKey = PrimaryKey(postId)
 }

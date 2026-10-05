@@ -1,9 +1,11 @@
 package xyz.robinjoon.notionblog.application.port.output.persistence
 
+import xyz.robinjoon.notionblog.application.model.PostFeedEntry
 import xyz.robinjoon.notionblog.application.model.StoredPost
 import xyz.robinjoon.notionblog.domain.post.Post
 import xyz.robinjoon.notionblog.domain.post.PostId
 import xyz.robinjoon.notionblog.domain.publication.PostAvailability
+import xyz.robinjoon.notionblog.domain.publication.PublicationId
 import xyz.robinjoon.notionblog.domain.source.PostSourceBinding
 import xyz.robinjoon.notionblog.domain.source.SourceDocumentRef
 import xyz.robinjoon.notionblog.domain.source.SourceRevision
@@ -11,6 +13,14 @@ import java.time.Instant
 
 interface PostRepository {
     fun find(postId: PostId): StoredPost?
+
+    fun findRecentPublishedPosts(
+        publicationId: PublicationId,
+        excludedPostIds: Set<PostId>,
+        limit: Int,
+    ): List<PostFeedEntry>
+
+    fun recordFirstPublication(postId: PostId, observedAt: Instant)
 
     fun findBinding(postId: PostId): PostSourceBinding?
 

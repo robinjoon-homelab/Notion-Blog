@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.transaction.annotation.Transactional
 import xyz.robinjoon.notionblog.application.model.ImportedPost
 import xyz.robinjoon.notionblog.application.model.ImportedPublicationStatus
+import xyz.robinjoon.notionblog.application.model.PostFeedEntry
 import xyz.robinjoon.notionblog.application.model.StoredPost
 import xyz.robinjoon.notionblog.application.port.output.persistence.PostRepository
 import xyz.robinjoon.notionblog.application.port.output.persistence.SnapshotContentException
@@ -15,6 +16,7 @@ import xyz.robinjoon.notionblog.domain.post.PostId
 import xyz.robinjoon.notionblog.domain.post.block.BlockTree
 import xyz.robinjoon.notionblog.domain.publication.PostAvailability
 import xyz.robinjoon.notionblog.domain.publication.PostAvailabilityStatus
+import xyz.robinjoon.notionblog.domain.publication.PublicationId
 import xyz.robinjoon.notionblog.domain.source.PostSourceBinding
 import xyz.robinjoon.notionblog.domain.source.SourceDocumentRef
 import xyz.robinjoon.notionblog.domain.source.SourceId
@@ -74,6 +76,7 @@ class ApplyImportedPostServiceTest {
         assertThat(posts.snapshot).isEqualTo(
             SnapshotWrite(Post(postId, imported.title, imported.content), imported.sourceRevision, now),
         )
+        assertThat(posts.firstPublishedAt).isEqualTo(now)
         assertThat(posts.availability).isEqualTo(PostAvailability(postId, PostAvailabilityStatus.PUBLISHED, now))
         assertThat(states.saved).isEqualTo(
             SyncState(SyncTarget.Post(postId), now, now.plus(Duration.ofMinutes(15)), 0, null),
@@ -84,6 +87,7 @@ class ApplyImportedPostServiceTest {
             "save-identity",
             "find-post",
             "save-snapshot",
+            "record-first-publication",
             "save-availability",
             "find-sync",
             "save-sync",
@@ -108,12 +112,14 @@ class ApplyImportedPostServiceTest {
         service(posts, states) { error("a known source document must not create a new id") }.apply(imported)
 
         assertThat(posts.snapshot).isNull()
+        assertThat(posts.firstPublishedAt).isEqualTo(now)
         assertThat(posts.identity).isEqualTo(IdentityWrite(posts.binding!!, imported.title, now))
         assertThat(posts.availability).isEqualTo(PostAvailability(postId, PostAvailabilityStatus.PUBLISHED, now))
         assertThat(operations).containsExactly(
             "find-binding",
             "save-identity",
             "find-post",
+            "record-first-publication",
             "save-availability",
             "find-sync",
             "save-sync",
@@ -145,6 +151,7 @@ class ApplyImportedPostServiceTest {
             "save-identity",
             "find-post",
             "save-snapshot",
+            "record-first-publication",
             "save-availability",
             "find-sync",
             "save-sync",
@@ -172,6 +179,7 @@ class ApplyImportedPostServiceTest {
             "save-identity",
             "find-post",
             "save-snapshot",
+            "record-first-publication",
             "save-availability",
             "find-sync",
             "save-sync",
@@ -191,6 +199,7 @@ class ApplyImportedPostServiceTest {
         service(posts, states) { error("a known source document must not create a new id") }.apply(imported)
 
         assertThat(posts.snapshot).isNull()
+        assertThat(posts.firstPublishedAt).isNull()
         assertThat(posts.availability).isEqualTo(PostAvailability(postId, PostAvailabilityStatus.UNPUBLISHED, now))
         assertThat(operations).containsExactly(
             "find-binding",
@@ -219,6 +228,7 @@ class ApplyImportedPostServiceTest {
         service(posts, states) { error("not used") }.recordFailure(postId, SyncFailureKind.ACCESS)
 
         assertThat(posts.availability).isNull()
+        assertThat(posts.firstPublishedAt).isNull()
         assertThat(posts.snapshot).isNull()
         assertThat(states.saved).isEqualTo(
             SyncState(
@@ -248,8 +258,51 @@ class ApplyImportedPostServiceTest {
         }.isInstanceOf(SnapshotContentException::class.java)
 
         assertThat(posts.availability).isNull()
+        assertThat(posts.firstPublishedAt).isNull()
         assertThat(states.saved).isNull()
         assertThat(operations).containsExactly("find-binding", "save-identity", "find-post", "save-snapshot")
+    }
+
+    @Test
+    fun `first publication time survives unchanged sync edits unpublishing and republication`() {
+        val operations = mutableListOf<String>()
+        val postId = postId("00000000-0000-0000-0000-000000000008")
+        val posts = RecordingPostRepository(operations)
+        val states = RecordingSyncStateRepository(operations)
+        val imported = importedPost()
+        val firstPublishedAt = now.plusSeconds(60)
+
+        fun applyAt(at: Instant, value: ImportedPost) {
+            ApplyImportedPostService(posts, states, Clock.fixed(at, ZoneOffset.UTC), refreshPolicy) { postId }.apply(value)
+        }
+
+        applyAt(now, imported.copy(publicationStatus = ImportedPublicationStatus.UNPUBLISHED))
+        assertThat(posts.firstPublishedAt).isNull()
+        assertThat(posts.storedPost).isNull()
+
+        applyAt(firstPublishedAt, imported)
+        assertThat(posts.firstPublishedAt).isEqualTo(firstPublishedAt)
+        assertThat(posts.storedPost?.capturedAt).isEqualTo(firstPublishedAt)
+
+        applyAt(now.plusSeconds(120), imported)
+        assertThat(posts.firstPublishedAt).isEqualTo(firstPublishedAt)
+        assertThat(posts.storedPost?.capturedAt).isEqualTo(firstPublishedAt)
+
+        val edited = imported.copy(title = "Edited title", sourceRevision = SourceRevision("revision-2"))
+        applyAt(now.plusSeconds(180), edited)
+        assertThat(posts.firstPublishedAt).isEqualTo(firstPublishedAt)
+        assertThat(posts.storedPost?.post?.title).isEqualTo("Edited title")
+        assertThat(posts.storedPost?.capturedAt).isEqualTo(now.plusSeconds(180))
+
+        applyAt(now.plusSeconds(240), edited.copy(publicationStatus = ImportedPublicationStatus.UNPUBLISHED))
+        assertThat(posts.firstPublishedAt).isEqualTo(firstPublishedAt)
+        assertThat(posts.availability?.status).isEqualTo(PostAvailabilityStatus.UNPUBLISHED)
+        assertThat(posts.storedPost?.capturedAt).isEqualTo(now.plusSeconds(180))
+
+        applyAt(now.plusSeconds(300), edited)
+        assertThat(posts.firstPublishedAt).isEqualTo(firstPublishedAt)
+        assertThat(posts.availability?.status).isEqualTo(PostAvailabilityStatus.PUBLISHED)
+        assertThat(posts.storedPost?.capturedAt).isEqualTo(now.plusSeconds(180))
     }
 
     private fun service(
@@ -278,6 +331,7 @@ class ApplyImportedPostServiceTest {
         var snapshotWriteFailure: RuntimeException? = null
         var identity: IdentityWrite? = null
         var snapshot: SnapshotWrite? = null
+        var firstPublishedAt: Instant? = null
         var availability: PostAvailability? = null
 
         override fun find(postId: PostId): StoredPost? {
@@ -299,6 +353,12 @@ class ApplyImportedPostServiceTest {
 
         override fun findBindingsByPostIds(postIds: Set<PostId>): Map<PostId, PostSourceBinding> = emptyMap()
 
+        override fun findRecentPublishedPosts(
+            publicationId: PublicationId,
+            excludedPostIds: Set<PostId>,
+            limit: Int,
+        ): List<PostFeedEntry> = error("feed lookup is not used while applying imports")
+
         override fun saveIdentity(binding: PostSourceBinding, title: String, changedAt: Instant) {
             operations += "save-identity"
             this.binding = binding
@@ -309,6 +369,15 @@ class ApplyImportedPostServiceTest {
             operations += "save-snapshot"
             snapshotWriteFailure?.let { throw it }
             snapshot = SnapshotWrite(post, sourceRevision, capturedAt)
+            storedPost = StoredPost(post, sourceRevision, capturedAt)
+        }
+
+        override fun recordFirstPublication(postId: PostId, observedAt: Instant) {
+            operations += "record-first-publication"
+            check(storedPost?.post?.id == postId) { "a published snapshot must exist before recording the first publication" }
+            if (firstPublishedAt == null) {
+                firstPublishedAt = observedAt
+            }
         }
 
         override fun findAvailability(postId: PostId): PostAvailability? = availability

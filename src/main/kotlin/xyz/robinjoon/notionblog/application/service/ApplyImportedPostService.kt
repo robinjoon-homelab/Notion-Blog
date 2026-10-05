@@ -45,6 +45,7 @@ class ApplyImportedPostService(
                         now,
                     )
                 }
+                postRepository.recordFirstPublication(binding.postId, now)
                 postRepository.saveAvailability(PostAvailability(binding.postId, PostAvailabilityStatus.PUBLISHED, now))
             }
 

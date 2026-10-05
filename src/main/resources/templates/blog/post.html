@@ -6,6 +6,7 @@
     <title th:text="${page.title + ' · ' + page.siteName}">Post · Site</title>
     <meta th:if="${page.description != null}" name="description" th:content="${page.description}">
     <link th:if="${page.faviconHref != null}" rel="icon" th:href="${page.faviconHref}">
+    <link th:if="${page.feedUrl != null}" rel="alternate" type="application/rss+xml" th:href="${page.feedUrl}">
     <link th:each="asset : ${page.styleSheets}" rel="stylesheet" th:href="${asset.publicPath}"
           th:type="${asset.mediaType}" th:integrity="${asset.integrity}" crossorigin="anonymous">
     <script th:each="asset : ${page.scripts}" th:src="${asset.publicPath}" th:type="${asset.mediaType}"
@@ -23,6 +24,7 @@
     <footer th:if="${page.footer != null}" class="notion-page-footer">
         <th:block th:replace="~{blog/fragments :: document(${page.footer})}"></th:block>
     </footer>
+    <p th:if="${page.feedUrl != null}"><a th:href="${page.feedUrl}">RSS 구독</a></p>
 </main>
 </body>
 </html>

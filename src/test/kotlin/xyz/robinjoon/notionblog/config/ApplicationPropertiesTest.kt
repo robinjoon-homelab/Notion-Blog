@@ -2,14 +2,113 @@ package xyz.robinjoon.notionblog.config
 
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.CsvSource
+import org.junit.jupiter.params.provider.ValueSource
 import org.springframework.boot.context.properties.EnableConfigurationProperties
+import org.springframework.boot.test.context.ConfigDataApplicationContextInitializer
 import org.springframework.boot.test.context.runner.ApplicationContextRunner
 import org.springframework.context.annotation.Configuration
+import org.springframework.core.env.StandardEnvironment
+import org.springframework.core.env.SystemEnvironmentPropertySource
+import java.net.URI
 import java.time.Duration
 
 class ApplicationPropertiesTest {
     private val contextRunner = ApplicationContextRunner()
         .withUserConfiguration(PropertiesConfiguration::class.java)
+
+    @Test
+    fun `permits typed configuration without a public base URL`() {
+        contextRunner.withPropertyValues(*validProperties()).run { context ->
+            assertThat(context).hasNotFailed()
+            assertThat(context.getBean(BlogProperties::class.java).publicBaseUri).isNull()
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["", " ", "\t\n"])
+    fun `leaves RSS disabled when the public base URL is blank`(value: String) {
+        assertThat(BlogProperties(publicBaseUrl = value).publicBaseUri).isNull()
+    }
+
+    @ParameterizedTest
+    @CsvSource(
+        "https://blog.example, https://blog.example/",
+        "https://blog.example/, https://blog.example/",
+        "HTTPS://Blog.Example, HTTPS://Blog.Example/",
+        "http://localhost:8080, http://localhost:8080/",
+        "http://localhost:1/, http://localhost:1/",
+        "https://blog.example:65535, https://blog.example:65535/",
+        "http://[::1]:8080/, http://[::1]:8080/",
+        "https://[2001:db8::1], https://[2001:db8::1]/",
+    )
+    fun `binds an HTTP origin and normalizes its root path`(value: String, normalized: String) {
+        contextRunner.withPropertyValues(*validProperties("blog.public-base-url=$value")).run { context ->
+            assertThat(context).hasNotFailed()
+            assertThat(context.getBean(BlogProperties::class.java).publicBaseUri).isEqualTo(URI(normalized))
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(
+        strings = [
+            "blog.example", "//blog.example", "https:blog.example", "https://", "ftp://blog.example",
+            "https://user@blog.example", "https://@blog.example", "https://blog.example?", "https://blog.example?a=1",
+            "https://blog.example#", "https://blog.example#section", "https://blog.example/blog", "https://blog.example//",
+            "https://blog.example/.", "https://blog.example/%2F", "https://:8080", "https://blog.example:",
+            "https://blog.example:0", "https://blog.example:-1", "https://blog.example:abc", "https://blog.example:65536",
+            "http://[::1]:", "http://[::1]:0", "https://blog.example/ invalid",
+        ],
+    )
+    fun `rejects a public base URL that is not a valid HTTP origin`(value: String) {
+        contextRunner.withPropertyValues(*validProperties("blog.public-base-url=$value")).run { context ->
+            assertThat(context).hasFailed()
+        }
+    }
+
+    @Test
+    fun `uses the existing public blog origin by default from application yaml`() {
+        assertPublicOriginFromEnvironment(emptyMap(), URI("https://blog.homelab.robinjoon.xyz/"))
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["", " "])
+    fun `explicitly blank environment values disable the default public origin`(value: String) {
+        assertPublicOriginFromEnvironment(mapOf("BLOG_PUBLIC_BASE_URL" to value), null)
+    }
+
+    @Test
+    fun `loads the public origin from BLOG_PUBLIC_BASE_URL through application yaml`() {
+        assertPublicOriginFromEnvironment(
+            mapOf("BLOG_PUBLIC_BASE_URL" to "https://environment.example:8443"),
+            URI("https://environment.example:8443/"),
+        )
+    }
+
+    private fun assertPublicOriginFromEnvironment(environment: Map<String, Any>, expected: URI?) {
+        contextRunner
+            .withPropertyValues(
+                "spring.config.location=classpath:/application.yml",
+                "notion.token=test-token",
+                "notion.settings-data-source-id=settings-data-source",
+            )
+            .withInitializer { context ->
+                context.environment.propertySources.replace(
+                    StandardEnvironment.SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME,
+                    SystemEnvironmentPropertySource(
+                        StandardEnvironment.SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME,
+                        environment,
+                    ),
+                )
+                ConfigDataApplicationContextInitializer().initialize(context)
+            }
+            .run { context ->
+                assertThat(context).hasNotFailed()
+                assertThat(context.getBean(BlogProperties::class.java).publicBaseUri)
+                    .isEqualTo(expected)
+            }
+    }
 
     @Test
     fun `binds typed synchronization and deployed presentation asset settings`() {

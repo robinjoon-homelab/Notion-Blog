@@ -1,11 +1,19 @@
 package xyz.robinjoon.notionblog.adapter.output.persistence.exposed
 
+import org.jetbrains.exposed.v1.core.Join
+import org.jetbrains.exposed.v1.core.JoinType
+import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.isNotNull
+import org.jetbrains.exposed.v1.core.isNull
+import org.jetbrains.exposed.v1.core.notInList
 import org.jetbrains.exposed.v1.core.or
+import org.jetbrains.exposed.v1.jdbc.andWhere
 import org.jetbrains.exposed.v1.jdbc.batchUpsert
 import org.jetbrains.exposed.v1.jdbc.insert
+import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.update
 import org.jetbrains.exposed.v1.jdbc.upsert
@@ -13,7 +21,11 @@ import xyz.robinjoon.notionblog.adapter.output.persistence.exposed.table.PostAva
 import xyz.robinjoon.notionblog.adapter.output.persistence.exposed.table.PostSnapshotTable
 import xyz.robinjoon.notionblog.adapter.output.persistence.exposed.table.PostSourceBindingTable
 import xyz.robinjoon.notionblog.adapter.output.persistence.exposed.table.PostTable
+import xyz.robinjoon.notionblog.adapter.output.persistence.exposed.table.PublicationMemberTable
+import xyz.robinjoon.notionblog.adapter.output.persistence.exposed.table.PublicationRevisionTable
+import xyz.robinjoon.notionblog.adapter.output.persistence.exposed.table.PublicationTable
 import xyz.robinjoon.notionblog.adapter.output.persistence.snapshot.JsonBlockTreeSnapshotCodec
+import xyz.robinjoon.notionblog.application.model.PostFeedEntry
 import xyz.robinjoon.notionblog.application.model.StoredPost
 import xyz.robinjoon.notionblog.application.port.output.persistence.PostRepository
 import xyz.robinjoon.notionblog.application.port.output.persistence.SnapshotContentException
@@ -21,6 +33,8 @@ import xyz.robinjoon.notionblog.domain.post.Post
 import xyz.robinjoon.notionblog.domain.post.PostId
 import xyz.robinjoon.notionblog.domain.publication.PostAvailability
 import xyz.robinjoon.notionblog.domain.publication.PostAvailabilityStatus
+import xyz.robinjoon.notionblog.domain.publication.PublicationId
+import xyz.robinjoon.notionblog.domain.publication.PublicationRevisionState
 import xyz.robinjoon.notionblog.domain.source.PostSourceBinding
 import xyz.robinjoon.notionblog.domain.source.SourceDocumentRef
 import xyz.robinjoon.notionblog.domain.source.SourceId
@@ -48,6 +62,63 @@ class ExposedPostRepository(
             SourceRevision(row[PostSnapshotTable.sourceRevision]),
             row[PostSnapshotTable.capturedAt].toInstant(),
         )
+    }
+
+    override fun findRecentPublishedPosts(
+        publicationId: PublicationId,
+        excludedPostIds: Set<PostId>,
+        limit: Int,
+    ): List<PostFeedEntry> {
+        val query = Join(
+            table = PublicationTable,
+            otherTable = PublicationRevisionTable,
+            joinType = JoinType.INNER,
+            additionalConstraint = {
+                (PublicationTable.activeRevisionId eq PublicationRevisionTable.revisionId) and
+                    (PublicationTable.publicationId eq PublicationRevisionTable.publicationId)
+            },
+        ).join(
+            PublicationMemberTable,
+            JoinType.INNER,
+            PublicationRevisionTable.revisionId,
+            PublicationMemberTable.revisionId,
+        ).join(
+            PostTable,
+            JoinType.INNER,
+            PublicationMemberTable.postId,
+            PostTable.postId,
+        ).innerJoin(PostAvailabilityTable)
+            .innerJoin(PostSnapshotTable)
+            .select(PostTable.postId, PostTable.title, PostTable.firstPublishedAt, PostSnapshotTable.snapshotJson)
+            .where {
+                (PublicationTable.publicationId eq publicationId.value) and
+                    (PublicationRevisionTable.state eq PublicationRevisionState.ACTIVE.name) and
+                    (PostAvailabilityTable.status eq PostAvailabilityStatus.PUBLISHED.name) and
+                    PostTable.firstPublishedAt.isNotNull()
+            }
+        if (excludedPostIds.isNotEmpty()) {
+            query.andWhere { PostTable.postId notInList excludedPostIds.map(PostId::value) }
+        }
+        return query.orderBy(PostTable.firstPublishedAt to SortOrder.DESC, PostTable.postId to SortOrder.ASC)
+            .limit(limit)
+            .map { row ->
+                val postId = PostId(row[PostTable.postId])
+                val content = try {
+                    snapshotCodec.decode(row[PostSnapshotTable.snapshotJson])
+                } catch (exception: Exception) {
+                    throw SnapshotContentException("unable to decode snapshot for post ${postId.value}", exception)
+                }
+                PostFeedEntry(
+                    Post(postId, row[PostTable.title], content),
+                    requireNotNull(row[PostTable.firstPublishedAt]).toInstant(),
+                )
+            }
+    }
+
+    override fun recordFirstPublication(postId: PostId, observedAt: Instant) {
+        PostTable.update({ (PostTable.postId eq postId.value) and PostTable.firstPublishedAt.isNull() }) {
+            it[firstPublishedAt] = observedAt.asOffsetDateTime()
+        }
     }
 
     override fun findBinding(postId: PostId): PostSourceBinding? = PostSourceBindingTable.selectAll()

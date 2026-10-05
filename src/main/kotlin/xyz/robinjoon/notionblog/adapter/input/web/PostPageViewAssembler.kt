@@ -113,6 +113,7 @@ import java.time.Clock
 
 class PostPageViewAssembler(
     private val clock: Clock,
+    private val feedUrl: String? = null,
 ) {
     fun assemble(page: BlogPage): PostPageView = PostPageView(
         language = page.site.metadata.languageTag,
@@ -126,6 +127,7 @@ class PostPageViewAssembler(
         header = page.header?.let { documentView(it, page.links, idPrefix = "header-${it.id.value}-") },
         post = documentView(page.post, page.links, idPrefix = ""),
         footer = page.footer?.let { documentView(it, page.links, idPrefix = "footer-${it.id.value}-") },
+        feedUrl = feedUrl,
     )
 
     private fun documentView(post: Post, links: Map<LinkTarget.SourceDocument, LinkResolution>, idPrefix: String): PostDocumentView {
