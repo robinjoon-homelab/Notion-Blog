@@ -16,6 +16,7 @@ import xyz.robinjoon.notionblog.application.port.output.persistence.SiteConfigur
 import xyz.robinjoon.notionblog.application.port.output.presentation.PresentationAssetCatalog
 import xyz.robinjoon.notionblog.domain.post.Post
 import xyz.robinjoon.notionblog.domain.post.PostId
+import xyz.robinjoon.notionblog.domain.post.PostSourceBinding
 import xyz.robinjoon.notionblog.domain.post.block.BlockTree
 import xyz.robinjoon.notionblog.domain.post.block.inline.LinkTarget
 import xyz.robinjoon.notionblog.domain.publication.PublicationId
@@ -27,7 +28,6 @@ import xyz.robinjoon.notionblog.domain.site.PresentationProfileRef
 import xyz.robinjoon.notionblog.domain.site.PresentationTokens
 import xyz.robinjoon.notionblog.domain.site.SiteConfiguration
 import xyz.robinjoon.notionblog.domain.site.SiteMetadata
-import xyz.robinjoon.notionblog.domain.source.PostSourceBinding
 import xyz.robinjoon.notionblog.domain.source.SourceDocumentRef
 import xyz.robinjoon.notionblog.domain.source.SourceId
 import java.util.UUID
@@ -45,16 +45,18 @@ class GetBlogPageServiceTest {
         val body = post("body")
         val header = post("header")
         val footer = post("footer")
-        val configuration = configuration(headerDocument = sourceDocument("header"), footerDocument = sourceDocument("footer"))
+        val headerDocument = sourceDocument("header")
+        val footerDocument = sourceDocument("footer")
+        val configuration = configuration(headerDocument = headerDocument, footerDocument = footerDocument)
         val profile = profile()
         val style = profile.styleSheets.single()
         val script = profile.scripts.single()
-        val favicon = configuration.metadata.favicon!!
+        val favicon = requireNotNull(configuration.metadata.favicon)
         every { publishedPosts.get(body.id) } returns PostLookupResult.Found(body)
         every { siteConfigurations.findCurrent() } returns configuration
         every { siteConfigurations.findProfile(configuration.presentationProfile) } returns profile
-        every { postRepository.findBinding(configuration.headerDocument!!) } returns binding(header, configuration.headerDocument!!)
-        every { postRepository.findBinding(configuration.footerDocument!!) } returns binding(footer, configuration.footerDocument!!)
+        every { postRepository.findBinding(headerDocument) } returns binding(header, headerDocument)
+        every { postRepository.findBinding(footerDocument) } returns binding(footer, footerDocument)
         every { publishedPosts.get(header.id) } returns PostLookupResult.Found(header)
         every { publishedPosts.get(footer.id) } returns PostLookupResult.Found(footer)
         every { assets.resolve(style) } returns descriptor(style)
@@ -84,17 +86,20 @@ class GetBlogPageServiceTest {
     fun `omits missing unpublished and out of scope layout fragments without failing the page`() {
         val body = post("body")
         val unpublishedHeader = post("unpublished-header")
-        val configuration = configuration(
-            headerDocument = sourceDocument("unpublished-header"),
-            footerDocument = sourceDocument("missing-footer"),
-        )
+        val headerDocument = sourceDocument("unpublished-header")
+        val footerDocument = sourceDocument("missing-footer")
+        val configuration =
+            configuration(
+                headerDocument = headerDocument,
+                footerDocument = footerDocument,
+            )
         val profile = profile()
         every { publishedPosts.get(body.id) } returns PostLookupResult.Found(body)
         every { siteConfigurations.findCurrent() } returns configuration
         every { siteConfigurations.findProfile(configuration.presentationProfile) } returns profile
-        every { postRepository.findBinding(configuration.headerDocument!!) } returns binding(unpublishedHeader, configuration.headerDocument!!)
+        every { postRepository.findBinding(headerDocument) } returns binding(unpublishedHeader, headerDocument)
         every { publishedPosts.get(unpublishedHeader.id) } returns PostLookupResult.NotFound
-        every { postRepository.findBinding(configuration.footerDocument!!) } returns null
+        every { postRepository.findBinding(footerDocument) } returns null
         every { assets.resolve(any()) } answers { descriptor(firstArg<PresentationAssetRef>()) }
         every { links.resolve(configuration.publicationId, listOf(body.content)) } returns emptyMap()
 
@@ -140,32 +145,37 @@ class GetBlogPageServiceTest {
     }
 
     @Test
-    fun `is a Spring service so transactional reads can be proxied`() {
-        assertThat(GetBlogPageService::class.java.isAnnotationPresent(Service::class.java)).isTrue()
+    fun `does not declare a component scanning stereotype`() {
+        assertThat(GetBlogPageService::class.java.isAnnotationPresent(Service::class.java)).isFalse()
     }
 
     private fun configuration(
         headerDocument: SourceDocumentRef? = null,
         footerDocument: SourceDocumentRef? = null,
-    ): SiteConfiguration = SiteConfiguration(
-        publicationId = PublicationId(UUID.randomUUID()),
-        rootDocument = sourceDocument("root"),
-        headerDocument = headerDocument,
-        footerDocument = footerDocument,
-        metadata = SiteMetadata("Blog", null, "ko-KR", asset("favicon")),
-        presentationProfile = PresentationProfileRef(PresentationProfileId(UUID.randomUUID()), 1),
-    )
+    ): SiteConfiguration =
+        SiteConfiguration(
+            publicationId = PublicationId(UUID.randomUUID()),
+            rootDocument = sourceDocument("root"),
+            headerDocument = headerDocument,
+            footerDocument = footerDocument,
+            metadata = SiteMetadata("Blog", null, "ko-KR", asset("favicon")),
+            presentationProfile = PresentationProfileRef(PresentationProfileId(UUID.randomUUID()), 1),
+        )
 
-    private fun profile(): PresentationProfile = PresentationProfile(
-        id = PresentationProfileId(UUID.randomUUID()),
-        key = PresentationProfileKey("default"),
-        version = 1,
-        tokens = PresentationTokens(),
-        styleSheets = listOf(asset("style")),
-        scripts = listOf(asset("script")),
-    )
+    private fun profile(): PresentationProfile =
+        PresentationProfile(
+            id = PresentationProfileId(UUID.randomUUID()),
+            key = PresentationProfileKey("default"),
+            version = 1,
+            tokens = PresentationTokens(),
+            styleSheets = listOf(asset("style")),
+            scripts = listOf(asset("script")),
+        )
 
-    private fun binding(post: Post, sourceDocument: SourceDocumentRef): PostSourceBinding = PostSourceBinding(post.id, sourceDocument)
+    private fun binding(
+        post: Post,
+        sourceDocument: SourceDocumentRef,
+    ): PostSourceBinding = PostSourceBinding(post.id, sourceDocument)
 
     private fun post(externalId: String): Post = Post(PostId(UUID.randomUUID()), externalId, BlockTree(emptyList()))
 
@@ -173,9 +183,10 @@ class GetBlogPageServiceTest {
 
     private fun asset(key: String): PresentationAssetRef = PresentationAssetRef(key, 1, "sha256-$key")
 
-    private fun descriptor(asset: PresentationAssetRef): PresentationAssetDescriptor = PresentationAssetDescriptor(
-        publicPath = "/assets/${asset.key}",
-        mediaType = "text/plain",
-        integrity = asset.integrity,
-    )
+    private fun descriptor(asset: PresentationAssetRef): PresentationAssetDescriptor =
+        PresentationAssetDescriptor(
+            publicPath = "/assets/${asset.key}",
+            mediaType = "text/plain",
+            integrity = asset.integrity,
+        )
 }

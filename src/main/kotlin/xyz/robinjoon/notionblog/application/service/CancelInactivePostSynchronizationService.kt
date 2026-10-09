@@ -1,13 +1,12 @@
 package xyz.robinjoon.notionblog.application.service
 
-import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import xyz.robinjoon.notionblog.application.port.output.persistence.PublicationRepository
 import xyz.robinjoon.notionblog.application.port.output.persistence.SyncStateRepository
 import xyz.robinjoon.notionblog.domain.post.PostId
 import xyz.robinjoon.notionblog.domain.sync.SyncTarget
 
-@Service
+@Transactional
 class CancelInactivePostSynchronizationService(
     private val publicationRepository: PublicationRepository,
     private val syncStateRepository: SyncStateRepository,

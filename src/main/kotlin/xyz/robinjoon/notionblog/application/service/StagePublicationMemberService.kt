@@ -1,6 +1,5 @@
 package xyz.robinjoon.notionblog.application.service
 
-import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import xyz.robinjoon.notionblog.application.port.output.persistence.PublicationRepository
 import xyz.robinjoon.notionblog.application.port.output.persistence.SyncStateRepository
@@ -16,7 +15,7 @@ import xyz.robinjoon.notionblog.domain.sync.SyncTarget
 import java.time.Clock
 import java.util.UUID
 
-@Service
+@Transactional
 class StagePublicationMemberService(
     private val publicationRepository: PublicationRepository,
     private val syncStateRepository: SyncStateRepository,
@@ -37,9 +36,10 @@ class StagePublicationMemberService(
 
     @Transactional
     fun stage(member: PublicationMember) {
-        val revision = requireNotNull(publicationRepository.findRevision(member.revisionId)) {
-            "publication revision must exist before a member can be staged"
-        }
+        val revision =
+            requireNotNull(publicationRepository.findRevision(member.revisionId)) {
+                "publication revision must exist before a member can be staged"
+            }
         require(revision.state == PublicationRevisionState.STAGING) {
             "publication members can only be staged on a staging revision"
         }
@@ -47,16 +47,21 @@ class StagePublicationMemberService(
     }
 
     @Transactional
-    fun abandon(revisionId: PublicationRevisionId, failureKind: SyncFailureKind) {
-        val revision = requireNotNull(publicationRepository.findRevision(revisionId)) {
-            "publication revision must exist before it can be abandoned"
-        }
+    fun abandon(
+        revisionId: PublicationRevisionId,
+        failureKind: SyncFailureKind,
+    ) {
+        val revision =
+            requireNotNull(publicationRepository.findRevision(revisionId)) {
+                "publication revision must exist before it can be abandoned"
+            }
         val now = clock.instant()
         publicationRepository.updateRevision(revision.abandon(), now)
 
         val target = SyncTarget.Publication(revision.publicationId)
-        val current = syncStateRepository.find(target)
-            ?: SyncState(target, lastSuccessAt = null, refreshAfter = now, failureCount = 0, lastErrorKind = null)
+        val current =
+            syncStateRepository.find(target)
+                ?: SyncState(target, lastSuccessAt = null, refreshAfter = now, failureCount = 0, lastErrorKind = null)
         val failureCount = current.failureCount + 1
         syncStateRepository.save(
             current.recordFailure(failureKind, refreshPolicy.nextFailureRefreshAt(now, failureCount)),

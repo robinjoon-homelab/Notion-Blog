@@ -54,12 +54,13 @@ class SynchronizePostServiceTest {
         val parent = sourceDocument("parent")
         val child = sourceDocument("child")
         val second = sourceDocument("second")
-        every { queries.loadPost(postId) } returns PostSynchronizationContext(
-            publicationId = PublicationId(UUID.randomUUID()),
-            postId = postId,
-            sourceDocument = parent,
-            activeDirectChildren = setOf(child, second),
-        )
+        every { queries.loadPost(postId) } returns
+            PostSynchronizationContext(
+                publicationId = PublicationId(UUID.randomUUID()),
+                postId = postId,
+                sourceDocument = parent,
+                activeDirectChildren = setOf(child, second),
+            )
         val reorderedChildren = listOf(second, child)
         val imported = imported(parent, reorderedChildren)
         every { source.fetch(parent) } answers {
@@ -85,12 +86,13 @@ class SynchronizePostServiceTest {
     fun `preserves old post state by skipping apply for source failures and invalid imports`() {
         val postId = postId()
         val expected = sourceDocument("expected")
-        every { queries.loadPost(postId) } returns PostSynchronizationContext(
-            PublicationId(UUID.randomUUID()),
-            postId,
-            expected,
-            emptySet(),
-        )
+        every { queries.loadPost(postId) } returns
+            PostSynchronizationContext(
+                PublicationId(UUID.randomUUID()),
+                postId,
+                expected,
+                emptySet(),
+            )
         val sourceFailure = SourceAccessException()
         every { source.fetch(expected) } throws sourceFailure
         every { applyService.recordFailure(any(), any()) } just runs
@@ -119,12 +121,13 @@ class SynchronizePostServiceTest {
         val postId = postId()
         val parent = sourceDocument("parent")
         val child = sourceDocument("child")
-        every { queries.loadPost(postId) } returns PostSynchronizationContext(
-            publicationId = PublicationId(UUID.randomUUID()),
-            postId = postId,
-            sourceDocument = parent,
-            activeDirectChildren = emptySet(),
-        )
+        every { queries.loadPost(postId) } returns
+            PostSynchronizationContext(
+                publicationId = PublicationId(UUID.randomUUID()),
+                postId = postId,
+                sourceDocument = parent,
+                activeDirectChildren = emptySet(),
+            )
         val imported = imported(parent, listOf(child))
         every { source.fetch(parent) } returns imported
         every { applyService.apply(imported) } returns postId

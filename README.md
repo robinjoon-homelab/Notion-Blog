@@ -15,7 +15,7 @@ Notion을 편집 도구로 사용하는 셀프 호스팅 블로그입니다. 게
 
 웹 요청과 동기화 스케줄러는 하나의 Spring Boot 애플리케이션에서 실행됩니다. 별도 worker나 migration 프로세스는 없습니다.
 
-전체 설계와 결정은 [Kotlin/Spring 아키텍처](docs/kotlin-spring-architecture.md), Notion 설정 데이터 소스의 행 계약은 [Notion 설정 스키마](docs/notion-settings-schema.md), 에이전트 작업 규칙은 [AGENTS.md](AGENTS.md)를 참고합니다.
+전체 설계와 결정은 [Kotlin/Spring 아키텍처](docs/kotlin-spring-architecture.md), 공통 개발 기준은 [개발 가이드](docs/development.md)와 [코드 품질 규칙](docs/code-quality.md), Notion 설정 데이터 소스의 행 계약은 [Notion 설정 스키마](docs/notion-settings-schema.md), 에이전트 작업 규칙은 [AGENTS.md](AGENTS.md)를 참고합니다.
 
 ## Requirements
 
@@ -88,6 +88,8 @@ HTML 게시글 경로는 다음 두 개입니다. RSS 구독 피드는 `GET /fee
 
 동기화는 `BLOG_SYNCHRONIZATION_*` 설정에 따라 due `sync_state` 대상을 처리합니다. 성공 시 다음 성공 주기를 예약하고, 실패 시 분류된 오류와 지수 백오프를 기록합니다. 외부 HTTP 호출과 PostgreSQL transaction은 분리되어 있으며, Notion 장애는 readiness 실패로 연결하지 않습니다.
 
+Spring MVC 요청은 가상 스레드에서 실행합니다. readiness는 애플리케이션 준비 상태와 DB 연결을 함께 확인하며, DB 장애가 liveness 실패로 이어지지는 않습니다.
+
 ### RSS Subscription
 
 기본 공개 주소는 `https://blog.homelab.robinjoon.xyz`입니다. 별도 환경 변수 설정 없이 페이지 하단의 **RSS 구독** 링크와 HTML 자동 탐색 태그가 나타나며, 구독기에는 `https://blog.homelab.robinjoon.xyz/feed.xml`을 등록합니다. 다른 주소로 운영하거나 로컬에서 확인할 때는 다음 환경 변수로 재정의할 수 있습니다.
@@ -130,11 +132,14 @@ Notion API가 기본 뷰의 설정이나 표시 속성 목록을 생략/null로 
 
 ```bash
 ./gradlew ktlintCheck
+./gradlew detektMain detektTest
 ./gradlew test
 ./gradlew build
 ```
 
-`test`와 `build`는 컴파일·테스트 전에 `ktlintFormat` → `ktlintCheck` 순서로 실행합니다. main/test Kotlin 소스와 Gradle Kotlin 스크립트에서 자동 수정 가능한 위반은 파일에 반영하며, 자동 수정할 수 없는 위반이 남으면 중단합니다. `ktlintCheck`를 단독 실행하면 파일 수정 없이 검사만 합니다. ktlint 엔진은 `1.8.0`, Gradle 플러그인은 `14.2.0`으로 고정합니다.
+`ktlintCheck`, `test`, `build`는 `ktlintFormat` → `ktlintCheck` 순서로 실행합니다. main/test Kotlin 소스와 Gradle Kotlin 스크립트에서 자동 수정 가능한 위반은 파일에 반영하며, 자동 수정할 수 없는 위반이 남으면 중단합니다. `test`와 `build`는 타입 분석 detekt와 사용자 정의 품질 규칙의 테스트도 실행합니다. CI는 자동 수정 뒤 diff가 남으면 실패합니다. ktlint 엔진은 `1.8.0`, Gradle 플러그인은 `14.2.0`으로 고정합니다.
+
+REST Docs는 기존 HTML·RSS 경로의 HTTP 계약을 검증하고 문서를 생성합니다. `build`는 문서와 로컬 CSS를 `application.jar`에 포함하며 실행 후 `/docs/index.html`에서 확인할 수 있습니다.
 
 테스트는 다음 경계를 검증합니다.
 
@@ -166,18 +171,23 @@ TESTCONTAINERS_HOST_OVERRIDE=127.0.0.1 \
 ## Docker
 
 ```bash
+./gradlew build
 docker build -t notion-blog:local .
 docker run --rm --env-file local.env -p 8080:8080 notion-blog:local
 ```
 
-Runtime container는 UID/GID `10001:10001`로 실행됩니다. read-only root filesystem, `/tmp` volume과 같은 실행 정책은 외부 배포 하네스에서 설정합니다.
+Dockerfile은 검증된 `build/libs/application.jar`를 사용합니다. Runtime container는 UID/GID `10001:10001`로 실행됩니다. read-only root filesystem, `/tmp` volume과 같은 실행 정책은 외부 배포 하네스에서 설정합니다.
+
+런타임 JVM·메모리는 JRE 25의 기본값을 사용하며 힙 크기·메모리 비율·OOM 종료 옵션을 별도로 주입하지 않습니다. Gradle 빌드 JVM과 Spring 가상 스레드 설정은 유지합니다.
 
 ## Deployment Boundary
 
-이 저장소는 애플리케이션 소스, Gradle/Flyway 설정, Dockerfile과 CI workflow만 소유합니다. Helm chart, Kubernetes manifest, GitOps 설정, Secret/ConfigMap 주입은 별도 하네스 저장소에서 관리합니다.
+이 저장소는 애플리케이션 소스, Gradle/Flyway 설정, Dockerfile과 CI workflow를 소유합니다. `.github/deployment.json`에는 최초 생성 요청용 DB명·도메인·런타임 환경변수와 Secret 참조를 선언합니다. Helm chart, Kubernetes manifest, GitOps 설정, Secret/ConfigMap 주입은 별도 하네스 저장소에서 관리합니다.
 
 이미지 발행 job은 공통 `load-ci-secrets@v1.0.0` Action으로 SMS의 `zot`·`harness` 객체를 조회합니다. GitHub OIDC 인증 후 전달된 `REGISTRY_USERNAME`, `REGISTRY_PASSWORD`, `HARNESS_ACTIONS_TOKEN` 환경변수를 사용하며, 같은 이름의 CI 자격증명을 앱별 GitHub Secrets에 반복 등록하지 않습니다.
 
-기본 브랜치 CI는 불변 태그로 container image push를 완료한 뒤, 같은 태그를 사용해 `robinjoon-homelab/Simple-K3S-Herness`의 배포 workflow를 요청합니다. 이를 위해 SMS의 `harness` 객체에 `HARNESS_ACTIONS_TOKEN`을 등록합니다. publish job은 GitHub OIDC의 `id-token: write` 권한으로 조회하고, 하네스 호출 시 받은 값을 `GH_TOKEN`으로 전달합니다. 이 토큰은 하네스 저장소에만 접근할 수 있고 `Actions: write` 권한만 가진 fine-grained token 또는 GitHub App token을 사용합니다.
+`master` CI는 `APP_NAME=notion-blog`와 기존 `HOMELAB_REGISTRY_HOST`·`HOMELAB_REGISTRY_IMAGE`를 사용해 검증한 JAR의 불변 태그 이미지를 발행합니다. 대상 조회가 HTTP 404이면 최초 생성을 요청하고, 기존 대상은 DB·도메인·환경변수·ServiceAccount를 보존하며 이미지 태그만 갱신합니다. 하네스 `main`에서 목표 repository와 태그를 확인한 뒤 성공합니다. 생성 결과와 태그 반영은 각각 최대 60회, 미완료 응답 뒤 10초 간격으로 조회하며 발행 잡 전체 제한은 30분입니다. 실제 Pod·DNS·TLS 상태는 별도 확인이 필요합니다. 절차와 권한은 [배포 가이드](docs/deployment.md)를 따릅니다.
+
+SMS의 `harness` 객체가 `HARNESS_ACTIONS_TOKEN`을 제공합니다. publish job은 GitHub OIDC의 `id-token: write` 권한으로 조회하며, 토큰은 `robinjoon-homelab/Simple-K3S-Herness` 저장소의 `Actions: write`를 통한 workflow 실행·결과 조회와 `main`의 Contents 조회가 가능해야 합니다. 최초 생성 전에 `notion-blog-runtime`의 Notion 토큰·설정 데이터 소스 참조와 공용 DB·이미지 풀 Secret을 준비해야 합니다. 이 설정 파일은 Secret 값을 생성하지 않습니다.
 
 애플리케이션은 `8080` 포트와 `/actuator/health/liveness`, `/actuator/health/readiness` endpoint를 제공합니다. 현재 scheduler는 다중 인스턴스 조정을 하지 않으므로 scheduler를 활성화한 인스턴스는 하나여야 합니다.

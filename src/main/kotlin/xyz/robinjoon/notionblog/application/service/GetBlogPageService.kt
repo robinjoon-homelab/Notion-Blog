@@ -1,10 +1,10 @@
 package xyz.robinjoon.notionblog.application.service
 
-import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import xyz.robinjoon.notionblog.application.model.BlogPage
 import xyz.robinjoon.notionblog.application.model.BlogPageLookupResult
 import xyz.robinjoon.notionblog.application.model.PostLookupResult
+import xyz.robinjoon.notionblog.application.port.input.GetBlogPageUseCase
 import xyz.robinjoon.notionblog.application.port.output.persistence.PostRepository
 import xyz.robinjoon.notionblog.application.port.output.persistence.SiteConfigurationRepository
 import xyz.robinjoon.notionblog.application.port.output.presentation.PresentationAssetCatalog
@@ -14,25 +14,26 @@ import xyz.robinjoon.notionblog.domain.site.PresentationAssetRef
 import xyz.robinjoon.notionblog.domain.site.SiteConfiguration
 import xyz.robinjoon.notionblog.domain.source.SourceDocumentRef
 
-@Service
+@Transactional(readOnly = true)
 class GetBlogPageService(
     private val publishedPosts: GetPublishedPostService,
     private val postRepository: PostRepository,
     private val siteConfigurations: SiteConfigurationRepository,
     private val presentationAssets: PresentationAssetCatalog,
     private val links: ResolvePostLinksService,
-) {
+) : GetBlogPageUseCase {
     @Transactional(readOnly = true)
-    fun getRoot(): BlogPageLookupResult = buildPage(publishedPosts.getRoot())
+    override fun getRoot(): BlogPageLookupResult = buildPage(publishedPosts.getRoot())
 
     @Transactional(readOnly = true)
-    fun get(postId: PostId): BlogPageLookupResult = buildPage(publishedPosts.get(postId))
+    override fun get(postId: PostId): BlogPageLookupResult = buildPage(publishedPosts.get(postId))
 
-    private fun buildPage(postResult: PostLookupResult): BlogPageLookupResult = when (postResult) {
-        PostLookupResult.NotFound -> BlogPageLookupResult.NotFound
-        PostLookupResult.ContentUnavailable -> BlogPageLookupResult.ContentUnavailable
-        is PostLookupResult.Found -> buildPage(postResult.post)
-    }
+    private fun buildPage(postResult: PostLookupResult): BlogPageLookupResult =
+        when (postResult) {
+            PostLookupResult.NotFound -> BlogPageLookupResult.NotFound
+            PostLookupResult.ContentUnavailable -> BlogPageLookupResult.ContentUnavailable
+            is PostLookupResult.Found -> buildPage(postResult.post)
+        }
 
     private fun buildPage(post: Post): BlogPageLookupResult {
         val site = siteConfigurations.findCurrent() ?: return BlogPageLookupResult.ContentUnavailable
@@ -59,10 +60,7 @@ class GetBlogPageService(
         site: SiteConfiguration,
         profileAssets: List<PresentationAssetRef>,
     ): Map<PresentationAssetRef, xyz.robinjoon.notionblog.application.model.PresentationAssetDescriptor>? {
-        val references = linkedSetOf<PresentationAssetRef>().apply {
-            addAll(profileAssets)
-            site.metadata.favicon?.let(::add)
-        }
+        val references = (profileAssets + listOfNotNull(site.metadata.favicon)).toSet()
         val resolved = linkedMapOf<PresentationAssetRef, xyz.robinjoon.notionblog.application.model.PresentationAssetDescriptor>()
         for (reference in references) {
             val descriptor = presentationAssets.resolve(reference) ?: return null

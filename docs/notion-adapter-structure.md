@@ -4,6 +4,8 @@
 
 상태: **구현 전 설계**, 2026-10-05. [기준 아키텍처](kotlin-spring-architecture.md)의 13절을 구체화한다. 이 문서를 작성하면서 애플리케이션 코드는 변경하지 않았다.
 
+2026-10-08 갱신: 템플릿 정렬 작업에서 실행 중인 매퍼를 책임별로 나누고 아래의 미사용 DTO 7개 파일을 제거한다. 실제 경로는 여전히 어댑터 내부에서 JSON을 읽으므로, 이 문서의 완전한 응답 모델·디코더 분리는 별도 후속 설계로 남는다.
+
 대상은 현재 고정된 `Notion-Version: 2026-03-11`과 저장소의 응답 고정 데이터다. Notion API 전체를 미리 구현하거나 버전을 올리는 제안이 아니다. **수집 순서, 페이지네이션, 개수·깊이·시간 제한은 현재 동작을 유지한다.**
 
 ## 1. 무엇을 분리하려는가
@@ -53,7 +55,7 @@ Notion HTTP 응답
 
 선택 전 응답 조각을 보관해야 한다면 decoding 내부의 작은 envelope에 한정한다. 소스는 필요한 속성 ID 등을 전달하고 타입으로 된 결과를 받는다. 매퍼가 다시 `JsonNode`를 읽거나, 범용 지연 실행 체계를 추가하지 않는다.
 
-구현 시에는 `adapter.output.notion` 안의 다음 작은 묶음을 사용한다. 별도 Gradle 모듈이나 내부 인터페이스는 만들지 않는다.
+구현 시에는 `adapter.outbound.notion` 안의 다음 작은 묶음을 사용한다. 별도 Gradle 모듈이나 내부 인터페이스는 만들지 않는다.
 
 ```text
 notion/
@@ -67,7 +69,8 @@ notion/
     NotionPaginationResponse
   decoding/                위 모델을 읽는 구체 디코더
   mapping/                 기존 매퍼와 공통 미디어·리치 텍스트 변환
-  NotionPostSource 등       기존 소스와 reader
+  source/                  PostSource·SiteConfigurationSource 구현
+  Notion...Reader           기존 수집 reader
 ```
 
 이름과 파일 수보다 책임의 위치가 기준이다. 서로 관련된 작은 타입은 한 파일에 둘 수 있다. 디코더 등록소, 리플렉션 기반 분기, 플러그인 틀은 만들지 않는다. 명시적인 `when`과 구체 함수 호출로 연결한다.

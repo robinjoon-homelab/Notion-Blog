@@ -20,14 +20,18 @@ enum class Alignment {
 }
 
 @JvmInline
-value class WidthToken(val ratio: Double) {
+value class WidthToken(
+    val ratio: Double,
+) {
     init {
         require(ratio.isFinite() && ratio > 0.0 && ratio <= 1.0) { "width ratio must be greater than zero and at most one" }
     }
 }
 
 @JvmInline
-value class StyleVariant(val value: String) {
+value class StyleVariant(
+    val value: String,
+) {
     init {
         require(value.isNotBlank()) { "style variant must not be blank" }
     }
@@ -41,6 +45,6 @@ data class BlockStyle(
     val variant: StyleVariant? = null,
 ) {
     companion object {
-        val DEFAULT = BlockStyle()
+        val default = BlockStyle()
     }
 }

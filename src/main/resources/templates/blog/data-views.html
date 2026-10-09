@@ -24,8 +24,8 @@
     <h4 class="notion-data-entry-title">
         <th:block th:replace="~{blog/fragments :: icon(${row.icon}, 'notion-data-icon')}"></th:block>
         <a th:if="${row.link != null}" th:href="${row.link.href}"
-           th:target="${row.link instanceof T(xyz.robinjoon.notionblog.adapter.input.web.view.ExternalLinkView) ? '_blank' : null}"
-           th:rel="${row.link instanceof T(xyz.robinjoon.notionblog.adapter.input.web.view.ExternalLinkView) ? 'noopener noreferrer' : null}">
+           th:target="${row.link instanceof T(xyz.robinjoon.notionblog.adapter.inbound.web.view.ExternalLinkView) ? '_blank' : null}"
+           th:rel="${row.link instanceof T(xyz.robinjoon.notionblog.adapter.inbound.web.view.ExternalLinkView) ? 'noopener noreferrer' : null}">
             <th:block th:replace="~{blog/fragments :: inlines(${row.title})}"></th:block>
         </a>
         <span th:if="${row.link == null}"><th:block th:replace="~{blog/fragments :: inlines(${row.title})}"></th:block></span>

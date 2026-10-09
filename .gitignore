@@ -64,6 +64,12 @@ blob-report/
 # Gradle and Kotlin build caches
 /.gradle/
 /.kotlin/
+quality-rules/build/
+quality-rules/.gradle/
+
+# Python deployment tooling caches
+__pycache__/
+*.py[cod]
 
 # Prisma and local database files
 *.db

@@ -21,21 +21,23 @@ import java.time.Instant
 class OutputPortBoundaryContractTest {
     @Test
     fun `ports do not expose implementation boundary types`() {
-        val portTypes = listOf(
-            PostSource::class.java,
-            SiteConfigurationSource::class.java,
-            PostRepository::class.java,
-            PublicationRepository::class.java,
-            SiteConfigurationRepository::class.java,
-            SyncStateRepository::class.java,
-            PresentationAssetCatalog::class.java,
-        )
+        val portTypes =
+            listOf(
+                PostSource::class.java,
+                SiteConfigurationSource::class.java,
+                PostRepository::class.java,
+                PublicationRepository::class.java,
+                SiteConfigurationRepository::class.java,
+                SyncStateRepository::class.java,
+                PresentationAssetCatalog::class.java,
+            )
 
-        val exposedTypes = portTypes.flatMap { type ->
-            type.methods.flatMap { method ->
-                listOf(method.returnType) + method.parameterTypes.toList() + method.exceptionTypes.toList()
+        val exposedTypes =
+            portTypes.flatMap { type ->
+                type.methods.flatMap { method ->
+                    listOf(method.returnType) + method.parameterTypes.toList() + method.exceptionTypes.toList()
+                }
             }
-        }
 
         assertThat(exposedTypes.map { it.name }).doesNotContain("org.jetbrains.exposed.sql.Table", "org.jetbrains.exposed.sql.ResultRow")
         assertThat(exposedTypes.map { it.simpleName }).noneMatch { name ->
@@ -45,12 +47,13 @@ class OutputPortBoundaryContractTest {
 
     @Test
     fun `repository ports expose named batch operations and no default methods`() {
-        val repositories = listOf(
-            PostRepository::class.java,
-            PublicationRepository::class.java,
-            SiteConfigurationRepository::class.java,
-            SyncStateRepository::class.java,
-        )
+        val repositories =
+            listOf(
+                PostRepository::class.java,
+                PublicationRepository::class.java,
+                SiteConfigurationRepository::class.java,
+                SyncStateRepository::class.java,
+            )
 
         assertThat(PostRepository::class.java.methods.map { it.name })
             .contains("findBindingsBySourceDocuments", "findBindingsByPostIds", "findAvailabilities", "saveAvailabilities")

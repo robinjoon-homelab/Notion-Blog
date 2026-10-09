@@ -1,16 +1,8 @@
-FROM eclipse-temurin:25-jdk AS build
-WORKDIR /workspace
-
-COPY gradlew settings.gradle.kts build.gradle.kts ./
-COPY gradle ./gradle
-COPY . .
-RUN chmod +x gradlew && ./gradlew bootJar --no-daemon
-
-FROM eclipse-temurin:25-jre AS runtime
+FROM eclipse-temurin:25-jre-noble
 WORKDIR /app
 
-COPY --from=build /workspace/build/libs/*.jar app.jar
-RUN chmod 0444 /app/app.jar && chmod 1777 /tmp
+COPY --chown=10001:10001 build/libs/application.jar application.jar
+RUN chmod 0444 /app/application.jar && chmod 1777 /tmp
 USER 10001:10001
 EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+ENTRYPOINT ["java", "-jar", "/app/application.jar"]

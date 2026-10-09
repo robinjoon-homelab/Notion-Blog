@@ -25,24 +25,34 @@ object PublicationPolicy {
         require(roots.single().depth == 0) { "the root publication member must have depth zero" }
 
         members.forEach { member ->
-            require(availabilityByPostId[member.postId]?.postId == member.postId) {
-                "every publication member must have a confirmed availability"
-            }
-            if (member.parentPostId != null) {
-                val parent = membersByPostId[member.parentPostId]
-                    ?: throw IllegalArgumentException("a non-root publication member must have a parent in the same revision")
-                require(member.depth == parent.depth + 1) {
-                    "a publication member depth must be one greater than its parent"
-                }
-            }
-            if (availabilityByPostId.getValue(member.postId).status == PostAvailabilityStatus.PUBLISHED) {
-                require(member.postId in renderablePostIds) {
-                    "published publication members must have a renderable snapshot"
-                }
-            }
+            validateMember(member, membersByPostId, availabilityByPostId, renderablePostIds)
         }
 
         members.forEach { member -> verifyPathEndsAtRoot(member, membersByPostId, roots.single().postId) }
+    }
+
+    private fun validateMember(
+        member: PublicationMember,
+        membersByPostId: Map<PostId, PublicationMember>,
+        availabilityByPostId: Map<PostId, PostAvailability>,
+        renderablePostIds: Set<PostId>,
+    ) {
+        require(availabilityByPostId[member.postId]?.postId == member.postId) {
+            "every publication member must have a confirmed availability"
+        }
+        if (member.parentPostId != null) {
+            val parent =
+                membersByPostId[member.parentPostId]
+                    ?: throw IllegalArgumentException("a non-root publication member must have a parent in the same revision")
+            require(member.depth == parent.depth + 1) {
+                "a publication member depth must be one greater than its parent"
+            }
+        }
+        if (availabilityByPostId.getValue(member.postId).status == PostAvailabilityStatus.PUBLISHED) {
+            require(member.postId in renderablePostIds) {
+                "published publication members must have a renderable snapshot"
+            }
+        }
     }
 
     private fun verifyPathEndsAtRoot(

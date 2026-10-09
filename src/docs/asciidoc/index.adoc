@@ -1,0 +1,142 @@
+= Notion Blog HTTP 계약
+:lang: ko
+:doctype: book
+:toc: left
+:toclevels: 2
+:sectnums:
+:linkcss:
+:webfonts!:
+:source-highlighter!:
+
+이 문서는 실제 PostgreSQL과 Spring MVC를 사용하는 테스트에서 생성합니다.
+블로그의 HTML 조회와 RSS 구독 경로를 설명하며, 요청·응답 예시는 테스트한 결과입니다.
+`https://blog.example`과 예시 UUID는 테스트 데이터입니다. 운영 주소는 `https://blog.homelab.robinjoon.xyz`입니다.
+
+== 공개 상태와 응답
+
+HTML을 제공하려면 글이 현재 블로그 범위에 속하고, 마지막으로 확인한 게시 상태가 공개이며, 읽을 수 있는 저장본이 있어야 합니다.
+Notion을 다시 읽는 작업은 별도 동기화에서 수행합니다. 웹 조회는 저장된 내용을 사용합니다.
+따라서 일시적인 Notion 장애가 마지막 정상 저장본을 곧바로 숨기지는 않습니다.
+
+[options="header,autowidth"]
+|===
+|상태 |의미
+|`200 OK` |HTML 또는 RSS를 제공합니다.
+|`404 Not Found` |HTML 대상이 범위 밖이거나 미게시 상태입니다. 존재하지 않거나 형식이 잘못된 게시글 ID도 포함합니다.
+|`503 Service Unavailable` |아직 초기화되지 않았거나 필요한 저장본·설정을 사용할 수 없습니다.
+|===
+
+게시글 ID의 형식이 올바르더라도 초기 설정과 활성 공개 범위가 없으면 먼저 `503`을 반환할 수 있습니다.
+HTML 응답의 전체 마크업과 표현 자산은 화면 구현에 따라 바뀔 수 있습니다. 아래 예시는 현재 렌더링 결과입니다.
+
+== 루트 문서
+
+`GET /`는 설정한 블로그 루트 문서를 반환합니다.
+
+include::{snippets}/root-found/http-request.adoc[]
+include::{snippets}/root-found/response-headers.adoc[]
+
+[%collapsible]
+.정상 HTML 응답 예시
+====
+include::{snippets}/root-found/http-response.adoc[]
+====
+
+=== 루트가 미게시 상태인 경우
+
+동기화에서 루트의 미게시 상태를 확인하면 루트 요청은 `404`입니다.
+루트의 미게시 상태가 자식 문서의 게시 상태를 자동으로 바꾸지는 않습니다.
+
+include::{snippets}/root-not-found/http-response.adoc[]
+
+=== 초기화되지 않은 경우
+
+설정과 활성 공개 범위가 준비되지 않으면 `503` HTML을 반환합니다.
+
+include::{snippets}/root-unavailable/http-response.adoc[]
+
+== 개별 게시글
+
+`GET /posts/{postId}`에서 `postId`는 블로그가 저장한 내부 UUID입니다.
+Notion 페이지 ID나 제목을 이 값으로 대신 사용할 수 없습니다.
+
+include::{snippets}/post-found/http-request.adoc[]
+include::{snippets}/post-found/path-parameters.adoc[]
+include::{snippets}/post-found/response-headers.adoc[]
+
+[%collapsible]
+.정상 HTML 응답 예시
+====
+include::{snippets}/post-found/http-response.adoc[]
+====
+
+=== 글의 공개를 취소한 경우
+
+미게시 상태를 확인한 글은 블로그 범위 안에 남아 있어도 `404`입니다.
+
+include::{snippets}/post-not-found/http-request.adoc[]
+include::{snippets}/post-not-found/http-response.adoc[]
+
+=== 없는 ID와 잘못된 ID
+
+초기화된 블로그에서 저장되지 않은 UUID를 요청하면 `404`입니다.
+
+include::{snippets}/post-missing/http-request.adoc[]
+include::{snippets}/post-missing/http-response.adoc[]
+
+UUID 형식이 아닌 값도 `404` HTML을 반환합니다.
+
+include::{snippets}/post-invalid-id/http-request.adoc[]
+include::{snippets}/post-invalid-id/http-response.adoc[]
+
+=== 초기화되지 않은 경우
+
+올바른 UUID 형식이어도 블로그의 공개 범위를 아직 결정할 수 없으면 `503`입니다.
+
+include::{snippets}/post-unavailable/http-request.adoc[]
+include::{snippets}/post-unavailable/http-response.adoc[]
+
+== RSS 피드
+
+`GET /feed.xml`은 RSS 2.0 XML을 반환합니다.
+현재 공개 범위에서 게시된 글 중 루트·설정된 헤더·푸터를 제외한 최근 20개를 제공합니다.
+본문 전체 대신 요약을 사용합니다. `pubDate`는 처음으로 게시 상태를 확인한 시각이며 수정·미게시·재게시로 바뀌지 않습니다.
+
+피드의 절대 URL은 `blog.public-base-url` 설정에서 만듭니다.
+공개할 글이 없더라도 설정과 활성 공개 범위가 준비되어 있으면 빈 피드를 `200`으로 반환합니다.
+루트 문서가 미게시 상태여도 공개된 자식 글은 피드에 포함될 수 있습니다.
+
+include::{snippets}/feed-found/http-request.adoc[]
+include::{snippets}/feed-found/response-headers.adoc[]
+include::{snippets}/feed-found/http-response.adoc[]
+
+=== 변경이 없는 경우
+
+클라이언트는 받은 `ETag`를 다음 요청의 `If-None-Match`에 보낼 수 있습니다.
+피드 내용이 같으면 `304 Not Modified`이며 응답 본문은 없습니다.
+`Cache-Control: no-cache`는 저장된 응답을 사용하기 전에 서버에서 다시 확인하라는 의미입니다.
+
+include::{snippets}/feed-not-modified/http-request.adoc[]
+include::{snippets}/feed-not-modified/request-headers.adoc[]
+include::{snippets}/feed-not-modified/http-response.adoc[]
+include::{snippets}/feed-not-modified/response-headers.adoc[]
+
+=== 피드를 만들 수 없는 경우
+
+공개 기준 URL, 사이트 설정, 활성 공개 범위 또는 필요한 저장본이 준비되지 않으면 `503`입니다.
+실패 응답은 `Cache-Control: no-store`이며 `ETag`와 본문이 없습니다.
+이 확인은 조건부 요청보다 먼저 하므로 `If-None-Match: *`도 준비되지 않은 피드를 `304`로 바꾸지 않습니다.
+피드는 글별 조회가 아니므로 미게시 글을 제외하며, 그 이유만으로 `404`를 반환하지 않습니다.
+
+include::{snippets}/feed-unavailable/http-request.adoc[]
+include::{snippets}/feed-unavailable/request-headers.adoc[]
+include::{snippets}/feed-unavailable/http-response.adoc[]
+include::{snippets}/feed-unavailable/response-headers.adoc[]
+
+== 문서와 보안 정책
+
+문서는 애플리케이션 JAR에 함께 포함되어 `/docs/index.html`에서 제공됩니다.
+스타일시트는 같은 출처의 `asciidoctor.css`를 사용하고, 외부 글꼴이나 스크립트를 불러오지 않습니다.
+기존 `Content-Security-Policy`의 `style-src 'self'`와 `script-src 'self'`를 유지합니다.
+
+REST Docs의 생성 예시는 직접 수정하지 않습니다. 계약을 바꿀 때는 HTTP 테스트와 이 문서의 설명을 함께 수정합니다.

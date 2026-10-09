@@ -1,0 +1,26 @@
+# Reviews require an imported GitHub ruleset and owners with write access.
+# A separate approver is required because authors cannot approve their own PRs.
+
+/.github/ @robinjoon
+*.gradle.kts @robinjoon
+*.gradle @robinjoon
+gradle.properties @robinjoon
+/gradle/ @robinjoon
+/gradlew @robinjoon
+/gradlew.bat @robinjoon
+.editorconfig @robinjoon
+/.gitattributes @robinjoon
+/.gitignore @robinjoon
+/config/detekt/ @robinjoon
+/quality-rules/ @robinjoon
+**/architecture/ @robinjoon
+**/architecturefixtures/ @robinjoon
+/scripts/ @robinjoon
+/Dockerfile @robinjoon
+/.dockerignore @robinjoon
+/AGENTS.md @robinjoon
+/CLAUDE.md @robinjoon
+/docs/code-quality.md @robinjoon
+/docs/development.md @robinjoon
+/docs/deployment.md @robinjoon
+/docs/kotlin-spring-architecture.md @robinjoon

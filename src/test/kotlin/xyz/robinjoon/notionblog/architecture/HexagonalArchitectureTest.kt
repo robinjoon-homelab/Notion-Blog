@@ -1,0 +1,34 @@
+package xyz.robinjoon.notionblog.architecture
+
+import com.tngtech.archunit.core.importer.ClassFileImporter
+import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.DynamicTest
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestFactory
+import java.io.File
+import java.nio.file.Path
+
+class HexagonalArchitectureTest {
+    @TestFactory
+    fun `production code follows every architecture rule`(): List<DynamicTest> =
+        ArchitectureRules("xyz.robinjoon.notionblog", "BlogApplication").all().map { rule ->
+            DynamicTest.dynamicTest(rule.description) { rule.check(productionClasses) }
+        }
+
+    @Test
+    fun `production class scan is nonempty and excludes test fixtures`() {
+        assertThat(productionClasses.map { it.name })
+            .contains("xyz.robinjoon.notionblog.BlogApplication", "xyz.robinjoon.notionblog.domain.post.Post")
+            .doesNotContain(ArchitectureRules::class.java.name, HexagonalArchitectureTest::class.java.name)
+            .noneMatch { it.startsWith("architecturefixtures.") }
+    }
+
+    companion object {
+        private val productionPaths =
+            requireNotNull(System.getProperty("architecture.productionClasses")) {
+                "Run architecture tests with Gradle so all production output directories are supplied."
+            }.split(File.pathSeparator).map(Path::of)
+
+        private val productionClasses = ClassFileImporter().importPaths(productionPaths)
+    }
+}

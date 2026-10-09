@@ -14,18 +14,20 @@ class SyncStateTest {
 
     @Test
     fun `a source failure updates sync state without representing unpublished publication state`() {
-        val initial = SyncState(
-            target = SyncTarget.Post(PostId(UUID.fromString("27a3f37c-f408-4e1f-b11c-4069a669ecd7"))),
-            lastSuccessAt = now,
-            refreshAfter = now.plusSeconds(60),
-            failureCount = 0,
-            lastErrorKind = null,
-        )
+        val initial =
+            SyncState(
+                target = SyncTarget.Post(PostId(UUID.fromString("27a3f37c-f408-4e1f-b11c-4069a669ecd7"))),
+                lastSuccessAt = now,
+                refreshAfter = now.plusSeconds(60),
+                failureCount = 0,
+                lastErrorKind = null,
+            )
 
-        val failed = initial.recordFailure(
-            kind = SyncFailureKind.RETRYABLE_SOURCE,
-            refreshAfter = now.plusSeconds(120),
-        )
+        val failed =
+            initial.recordFailure(
+                kind = SyncFailureKind.RETRYABLE_SOURCE,
+                refreshAfter = now.plusSeconds(120),
+            )
 
         assertThat(failed.lastSuccessAt).isEqualTo(now)
         assertThat(failed.failureCount).isEqualTo(1)
@@ -34,13 +36,14 @@ class SyncStateTest {
 
     @Test
     fun `a successful synchronization resets failure tracking`() {
-        val failed = SyncState(
-            target = SyncTarget.SiteConfiguration,
-            lastSuccessAt = null,
-            refreshAfter = now,
-            failureCount = 2,
-            lastErrorKind = SyncFailureKind.MAPPING,
-        )
+        val failed =
+            SyncState(
+                target = SyncTarget.SiteConfiguration,
+                lastSuccessAt = null,
+                refreshAfter = now,
+                failureCount = 2,
+                lastErrorKind = SyncFailureKind.MAPPING,
+            )
 
         val succeeded = failed.recordSuccess(now, now.plusSeconds(60))
 
@@ -74,11 +77,12 @@ class SyncStateTest {
 
     @Test
     fun `refresh policy uses the success interval and capped exponential failure delay`() {
-        val policy = RefreshPolicy(
-            successInterval = Duration.ofMinutes(10),
-            initialFailureDelay = Duration.ofMinutes(2),
-            maximumFailureDelay = Duration.ofMinutes(8),
-        )
+        val policy =
+            RefreshPolicy(
+                successInterval = Duration.ofMinutes(10),
+                initialFailureDelay = Duration.ofMinutes(2),
+                maximumFailureDelay = Duration.ofMinutes(8),
+            )
 
         assertThat(policy.nextSuccessfulRefreshAt(now)).isEqualTo(now.plus(Duration.ofMinutes(10)))
         assertThat(policy.nextFailureRefreshAt(now, failureCount = 1)).isEqualTo(now.plus(Duration.ofMinutes(2)))

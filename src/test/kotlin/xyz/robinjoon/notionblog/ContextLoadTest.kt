@@ -6,25 +6,30 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.health.actuate.endpoint.HealthEndpoint
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.ApplicationContext
+import org.springframework.context.ConfigurableApplicationContext
 import org.springframework.jdbc.support.JdbcTransactionManager
 import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.web.servlet.DispatcherServlet
-import xyz.robinjoon.notionblog.adapter.input.scheduling.SynchronizationScheduler
-import xyz.robinjoon.notionblog.adapter.input.web.BlogController
-import xyz.robinjoon.notionblog.adapter.input.web.PostPageViewAssembler
-import xyz.robinjoon.notionblog.adapter.output.notion.NotionPostSource
-import xyz.robinjoon.notionblog.adapter.output.notion.NotionSiteConfigurationSource
-import xyz.robinjoon.notionblog.adapter.output.notion.client.NotionApiClient
-import xyz.robinjoon.notionblog.adapter.output.persistence.exposed.ExposedPostRepository
-import xyz.robinjoon.notionblog.adapter.output.persistence.exposed.ExposedPublicationRepository
-import xyz.robinjoon.notionblog.adapter.output.persistence.exposed.ExposedSiteConfigurationRepository
-import xyz.robinjoon.notionblog.adapter.output.persistence.exposed.ExposedSyncStateRepository
-import xyz.robinjoon.notionblog.adapter.output.persistence.snapshot.JsonBlockTreeSnapshotCodec
-import xyz.robinjoon.notionblog.adapter.output.presentation.ClasspathPresentationAssetCatalog
+import xyz.robinjoon.notionblog.adapter.inbound.scheduling.SynchronizationScheduler
+import xyz.robinjoon.notionblog.adapter.inbound.web.BlogController
+import xyz.robinjoon.notionblog.adapter.inbound.web.PostPageViewAssembler
+import xyz.robinjoon.notionblog.adapter.inbound.web.WebSecurityHeadersFilter
+import xyz.robinjoon.notionblog.adapter.outbound.diagnostics.Slf4jSnapshotFailureReporter
+import xyz.robinjoon.notionblog.adapter.outbound.notion.client.NotionApiClient
+import xyz.robinjoon.notionblog.adapter.outbound.notion.source.NotionPostSource
+import xyz.robinjoon.notionblog.adapter.outbound.notion.source.NotionSiteConfigurationSource
+import xyz.robinjoon.notionblog.adapter.outbound.persistence.exposed.ExposedPostRepository
+import xyz.robinjoon.notionblog.adapter.outbound.persistence.exposed.ExposedPublicationRepository
+import xyz.robinjoon.notionblog.adapter.outbound.persistence.exposed.ExposedSiteConfigurationRepository
+import xyz.robinjoon.notionblog.adapter.outbound.persistence.exposed.ExposedSyncStateRepository
+import xyz.robinjoon.notionblog.adapter.outbound.persistence.snapshot.JsonBlockTreeSnapshotCodec
+import xyz.robinjoon.notionblog.adapter.outbound.presentation.ClasspathPresentationAssetCatalog
+import xyz.robinjoon.notionblog.application.port.output.diagnostics.SnapshotFailureReporter
 import xyz.robinjoon.notionblog.application.port.output.presentation.PresentationAssetCatalog
 import xyz.robinjoon.notionblog.application.port.output.source.PostSource
 import xyz.robinjoon.notionblog.application.port.output.source.SiteConfigurationSource
 import xyz.robinjoon.notionblog.application.service.GetBlogPageService
+import xyz.robinjoon.notionblog.application.service.GetPostFeedService
 import xyz.robinjoon.notionblog.application.service.GetPublishedPostService
 import xyz.robinjoon.notionblog.application.service.ResolvePostLinksService
 import xyz.robinjoon.notionblog.application.service.SynchronizationQueryService
@@ -73,6 +78,28 @@ class ContextLoadTest(
     @Autowired private val applicationContext: ApplicationContext,
 ) {
     @Test
+    fun `public use cases are assembled by configuration factory methods`() {
+        val context = applicationContext as ConfigurableApplicationContext
+        val useCases =
+            listOf(
+                GetBlogPageService::class.java,
+                GetPostFeedService::class.java,
+                SynchronizationQueryService::class.java,
+                SynchronizeSiteConfigurationService::class.java,
+                SynchronizePublicationService::class.java,
+                SynchronizePostService::class.java,
+            )
+
+        useCases.forEach { type ->
+            val beanName = context.getBeanNamesForType(type).single()
+            val definition = context.beanFactory.getBeanDefinition(beanName)
+            assertThat(definition.factoryMethodName).describedAs(type.simpleName).isNotBlank()
+        }
+        assertThat(context.getBeansOfType(PlatformTransactionManager::class.java)).hasSize(1)
+        assertThat(context.getBeansOfType(WebSecurityHeadersFilter::class.java)).hasSize(1)
+    }
+
+    @Test
     fun `MVC context starts with the target bean graph without remote calls`() {
         assertThat(applicationContext.getBean(DispatcherServlet::class.java)).isNotNull
         val transactionManager = applicationContext.getBean(PlatformTransactionManager::class.java)
@@ -91,7 +118,10 @@ class ContextLoadTest(
         assertThat(applicationContext.getBean(NotionSiteConfigurationSource::class.java)).isNotNull
         assertThat(applicationContext.getBean(PostSource::class.java)).isInstanceOf(NotionPostSource::class.java)
         assertThat(applicationContext.getBean(SiteConfigurationSource::class.java)).isInstanceOf(NotionSiteConfigurationSource::class.java)
-        assertThat(applicationContext.getBean(PresentationAssetCatalog::class.java)).isInstanceOf(ClasspathPresentationAssetCatalog::class.java)
+        assertThat(
+            applicationContext.getBean(PresentationAssetCatalog::class.java),
+        ).isInstanceOf(ClasspathPresentationAssetCatalog::class.java)
+        assertThat(applicationContext.getBean(SnapshotFailureReporter::class.java)).isInstanceOf(Slf4jSnapshotFailureReporter::class.java)
         assertThat(applicationContext.getBean(GetPublishedPostService::class.java)).isNotNull
         assertThat(applicationContext.getBean(ResolvePostLinksService::class.java)).isNotNull
         assertThat(applicationContext.getBean(GetBlogPageService::class.java)).isNotNull

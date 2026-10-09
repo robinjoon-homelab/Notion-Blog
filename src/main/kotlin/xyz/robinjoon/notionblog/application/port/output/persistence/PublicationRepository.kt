@@ -19,15 +19,30 @@ interface PublicationRepository {
 
     fun findStagingRevisions(publicationId: PublicationId): List<PublicationRevision>
 
-    fun createRevision(revision: PublicationRevision, transitionedAt: Instant)
+    fun createRevision(
+        revision: PublicationRevision,
+        transitionedAt: Instant,
+    )
 
-    fun updateRevision(revision: PublicationRevision, transitionedAt: Instant)
+    fun updateRevision(
+        revision: PublicationRevision,
+        transitionedAt: Instant,
+    )
 
-    fun saveMembers(revisionId: PublicationRevisionId, members: Collection<PublicationMember>)
+    fun saveMembers(
+        revisionId: PublicationRevisionId,
+        members: Collection<PublicationMember>,
+    )
 
     fun findMembers(revisionId: PublicationRevisionId): List<PublicationMember>
 
-    fun findActiveMemberPostIds(publicationId: PublicationId, postIds: Set<PostId>): Set<PostId>
+    fun findActiveMemberPostIds(
+        publicationId: PublicationId,
+        postIds: Set<PostId>,
+    ): Set<PostId>
 
-    fun findActiveDirectChildren(publicationId: PublicationId, parentPostId: PostId): List<PublicationMember>
+    fun findActiveDirectChildren(
+        publicationId: PublicationId,
+        parentPostId: PostId,
+    ): List<PublicationMember>
 }

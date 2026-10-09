@@ -7,10 +7,11 @@ import org.junit.jupiter.api.Test
 class SourceIdentityTest {
     @Test
     fun `source document reference preserves an adapter-validated opaque external identifier`() {
-        val reference = SourceDocumentRef(
-            sourceId = SourceId("notion-main"),
-            externalId = "adapter-validated-document-token",
-        )
+        val reference =
+            SourceDocumentRef(
+                sourceId = SourceId("notion-main"),
+                externalId = "adapter-validated-document-token",
+            )
 
         assertThat(reference.sourceId).isEqualTo(SourceId("notion-main"))
         assertThat(reference.externalId).isEqualTo("adapter-validated-document-token")

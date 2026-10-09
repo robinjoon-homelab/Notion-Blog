@@ -18,7 +18,10 @@ data class RefreshPolicy(
 
     fun nextSuccessfulRefreshAt(now: Instant): Instant = now.plus(successInterval)
 
-    fun nextFailureRefreshAt(now: Instant, failureCount: Int): Instant {
+    fun nextFailureRefreshAt(
+        now: Instant,
+        failureCount: Int,
+    ): Instant {
         require(failureCount > 0) { "failure count must be positive" }
         return now.plus(failureDelay(failureCount))
     }
@@ -26,14 +29,11 @@ data class RefreshPolicy(
     private fun failureDelay(failureCount: Int): Duration {
         var delay = initialFailureDelay
         repeat(failureCount - 1) {
-            delay = try {
-                delay.multipliedBy(2)
-            } catch (_: ArithmeticException) {
+            // Compare before doubling so very large durations reach the cap without overflow.
+            if (delay >= maximumFailureDelay.minus(delay)) {
                 return maximumFailureDelay
             }
-            if (delay >= maximumFailureDelay) {
-                return maximumFailureDelay
-            }
+            delay = delay.multipliedBy(2)
         }
         return delay
     }

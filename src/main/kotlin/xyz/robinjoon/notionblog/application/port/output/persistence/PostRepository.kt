@@ -4,9 +4,9 @@ import xyz.robinjoon.notionblog.application.model.PostFeedEntry
 import xyz.robinjoon.notionblog.application.model.StoredPost
 import xyz.robinjoon.notionblog.domain.post.Post
 import xyz.robinjoon.notionblog.domain.post.PostId
+import xyz.robinjoon.notionblog.domain.post.PostSourceBinding
 import xyz.robinjoon.notionblog.domain.publication.PostAvailability
 import xyz.robinjoon.notionblog.domain.publication.PublicationId
-import xyz.robinjoon.notionblog.domain.source.PostSourceBinding
 import xyz.robinjoon.notionblog.domain.source.SourceDocumentRef
 import xyz.robinjoon.notionblog.domain.source.SourceRevision
 import java.time.Instant
@@ -20,7 +20,10 @@ interface PostRepository {
         limit: Int,
     ): List<PostFeedEntry>
 
-    fun recordFirstPublication(postId: PostId, observedAt: Instant)
+    fun recordFirstPublication(
+        postId: PostId,
+        observedAt: Instant,
+    )
 
     fun findBinding(postId: PostId): PostSourceBinding?
 
@@ -30,9 +33,17 @@ interface PostRepository {
 
     fun findBindingsByPostIds(postIds: Set<PostId>): Map<PostId, PostSourceBinding>
 
-    fun saveIdentity(binding: PostSourceBinding, title: String, changedAt: Instant)
+    fun saveIdentity(
+        binding: PostSourceBinding,
+        title: String,
+        changedAt: Instant,
+    )
 
-    fun saveSnapshot(post: Post, sourceRevision: SourceRevision, capturedAt: Instant)
+    fun saveSnapshot(
+        post: Post,
+        sourceRevision: SourceRevision,
+        capturedAt: Instant,
+    )
 
     fun findAvailability(postId: PostId): PostAvailability?
 

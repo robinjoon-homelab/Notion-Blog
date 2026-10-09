@@ -41,7 +41,8 @@ class SynchronizePublicationServiceTest {
 
     @Test
     fun `synchronize is not transactional and does nothing when no publication is configured`() {
-        val fixture = fixture(context = null)
+        val fixture = fixture()
+        every { fixture.query.loadPublication() } returns null
 
         fixture.service.synchronize()
 
@@ -70,20 +71,23 @@ class SynchronizePublicationServiceTest {
         val first = ref("first")
         val second = ref("second")
         val grandchild = ref("grandchild")
-        val fixture = fixture(
-            posts = mapOf(
-                root to imported(root, children = listOf(first, second)),
-                first to imported(first, children = listOf(grandchild)),
-                second to imported(second),
-                grandchild to imported(grandchild),
-            ),
-            appliedPostIds = mapOf(
-                root to postId("1"),
-                first to postId("2"),
-                second to postId("3"),
-                grandchild to postId("4"),
-            ),
-        )
+        val fixture =
+            fixture(
+                posts =
+                    mapOf(
+                        root to imported(root, children = listOf(first, second)),
+                        first to imported(first, children = listOf(grandchild)),
+                        second to imported(second),
+                        grandchild to imported(grandchild),
+                    ),
+                appliedPostIds =
+                    mapOf(
+                        root to postId("1"),
+                        first to postId("2"),
+                        second to postId("3"),
+                        grandchild to postId("4"),
+                    ),
+            )
 
         fixture.service.synchronize()
 
@@ -106,14 +110,16 @@ class SynchronizePublicationServiceTest {
     fun `unpublished parent remains a member and does not stop descendant collection`() {
         val parent = ref("parent")
         val descendant = ref("descendant")
-        val fixture = fixture(
-            posts = mapOf(
-                root to imported(root, children = listOf(parent)),
-                parent to imported(parent, ImportedPublicationStatus.UNPUBLISHED, listOf(descendant)),
-                descendant to imported(descendant),
-            ),
-            appliedPostIds = mapOf(root to postId("1"), parent to postId("2"), descendant to postId("3")),
-        )
+        val fixture =
+            fixture(
+                posts =
+                    mapOf(
+                        root to imported(root, children = listOf(parent)),
+                        parent to imported(parent, ImportedPublicationStatus.UNPUBLISHED, listOf(descendant)),
+                        descendant to imported(descendant),
+                    ),
+                appliedPostIds = mapOf(root to postId("1"), parent to postId("2"), descendant to postId("3")),
+            )
 
         fixture.service.synchronize()
 
@@ -128,17 +134,19 @@ class SynchronizePublicationServiceTest {
     @Test
     fun `ordinary content links are ignored because only contained children are traversed`() {
         val ordinaryLink = ref("ordinary-link")
-        val rootWithLink = imported(
-            root,
-            content = BlockTree(
-                listOf(
-                    BlockNode(
-                        BlockId("ordinary-link"),
-                        ReferenceBlockContent.DocumentLink(ordinaryLink, originalUrl = null),
+        val rootWithLink =
+            imported(
+                root,
+                content =
+                    BlockTree(
+                        listOf(
+                            BlockNode(
+                                BlockId("ordinary-link"),
+                                ReferenceBlockContent.DocumentLink(ordinaryLink, originalUrl = null),
+                            ),
+                        ),
                     ),
-                ),
-            ),
-        )
+            )
         val fixture = fixture(posts = mapOf(root to rootWithLink), appliedPostIds = mapOf(root to postId("1")))
 
         fixture.service.synchronize()
@@ -149,10 +157,11 @@ class SynchronizePublicationServiceTest {
 
     @Test
     fun `source document mismatch abandons the staging revision exactly once as a mapping failure`() {
-        val fixture = fixture(
-            posts = mapOf(root to imported(ref("different"))),
-            appliedPostIds = mapOf(root to postId("1")),
-        )
+        val fixture =
+            fixture(
+                posts = mapOf(root to imported(ref("different"))),
+                appliedPostIds = mapOf(root to postId("1")),
+            )
 
         assertThatIllegalArgumentException().isThrownBy { fixture.service.synchronize() }
 
@@ -163,10 +172,11 @@ class SynchronizePublicationServiceTest {
     @Test
     fun `duplicate source document in the structural graph abandons staging as a mapping failure`() {
         val child = ref("child")
-        val fixture = fixture(
-            posts = mapOf(root to imported(root, children = listOf(child, child))),
-            appliedPostIds = mapOf(root to postId("1")),
-        )
+        val fixture =
+            fixture(
+                posts = mapOf(root to imported(root, children = listOf(child, child))),
+                appliedPostIds = mapOf(root to postId("1")),
+            )
 
         assertThatIllegalArgumentException().isThrownBy { fixture.service.synchronize() }
 
@@ -177,10 +187,11 @@ class SynchronizePublicationServiceTest {
     @Test
     fun `structural cycle abandons staging as a mapping failure`() {
         val child = ref("child")
-        val fixture = fixture(
-            posts = mapOf(root to imported(root, children = listOf(child)), child to imported(child, children = listOf(root))),
-            appliedPostIds = mapOf(root to postId("1"), child to postId("2")),
-        )
+        val fixture =
+            fixture(
+                posts = mapOf(root to imported(root, children = listOf(child)), child to imported(child, children = listOf(root))),
+                appliedPostIds = mapOf(root to postId("1"), child to postId("2")),
+            )
 
         assertThatIllegalArgumentException().isThrownBy { fixture.service.synchronize() }
 
@@ -193,14 +204,16 @@ class SynchronizePublicationServiceTest {
         val first = ref("first")
         val second = ref("second")
         val shared = ref("shared")
-        val fixture = fixture(
-            posts = mapOf(
-                root to imported(root, children = listOf(first, second)),
-                first to imported(first, children = listOf(shared)),
-                second to imported(second, children = listOf(shared)),
-            ),
-            appliedPostIds = mapOf(root to postId("1"), first to postId("2"), second to postId("3")),
-        )
+        val fixture =
+            fixture(
+                posts =
+                    mapOf(
+                        root to imported(root, children = listOf(first, second)),
+                        first to imported(first, children = listOf(shared)),
+                        second to imported(second, children = listOf(shared)),
+                    ),
+                appliedPostIds = mapOf(root to postId("1"), first to postId("2"), second to postId("3")),
+            )
 
         assertThatIllegalArgumentException().isThrownBy { fixture.service.synchronize() }
 
@@ -229,11 +242,12 @@ class SynchronizePublicationServiceTest {
     @Test
     fun `apply failure is propagated without falsely abandoning the staging revision`() {
         val failure = RuntimeException("database unavailable")
-        val fixture = fixture(
-            posts = mapOf(root to imported(root)),
-            appliedPostIds = mapOf(root to postId("1")),
-            applyFailure = failure,
-        )
+        val fixture =
+            fixture(
+                posts = mapOf(root to imported(root)),
+                appliedPostIds = mapOf(root to postId("1")),
+                applyFailure = failure,
+            )
 
         assertThatThrownBy { fixture.service.synchronize() }.isSameAs(failure)
 
@@ -252,7 +266,6 @@ class SynchronizePublicationServiceTest {
     }
 
     private fun fixture(
-        context: PublicationSynchronizationContext? = PublicationSynchronizationContext(publicationId, root),
         posts: Map<SourceDocumentRef, ImportedPost> = emptyMap(),
         appliedPostIds: Map<SourceDocumentRef, PostId> = emptyMap(),
         sourceFailure: SourceException? = null,
@@ -262,14 +275,15 @@ class SynchronizePublicationServiceTest {
         val members = mutableListOf<PublicationMember>()
         val abandoned = mutableListOf<Pair<PublicationRevisionId, SyncFailureKind>>()
         val source = RecordingPostSource(posts, sourceFailure, events)
-        val sourceLabelByPostId = appliedPostIds.entries.associate { (sourceDocument, postId) ->
-            postId to sourceDocument.externalId
-        }
+        val sourceLabelByPostId =
+            appliedPostIds.entries.associate { (sourceDocument, postId) ->
+                postId to sourceDocument.externalId
+            }
         val query = mockk<SynchronizationQueryService>()
         val stage = mockk<StagePublicationMemberService>()
         val apply = mockk<ApplyImportedPostService>()
         val activate = mockk<ActivatePublicationService>()
-        every { query.loadPublication() } returns context
+        every { query.loadPublication() } returns PublicationSynchronizationContext(publicationId, root)
         every { stage.begin(publicationId) } answers {
             events += "begin"
             PublicationRevision(revisionId, publicationId, PublicationRevisionState.STAGING)
@@ -294,6 +308,7 @@ class SynchronizePublicationServiceTest {
 
         return Fixture(
             service = SynchronizePublicationService(query, stage, source, apply, activate),
+            query = query,
             source = source,
             events = events,
             members = members,
@@ -321,6 +336,7 @@ class SynchronizePublicationServiceTest {
 
     private data class Fixture(
         val service: SynchronizePublicationService,
+        val query: SynchronizationQueryService,
         val source: RecordingPostSource,
         val events: List<String>,
         val members: List<PublicationMember>,

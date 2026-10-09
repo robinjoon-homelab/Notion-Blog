@@ -4,6 +4,11 @@ server:
 spring:
   application:
     name: notion-blog
+  threads:
+    virtual:
+      enabled: true
+  main:
+    keep-alive: true
   datasource:
     url: ${SPRING_DATASOURCE_URL}
     username: ${SPRING_DATASOURCE_USERNAME}
@@ -100,6 +105,11 @@ management:
     health:
       probes:
         enabled: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState,db
   endpoints:
     web:
       exposure:

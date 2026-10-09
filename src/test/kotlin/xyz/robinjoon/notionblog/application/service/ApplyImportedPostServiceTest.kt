@@ -1,5 +1,8 @@
 package xyz.robinjoon.notionblog.application.service
 
+import io.mockk.mockk
+import io.mockk.slot
+import io.mockk.verify
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
@@ -8,16 +11,18 @@ import xyz.robinjoon.notionblog.application.model.ImportedPost
 import xyz.robinjoon.notionblog.application.model.ImportedPublicationStatus
 import xyz.robinjoon.notionblog.application.model.PostFeedEntry
 import xyz.robinjoon.notionblog.application.model.StoredPost
+import xyz.robinjoon.notionblog.application.port.output.diagnostics.SnapshotFailureOperation
+import xyz.robinjoon.notionblog.application.port.output.diagnostics.SnapshotFailureReporter
 import xyz.robinjoon.notionblog.application.port.output.persistence.PostRepository
 import xyz.robinjoon.notionblog.application.port.output.persistence.SnapshotContentException
 import xyz.robinjoon.notionblog.application.port.output.persistence.SyncStateRepository
 import xyz.robinjoon.notionblog.domain.post.Post
 import xyz.robinjoon.notionblog.domain.post.PostId
+import xyz.robinjoon.notionblog.domain.post.PostSourceBinding
 import xyz.robinjoon.notionblog.domain.post.block.BlockTree
 import xyz.robinjoon.notionblog.domain.publication.PostAvailability
 import xyz.robinjoon.notionblog.domain.publication.PostAvailabilityStatus
 import xyz.robinjoon.notionblog.domain.publication.PublicationId
-import xyz.robinjoon.notionblog.domain.source.PostSourceBinding
 import xyz.robinjoon.notionblog.domain.source.SourceDocumentRef
 import xyz.robinjoon.notionblog.domain.source.SourceId
 import xyz.robinjoon.notionblog.domain.source.SourceRevision
@@ -34,23 +39,27 @@ import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.memberFunctions
 
 class ApplyImportedPostServiceTest {
+    private val snapshotFailures = mockk<SnapshotFailureReporter>(relaxed = true)
     private val now = Instant.parse("2026-08-25T00:00:00Z")
     private val clock = Clock.fixed(now, ZoneOffset.UTC)
-    private val refreshPolicy = RefreshPolicy(
-        successInterval = Duration.ofMinutes(15),
-        initialFailureDelay = Duration.ofMinutes(2),
-        maximumFailureDelay = Duration.ofMinutes(30),
-    )
+    private val refreshPolicy =
+        RefreshPolicy(
+            successInterval = Duration.ofMinutes(15),
+            initialFailureDelay = Duration.ofMinutes(2),
+            maximumFailureDelay = Duration.ofMinutes(30),
+        )
 
     @Test
     fun `apply and record failure own transaction boundaries`() {
         assertThat(
-            ApplyImportedPostService::class.memberFunctions
+            ApplyImportedPostService::class
+                .memberFunctions
                 .single { it.name == "apply" }
                 .findAnnotation<Transactional>(),
         ).isNotNull()
         assertThat(
-            ApplyImportedPostService::class.memberFunctions
+            ApplyImportedPostService::class
+                .memberFunctions
                 .single { it.name == "recordFailure" }
                 .findAnnotation<Transactional>(),
         ).isNotNull()
@@ -64,15 +73,18 @@ class ApplyImportedPostServiceTest {
         val states = RecordingSyncStateRepository(operations)
         val imported = importedPost()
 
-        val result = service(posts, states) { reference ->
-            operations += "new-id"
-            assertThat(reference).isEqualTo(imported.sourceDocument)
-            postId
-        }.apply(imported)
+        val result =
+            service(posts, states) { reference ->
+                operations += "new-id"
+                assertThat(reference).isEqualTo(imported.sourceDocument)
+                postId
+            }.apply(imported)
 
         assertThat(result).isEqualTo(postId)
         assertThat(posts.binding).isEqualTo(PostSourceBinding(postId, imported.sourceDocument))
-        assertThat(posts.identity).isEqualTo(IdentityWrite(posts.binding!!, imported.title, now))
+        assertThat(posts.identity).isEqualTo(
+            IdentityWrite(PostSourceBinding(postId, imported.sourceDocument), imported.title, now),
+        )
         assertThat(posts.snapshot).isEqualTo(
             SnapshotWrite(Post(postId, imported.title, imported.content), imported.sourceRevision, now),
         )
@@ -99,21 +111,25 @@ class ApplyImportedPostServiceTest {
         val operations = mutableListOf<String>()
         val postId = postId("00000000-0000-0000-0000-000000000002")
         val imported = importedPost()
-        val posts = RecordingPostRepository(operations).apply {
-            binding = PostSourceBinding(postId, imported.sourceDocument)
-            storedPost = StoredPost(
-                Post(postId, "Old title", BlockTree(emptyList())),
-                imported.sourceRevision,
-                now.minusSeconds(30),
-            )
-        }
+        val posts =
+            RecordingPostRepository(operations).apply {
+                binding = PostSourceBinding(postId, imported.sourceDocument)
+                storedPost =
+                    StoredPost(
+                        Post(postId, "Old title", BlockTree(emptyList())),
+                        imported.sourceRevision,
+                        now.minusSeconds(30),
+                    )
+            }
         val states = RecordingSyncStateRepository(operations)
 
         service(posts, states) { error("a known source document must not create a new id") }.apply(imported)
 
         assertThat(posts.snapshot).isNull()
         assertThat(posts.firstPublishedAt).isEqualTo(now)
-        assertThat(posts.identity).isEqualTo(IdentityWrite(posts.binding!!, imported.title, now))
+        assertThat(posts.identity).isEqualTo(
+            IdentityWrite(PostSourceBinding(postId, imported.sourceDocument), imported.title, now),
+        )
         assertThat(posts.availability).isEqualTo(PostAvailability(postId, PostAvailabilityStatus.PUBLISHED, now))
         assertThat(operations).containsExactly(
             "find-binding",
@@ -131,14 +147,16 @@ class ApplyImportedPostServiceTest {
         val operations = mutableListOf<String>()
         val postId = postId("00000000-0000-0000-0000-000000000007")
         val imported = importedPost()
-        val posts = RecordingPostRepository(operations).apply {
-            binding = PostSourceBinding(postId, imported.sourceDocument)
-            storedPost = StoredPost(
-                Post(postId, "Old title", BlockTree(emptyList())),
-                SourceRevision("revision-0"),
-                now.minusSeconds(30),
-            )
-        }
+        val posts =
+            RecordingPostRepository(operations).apply {
+                binding = PostSourceBinding(postId, imported.sourceDocument)
+                storedPost =
+                    StoredPost(
+                        Post(postId, "Old title", BlockTree(emptyList())),
+                        SourceRevision("revision-0"),
+                        now.minusSeconds(30),
+                    )
+            }
         val states = RecordingSyncStateRepository(operations)
 
         service(posts, states) { error("a known source document must not create a new id") }.apply(imported)
@@ -159,18 +177,23 @@ class ApplyImportedPostServiceTest {
     }
 
     @Test
-    fun `corrupt stored snapshot is replaced when a published import is applied`() {
+    fun `reports corrupt stored snapshot with its identity and replaces it from the published import`() {
         val operations = mutableListOf<String>()
         val postId = postId("00000000-0000-0000-0000-000000000003")
         val imported = importedPost()
-        val posts = RecordingPostRepository(operations).apply {
-            binding = PostSourceBinding(postId, imported.sourceDocument)
-            findPostFailure = SnapshotContentException("unsupported snapshot")
-        }
+        val failure = SnapshotContentException("unsupported snapshot", IllegalArgumentException("invalid content"))
+        val reported = slot<SnapshotContentException>()
+        val posts =
+            RecordingPostRepository(operations).apply {
+                binding = PostSourceBinding(postId, imported.sourceDocument)
+                findPostFailure = failure
+            }
         val states = RecordingSyncStateRepository(operations)
 
         service(posts, states) { error("a known source document must not create a new id") }.apply(imported)
 
+        verify(exactly = 1) { snapshotFailures.report(capture(reported), SnapshotFailureOperation.SNAPSHOT_REPAIR, postId) }
+        assertThat(reported.captured).isSameAs(failure)
         assertThat(posts.snapshot).isEqualTo(
             SnapshotWrite(Post(postId, imported.title, imported.content), imported.sourceRevision, now),
         )
@@ -191,9 +214,10 @@ class ApplyImportedPostServiceTest {
         val operations = mutableListOf<String>()
         val postId = postId("00000000-0000-0000-0000-000000000004")
         val imported = importedPost(status = ImportedPublicationStatus.UNPUBLISHED)
-        val posts = RecordingPostRepository(operations).apply {
-            binding = PostSourceBinding(postId, imported.sourceDocument)
-        }
+        val posts =
+            RecordingPostRepository(operations).apply {
+                binding = PostSourceBinding(postId, imported.sourceDocument)
+            }
         val states = RecordingSyncStateRepository(operations)
 
         service(posts, states) { error("a known source document must not create a new id") }.apply(imported)
@@ -215,15 +239,17 @@ class ApplyImportedPostServiceTest {
         val operations = mutableListOf<String>()
         val postId = postId("00000000-0000-0000-0000-000000000005")
         val posts = RecordingPostRepository(operations)
-        val states = RecordingSyncStateRepository(operations).apply {
-            existing = SyncState(
-                target = SyncTarget.Post(postId),
-                lastSuccessAt = now.minusSeconds(60),
-                refreshAfter = now,
-                failureCount = 1,
-                lastErrorKind = SyncFailureKind.RETRYABLE_SOURCE,
-            )
-        }
+        val states =
+            RecordingSyncStateRepository(operations).apply {
+                existing =
+                    SyncState(
+                        target = SyncTarget.Post(postId),
+                        lastSuccessAt = now.minusSeconds(60),
+                        refreshAfter = now,
+                        failureCount = 1,
+                        lastErrorKind = SyncFailureKind.RETRYABLE_SOURCE,
+                    )
+            }
 
         service(posts, states) { error("not used") }.recordFailure(postId, SyncFailureKind.ACCESS)
 
@@ -247,15 +273,18 @@ class ApplyImportedPostServiceTest {
         val operations = mutableListOf<String>()
         val postId = postId("00000000-0000-0000-0000-000000000006")
         val imported = importedPost()
-        val posts = RecordingPostRepository(operations).apply {
-            binding = PostSourceBinding(postId, imported.sourceDocument)
-            snapshotWriteFailure = SnapshotContentException("database write failure")
-        }
+        val failure = SnapshotContentException("database write failure")
+        val posts =
+            RecordingPostRepository(operations).apply {
+                binding = PostSourceBinding(postId, imported.sourceDocument)
+                snapshotWriteFailure = failure
+            }
         val states = RecordingSyncStateRepository(operations)
 
         assertThatThrownBy {
             service(posts, states) { error("a known source document must not create a new id") }.apply(imported)
-        }.isInstanceOf(SnapshotContentException::class.java)
+        }.isSameAs(failure)
+        verify(exactly = 0) { snapshotFailures.report(any(), any(), any()) }
 
         assertThat(posts.availability).isNull()
         assertThat(posts.firstPublishedAt).isNull()
@@ -272,8 +301,17 @@ class ApplyImportedPostServiceTest {
         val imported = importedPost()
         val firstPublishedAt = now.plusSeconds(60)
 
-        fun applyAt(at: Instant, value: ImportedPost) {
-            ApplyImportedPostService(posts, states, Clock.fixed(at, ZoneOffset.UTC), refreshPolicy) { postId }.apply(value)
+        fun applyAt(
+            at: Instant,
+            value: ImportedPost,
+        ) {
+            ApplyImportedPostService(
+                posts,
+                states,
+                Clock.fixed(at, ZoneOffset.UTC),
+                refreshPolicy,
+                snapshotFailures,
+            ) { postId }.apply(value)
         }
 
         applyAt(now, imported.copy(publicationStatus = ImportedPublicationStatus.UNPUBLISHED))
@@ -309,16 +347,17 @@ class ApplyImportedPostServiceTest {
         posts: PostRepository,
         syncStates: SyncStateRepository,
         postIdFactory: (SourceDocumentRef) -> PostId,
-    ) = ApplyImportedPostService(posts, syncStates, clock, refreshPolicy, postIdFactory)
+    ) = ApplyImportedPostService(posts, syncStates, clock, refreshPolicy, snapshotFailures, postIdFactory)
 
-    private fun importedPost(status: ImportedPublicationStatus = ImportedPublicationStatus.PUBLISHED) = ImportedPost(
-        sourceDocument = SourceDocumentRef(SourceId("notion-main"), "page-1"),
-        title = "Imported title",
-        publicationStatus = status,
-        sourceRevision = SourceRevision("revision-1"),
-        content = BlockTree(emptyList()),
-        containedChildren = emptyList(),
-    )
+    private fun importedPost(status: ImportedPublicationStatus = ImportedPublicationStatus.PUBLISHED) =
+        ImportedPost(
+            sourceDocument = SourceDocumentRef(SourceId("notion-main"), "page-1"),
+            title = "Imported title",
+            publicationStatus = status,
+            sourceRevision = SourceRevision("revision-1"),
+            content = BlockTree(emptyList()),
+            containedChildren = emptyList(),
+        )
 
     private fun postId(value: String) = PostId(UUID.fromString(value))
 
@@ -347,9 +386,8 @@ class ApplyImportedPostServiceTest {
             return binding
         }
 
-        override fun findBindingsBySourceDocuments(
-            sourceDocuments: Set<SourceDocumentRef>,
-        ): Map<SourceDocumentRef, PostSourceBinding> = emptyMap()
+        override fun findBindingsBySourceDocuments(sourceDocuments: Set<SourceDocumentRef>): Map<SourceDocumentRef, PostSourceBinding> =
+            emptyMap()
 
         override fun findBindingsByPostIds(postIds: Set<PostId>): Map<PostId, PostSourceBinding> = emptyMap()
 
@@ -359,20 +397,31 @@ class ApplyImportedPostServiceTest {
             limit: Int,
         ): List<PostFeedEntry> = error("feed lookup is not used while applying imports")
 
-        override fun saveIdentity(binding: PostSourceBinding, title: String, changedAt: Instant) {
+        override fun saveIdentity(
+            binding: PostSourceBinding,
+            title: String,
+            changedAt: Instant,
+        ) {
             operations += "save-identity"
             this.binding = binding
             identity = IdentityWrite(binding, title, changedAt)
         }
 
-        override fun saveSnapshot(post: Post, sourceRevision: SourceRevision, capturedAt: Instant) {
+        override fun saveSnapshot(
+            post: Post,
+            sourceRevision: SourceRevision,
+            capturedAt: Instant,
+        ) {
             operations += "save-snapshot"
             snapshotWriteFailure?.let { throw it }
             snapshot = SnapshotWrite(post, sourceRevision, capturedAt)
             storedPost = StoredPost(post, sourceRevision, capturedAt)
         }
 
-        override fun recordFirstPublication(postId: PostId, observedAt: Instant) {
+        override fun recordFirstPublication(
+            postId: PostId,
+            observedAt: Instant,
+        ) {
             operations += "record-first-publication"
             check(storedPost?.post?.id == postId) { "a published snapshot must exist before recording the first publication" }
             if (firstPublishedAt == null) {
@@ -405,7 +454,10 @@ class ApplyImportedPostServiceTest {
             saved = saved?.takeUnless { it.target == target }
         }
 
-        override fun findDue(now: Instant, limit: Int): List<SyncState> = emptyList()
+        override fun findDue(
+            now: Instant,
+            limit: Int,
+        ): List<SyncState> = emptyList()
 
         override fun find(target: SyncTarget): SyncState? {
             operations += "find-sync"

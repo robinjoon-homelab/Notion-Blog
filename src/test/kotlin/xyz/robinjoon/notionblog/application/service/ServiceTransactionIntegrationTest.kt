@@ -6,6 +6,7 @@ import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
@@ -21,10 +22,10 @@ import org.springframework.transaction.support.TransactionTemplate
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
-import xyz.robinjoon.notionblog.adapter.output.persistence.exposed.ExposedSyncStateRepository
 import xyz.robinjoon.notionblog.application.model.ImportedPost
 import xyz.robinjoon.notionblog.application.model.ImportedPublicationStatus
 import xyz.robinjoon.notionblog.application.model.StoredPost
+import xyz.robinjoon.notionblog.application.port.input.SynchronizePostUseCase
 import xyz.robinjoon.notionblog.application.port.output.persistence.PostRepository
 import xyz.robinjoon.notionblog.application.port.output.persistence.PublicationRepository
 import xyz.robinjoon.notionblog.application.port.output.persistence.SyncStateRepository
@@ -69,26 +70,41 @@ import javax.sql.DataSource
 @Testcontainers
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class ServiceTransactionIntegrationTest(
-    @Autowired private val applyService: ApplyImportedPostService,
-    @Autowired private val activateService: ActivatePublicationService,
-    @Autowired private val synchronizePostService: SynchronizePostService,
-    @Autowired private val posts: PostRepository,
-    @Autowired private val publications: PublicationRepository,
-    @Autowired private val states: FailingSyncStateRepository,
-    @Autowired private val source: RecordingPostSource,
-    @Autowired private val clock: MutableClock,
     @Autowired transactionManager: PlatformTransactionManager,
     @Autowired dataSource: DataSource,
 ) {
+    @Autowired
+    private lateinit var applyService: ApplyImportedPostService
+
+    @Autowired
+    private lateinit var activateService: ActivatePublicationService
+
+    @Autowired
+    private lateinit var synchronizePostService: SynchronizePostUseCase
+
+    @Autowired
+    private lateinit var posts: PostRepository
+
+    @Autowired
+    private lateinit var publications: PublicationRepository
+
+    @Autowired
+    private lateinit var states: FailingSyncStateRepository
+
+    @Autowired
+    private lateinit var source: RecordingPostSource
+
+    @Autowired
+    private lateinit var clock: MutableClock
+
     private val transactions = TransactionTemplate(transactionManager)
     private val jdbc = JdbcTemplate(dataSource)
 
     @BeforeEach
     fun clearDatabaseAndFailures() {
-        clock.currentInstant = NOW
+        clock.currentInstant = now
         states.failAfterSaveFor = null
-        source.imports.clear()
-        source.transactionStates.clear()
+        source.reset()
         jdbc.execute(
             "truncate table site_configuration, publication_member, publication_revision, publication, " +
                 "post_availability, post_snapshot, post_source_binding, post, sync_state cascade",
@@ -104,7 +120,7 @@ class ServiceTransactionIntegrationTest(
         val previousState = failedState(SyncTarget.Publication(originalPublication.id))
         val previousPostState = failedState(SyncTarget.Post(originalRootId))
         inTransaction {
-            publications.createRevision(replacementRevision, NOW)
+            publications.createRevision(replacementRevision, now)
             publications.saveMembers(
                 replacementRevision.id,
                 listOf(PublicationMember(replacementRevision.id, replacementRootId, parentPostId = null, depth = 0)),
@@ -132,22 +148,23 @@ class ServiceTransactionIntegrationTest(
     fun `activation removes excluded post reservations while preserving unpublished and moved members`() {
         val rootId = applyService.apply(imported("root", "Root", "revision-1"))
         val removedId = applyService.apply(imported("removed", "Removed", "revision-1"))
-        val unpublishedId = applyService.apply(
-            imported("unpublished", "Unpublished", "revision-1").copy(publicationStatus = ImportedPublicationStatus.UNPUBLISHED),
-        )
+        val unpublishedId =
+            applyService.apply(
+                imported("unpublished", "Unpublished", "revision-1").copy(publicationStatus = ImportedPublicationStatus.UNPUBLISHED),
+            )
         val movedId = applyService.apply(imported("moved", "Moved", "revision-1"))
         val publication = seedActivePublication(rootId)
         val originalRevisionId = requireNotNull(publication.activeRevisionId)
         val replacement = stagingRevision(publication.id)
         val retainedStates = listOf(rootId, unpublishedId, movedId).map { failedState(SyncTarget.Post(it)) }
-        val excludedState = SyncState(SyncTarget.Post(removedId), NOW, NOW.plusSeconds(3_600), 0, null)
+        val excludedState = SyncState(SyncTarget.Post(removedId), now, now.plusSeconds(3_600), 0, null)
         val settingsState = failedState(SyncTarget.SiteConfiguration)
         inTransaction {
             publications.saveMembers(
                 originalRevisionId,
                 listOf(removedId, unpublishedId, movedId).map { PublicationMember(originalRevisionId, it, rootId, 1) },
             )
-            publications.createRevision(replacement, NOW)
+            publications.createRevision(replacement, now)
             publications.saveMembers(
                 replacement.id,
                 listOf(
@@ -176,12 +193,12 @@ class ServiceTransactionIntegrationTest(
         val rootId = applyService.apply(imported("root", "Root", "revision-1"))
         val excludedId = applyService.apply(imported("excluded", "Excluded", "revision-1"))
         val publication = seedActivePublication(rootId)
-        val activeState = SyncState(SyncTarget.Post(rootId), NOW, NOW, 0, null)
+        val activeState = SyncState(SyncTarget.Post(rootId), now, now, 0, null)
         val excludedState = failedState(SyncTarget.Post(excludedId))
-        val publicationState = SyncState(SyncTarget.Publication(publication.id), NOW, NOW.plusSeconds(600), 0, null)
+        val publicationState = SyncState(SyncTarget.Publication(publication.id), now, now.plusSeconds(600), 0, null)
         inTransaction {
             listOf(activeState, excludedState, publicationState).forEach(states::save)
-            assertThat(states.findDue(NOW, 1)).containsExactly(excludedState)
+            assertThat(states.findDue(now, 1)).containsExactly(excludedState)
         }
 
         synchronizePostService.synchronize(excludedId)
@@ -189,7 +206,7 @@ class ServiceTransactionIntegrationTest(
         assertThat(source.transactionStates).isEmpty()
         inTransaction {
             assertThat(states.find(excludedState.target)).isNull()
-            assertThat(states.findDue(NOW, 1)).containsExactly(activeState)
+            assertThat(states.findDue(now, 1)).containsExactly(activeState)
             assertThat(states.find(publicationState.target)).isEqualTo(publicationState)
             assertThat(posts.find(excludedId)?.post?.title).isEqualTo("Excluded")
         }
@@ -197,8 +214,8 @@ class ServiceTransactionIntegrationTest(
         val returnedId = applyService.apply(imported("excluded", "Returned", "revision-2"))
         assertThat(returnedId).isEqualTo(excludedId)
         inTransaction {
-            assertThat(states.find(excludedState.target)?.lastSuccessAt).isEqualTo(NOW)
-            assertThat(states.find(excludedState.target)?.refreshAfter).isAfter(NOW)
+            assertThat(states.find(excludedState.target)?.lastSuccessAt).isEqualTo(now)
+            assertThat(states.find(excludedState.target)?.refreshAfter).isAfter(now)
         }
     }
 
@@ -218,9 +235,9 @@ class ServiceTransactionIntegrationTest(
 
         val revision = stagingRevision(publicationId)
         inTransaction {
-            publications.createRevision(revision, NOW)
+            publications.createRevision(revision, now)
             publications.saveMembers(revision.id, listOf(PublicationMember(revision.id, postId, null, 0)))
-            publications.updateRevision(revision.activate(), NOW)
+            publications.updateRevision(revision.activate(), now)
             publications.save(BlogPublication(publicationId, postId, revision.id))
         }
         jdbc.update("delete from post_source_binding where post_id = ?", postId.value)
@@ -235,8 +252,8 @@ class ServiceTransactionIntegrationTest(
     fun `post write failure rolls back title snapshot publication status and synchronization state`() {
         val original = imported("post", "Original title", "revision-1")
         val postId = applyService.apply(original)
-        val originalSnapshot = StoredPost(Post(postId, original.title, original.content), original.sourceRevision, NOW)
-        val originalAvailability = PostAvailability(postId, PostAvailabilityStatus.UNPUBLISHED, BEFORE)
+        val originalSnapshot = StoredPost(Post(postId, original.title, original.content), original.sourceRevision, now)
+        val originalAvailability = PostAvailability(postId, PostAvailabilityStatus.UNPUBLISHED, before)
         val previousState = failedState(SyncTarget.Post(postId))
         inTransaction {
             posts.saveAvailability(originalAvailability)
@@ -257,10 +274,11 @@ class ServiceTransactionIntegrationTest(
 
     @Test
     fun `failed first publication rolls back its timestamp and content before a later retry commits`() {
-        val unpublished = imported("post", "Unpublished title", "revision-1")
-            .copy(publicationStatus = ImportedPublicationStatus.UNPUBLISHED)
+        val unpublished =
+            imported("post", "Unpublished title", "revision-1")
+                .copy(publicationStatus = ImportedPublicationStatus.UNPUBLISHED)
         val postId = applyService.apply(unpublished)
-        val originalAvailability = PostAvailability(postId, PostAvailabilityStatus.UNPUBLISHED, NOW)
+        val originalAvailability = PostAvailability(postId, PostAvailabilityStatus.UNPUBLISHED, now)
         val previousState = failedState(SyncTarget.Post(postId))
         inTransaction {
             states.save(previousState)
@@ -269,7 +287,7 @@ class ServiceTransactionIntegrationTest(
         }
         assertThat(firstPublicationAt(postId)).isNull()
         states.failAfterSaveFor = previousState.target
-        clock.currentInstant = NOW.plusSeconds(60)
+        clock.currentInstant = now.plusSeconds(60)
         val published = imported("post", "Published title", "revision-2")
 
         assertThatThrownBy { applyService.apply(published) }
@@ -283,7 +301,7 @@ class ServiceTransactionIntegrationTest(
         }
 
         states.failAfterSaveFor = null
-        val retriedAt = NOW.plusSeconds(120)
+        val retriedAt = now.plusSeconds(120)
         clock.currentInstant = retriedAt
 
         assertThat(applyService.apply(published)).isEqualTo(postId)
@@ -304,17 +322,17 @@ class ServiceTransactionIntegrationTest(
         val postId = applyService.apply(original)
         seedActivePublication(postId)
         val replacement = imported("post", "Replacement title", "revision-2")
-        source.imports[replacement.sourceDocument] = replacement
+        source.provide(replacement)
 
         synchronizePostService.synchronize(postId)
 
         assertThat(source.transactionStates).containsExactly(false to false)
         inTransaction {
             assertThat(posts.find(postId))
-                .isEqualTo(StoredPost(Post(postId, replacement.title, replacement.content), replacement.sourceRevision, NOW))
+                .isEqualTo(StoredPost(Post(postId, replacement.title, replacement.content), replacement.sourceRevision, now))
             assertThat(posts.findAvailability(postId))
-                .isEqualTo(PostAvailability(postId, PostAvailabilityStatus.PUBLISHED, NOW))
-            assertThat(states.find(SyncTarget.Post(postId))?.lastSuccessAt).isEqualTo(NOW)
+                .isEqualTo(PostAvailability(postId, PostAvailabilityStatus.PUBLISHED, now))
+            assertThat(states.find(SyncTarget.Post(postId))?.lastSuccessAt).isEqualTo(now)
         }
     }
 
@@ -324,26 +342,31 @@ class ServiceTransactionIntegrationTest(
         val publication = BlogPublication(publicationId, rootPostId, revision.id)
         inTransaction {
             publications.save(BlogPublication(publicationId, rootPostId = null, activeRevisionId = null))
-            publications.createRevision(revision, BEFORE)
+            publications.createRevision(revision, before)
             publications.saveMembers(
                 revision.id,
                 listOf(PublicationMember(revision.id, rootPostId, parentPostId = null, depth = 0)),
             )
-            publications.updateRevision(revision.activate(), BEFORE)
+            publications.updateRevision(revision.activate(), before)
             publications.save(publication)
         }
         return publication
     }
 
-    private fun stagingRevision(publicationId: PublicationId) = PublicationRevision(
-        PublicationRevisionId(UUID.randomUUID()),
-        publicationId,
-        PublicationRevisionState.STAGING,
-    )
+    private fun stagingRevision(publicationId: PublicationId) =
+        PublicationRevision(
+            PublicationRevisionId(UUID.randomUUID()),
+            publicationId,
+            PublicationRevisionState.STAGING,
+        )
 
-    private fun failedState(target: SyncTarget) = SyncState(target, BEFORE, BEFORE, 2, SyncFailureKind.MAPPING)
+    private fun failedState(target: SyncTarget) = SyncState(target, before, before, 2, SyncFailureKind.MAPPING)
 
-    private fun imported(externalId: String, title: String, revision: String) = ImportedPost(
+    private fun imported(
+        externalId: String,
+        title: String,
+        revision: String,
+    ) = ImportedPost(
         sourceDocument = SourceDocumentRef(SourceId("test-source"), externalId),
         title = title,
         publicationStatus = ImportedPublicationStatus.PUBLISHED,
@@ -354,11 +377,12 @@ class ServiceTransactionIntegrationTest(
 
     private fun inTransaction(block: () -> Unit) = transactions.executeWithoutResult { block() }
 
-    private fun firstPublicationAt(postId: PostId): Instant? = jdbc.queryForObject(
-        "select first_published_at from post where post_id = ?",
-        { row, _ -> row.getTimestamp("first_published_at")?.toInstant() },
-        postId.value,
-    )
+    private fun firstPublicationAt(postId: PostId): Instant? =
+        jdbc.queryForObject(
+            "select first_published_at from post where post_id = ?",
+            { row, _ -> row.getTimestamp("first_published_at")?.toInstant() },
+            postId.value,
+        )
 
     @TestConfiguration(proxyBeanMethods = false)
     class TransactionTestConfiguration {
@@ -368,7 +392,9 @@ class ServiceTransactionIntegrationTest(
 
         @Bean
         @Primary
-        fun failingSyncStateRepository(delegate: ExposedSyncStateRepository): FailingSyncStateRepository = FailingSyncStateRepository(delegate)
+        fun failingSyncStateRepository(
+            @Qualifier("syncStateRepository") delegate: SyncStateRepository,
+        ): FailingSyncStateRepository = FailingSyncStateRepository(delegate)
 
         @Bean
         @Primary
@@ -376,7 +402,7 @@ class ServiceTransactionIntegrationTest(
     }
 
     class MutableClock : Clock() {
-        var currentInstant: Instant = NOW
+        var currentInstant: Instant = now
 
         override fun getZone(): ZoneId = ZoneOffset.UTC
 
@@ -385,7 +411,9 @@ class ServiceTransactionIntegrationTest(
         override fun instant(): Instant = currentInstant
     }
 
-    class FailingSyncStateRepository(private val delegate: SyncStateRepository) : SyncStateRepository by delegate {
+    class FailingSyncStateRepository(
+        private val delegate: SyncStateRepository,
+    ) : SyncStateRepository by delegate {
         var failAfterSaveFor: SyncTarget? = null
 
         override fun save(state: SyncState) {
@@ -397,11 +425,24 @@ class ServiceTransactionIntegrationTest(
     }
 
     class RecordingPostSource : PostSource {
-        val imports = mutableMapOf<SourceDocumentRef, ImportedPost>()
-        val transactionStates = mutableListOf<Pair<Boolean, Boolean>>()
+        private val imports = mutableMapOf<SourceDocumentRef, ImportedPost>()
+        private val recordedTransactionStates = mutableListOf<Pair<Boolean, Boolean>>()
+
+        val transactionStates: List<Pair<Boolean, Boolean>>
+            get() = recordedTransactionStates.toList()
+
+        fun reset() {
+            imports.clear()
+            recordedTransactionStates.clear()
+        }
+
+        fun provide(imported: ImportedPost) {
+            imports[imported.sourceDocument] = imported
+        }
 
         override fun fetch(reference: SourceDocumentRef): ImportedPost {
-            transactionStates += TransactionSynchronizationManager.isActualTransactionActive() to (TransactionManager.currentOrNull() != null)
+            recordedTransactionStates +=
+                TransactionSynchronizationManager.isActualTransactionActive() to (TransactionManager.currentOrNull() != null)
             return imports.getValue(reference)
         }
     }
@@ -409,8 +450,8 @@ class ServiceTransactionIntegrationTest(
     class InjectedWriteFailure : RuntimeException("injected failure after writing synchronization state")
 
     companion object {
-        private val NOW = Instant.parse("2026-08-25T01:00:00Z")
-        private val BEFORE = NOW.minusSeconds(60)
+        private val now = Instant.parse("2026-08-25T01:00:00Z")
+        private val before = now.minusSeconds(60)
 
         @Container
         @JvmStatic

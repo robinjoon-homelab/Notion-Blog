@@ -11,6 +11,7 @@ import xyz.robinjoon.notionblog.application.port.output.persistence.PublicationR
 import xyz.robinjoon.notionblog.application.port.output.persistence.SyncStateRepository
 import xyz.robinjoon.notionblog.domain.post.Post
 import xyz.robinjoon.notionblog.domain.post.PostId
+import xyz.robinjoon.notionblog.domain.post.PostSourceBinding
 import xyz.robinjoon.notionblog.domain.publication.BlogPublication
 import xyz.robinjoon.notionblog.domain.publication.PostAvailability
 import xyz.robinjoon.notionblog.domain.publication.PostAvailabilityStatus
@@ -19,7 +20,6 @@ import xyz.robinjoon.notionblog.domain.publication.PublicationMember
 import xyz.robinjoon.notionblog.domain.publication.PublicationRevision
 import xyz.robinjoon.notionblog.domain.publication.PublicationRevisionId
 import xyz.robinjoon.notionblog.domain.publication.PublicationRevisionState
-import xyz.robinjoon.notionblog.domain.source.PostSourceBinding
 import xyz.robinjoon.notionblog.domain.source.SourceDocumentRef
 import xyz.robinjoon.notionblog.domain.source.SourceRevision
 import xyz.robinjoon.notionblog.domain.sync.RefreshPolicy
@@ -52,24 +52,29 @@ class ActivatePublicationServiceTest {
 
     @Test
     fun `activation supersedes old revision before activating a complete staging graph and preserves unpublished members`() {
-        val publicationRepository = RecordingPublicationRepository(
-            publication = BlogPublication(publicationId, rootPostId, previousRevisionId),
-            revisions = listOf(
-                PublicationRevision(previousRevisionId, publicationId, PublicationRevisionState.ACTIVE),
-                PublicationRevision(stagingRevisionId, publicationId, PublicationRevisionState.STAGING),
-            ),
-            members = listOf(
-                PublicationMember(stagingRevisionId, rootPostId, parentPostId = null, depth = 0),
-                PublicationMember(stagingRevisionId, unpublishedPostId, parentPostId = rootPostId, depth = 1),
-            ),
-        )
-        val postRepository = RecordingPostRepository(
-            availabilities = mapOf(
-                rootPostId to published(rootPostId),
-                unpublishedPostId to unpublished(unpublishedPostId),
-            ),
-            renderablePostIds = setOf(rootPostId),
-        )
+        val publicationRepository =
+            RecordingPublicationRepository(
+                publication = BlogPublication(publicationId, rootPostId, previousRevisionId),
+                revisions =
+                    listOf(
+                        PublicationRevision(previousRevisionId, publicationId, PublicationRevisionState.ACTIVE),
+                        PublicationRevision(stagingRevisionId, publicationId, PublicationRevisionState.STAGING),
+                    ),
+                members =
+                    listOf(
+                        PublicationMember(stagingRevisionId, rootPostId, parentPostId = null, depth = 0),
+                        PublicationMember(stagingRevisionId, unpublishedPostId, parentPostId = rootPostId, depth = 1),
+                    ),
+            )
+        val postRepository =
+            RecordingPostRepository(
+                availabilities =
+                    mapOf(
+                        rootPostId to published(rootPostId),
+                        unpublishedPostId to unpublished(unpublishedPostId),
+                    ),
+                renderablePostIds = setOf(rootPostId),
+            )
         val syncStateRepository = RecordingSyncStateRepository()
 
         service(publicationRepository, postRepository, syncStateRepository).activate(stagingRevisionId)
@@ -90,29 +95,34 @@ class ActivatePublicationServiceTest {
     @Test
     fun `activation removes only the reservation of a member leaving the publication`() {
         val removedPostId = PostId(UUID.randomUUID())
-        val publicationRepository = RecordingPublicationRepository(
-            publication = BlogPublication(publicationId, rootPostId, previousRevisionId),
-            revisions = listOf(
-                PublicationRevision(previousRevisionId, publicationId, PublicationRevisionState.ACTIVE),
-                PublicationRevision(stagingRevisionId, publicationId, PublicationRevisionState.STAGING),
-            ),
-            members = listOf(
-                PublicationMember(previousRevisionId, rootPostId, null, 0),
-                PublicationMember(previousRevisionId, unpublishedPostId, rootPostId, 1),
-                PublicationMember(previousRevisionId, removedPostId, rootPostId, 1),
-                PublicationMember(stagingRevisionId, rootPostId, null, 0),
-                PublicationMember(stagingRevisionId, unpublishedPostId, rootPostId, 1),
-            ),
-        )
-        val postRepository = RecordingPostRepository(
-            mapOf(rootPostId to published(rootPostId), unpublishedPostId to unpublished(unpublishedPostId)),
-            setOf(rootPostId),
-        )
+        val publicationRepository =
+            RecordingPublicationRepository(
+                publication = BlogPublication(publicationId, rootPostId, previousRevisionId),
+                revisions =
+                    listOf(
+                        PublicationRevision(previousRevisionId, publicationId, PublicationRevisionState.ACTIVE),
+                        PublicationRevision(stagingRevisionId, publicationId, PublicationRevisionState.STAGING),
+                    ),
+                members =
+                    listOf(
+                        PublicationMember(previousRevisionId, rootPostId, null, 0),
+                        PublicationMember(previousRevisionId, unpublishedPostId, rootPostId, 1),
+                        PublicationMember(previousRevisionId, removedPostId, rootPostId, 1),
+                        PublicationMember(stagingRevisionId, rootPostId, null, 0),
+                        PublicationMember(stagingRevisionId, unpublishedPostId, rootPostId, 1),
+                    ),
+            )
+        val postRepository =
+            RecordingPostRepository(
+                mapOf(rootPostId to published(rootPostId), unpublishedPostId to unpublished(unpublishedPostId)),
+                setOf(rootPostId),
+            )
         val syncStateRepository = RecordingSyncStateRepository()
         val removedState = SyncState(SyncTarget.Post(removedPostId), now, now.plusSeconds(3_600), 0, null)
-        val retainedStates = listOf(rootPostId, unpublishedPostId).map {
-            SyncState(SyncTarget.Post(it), now, now.plusSeconds(600), 0, null)
-        }
+        val retainedStates =
+            listOf(rootPostId, unpublishedPostId).map {
+                SyncState(SyncTarget.Post(it), now, now.plusSeconds(600), 0, null)
+            }
         (retainedStates + removedState).forEach(syncStateRepository::save)
 
         service(publicationRepository, postRepository, syncStateRepository).activate(stagingRevisionId)
@@ -123,14 +133,16 @@ class ActivatePublicationServiceTest {
 
     @Test
     fun `activation rejects published members without snapshots before changing any state`() {
-        val publicationRepository = RecordingPublicationRepository(
-            publication = BlogPublication(publicationId, rootPostId, previousRevisionId),
-            revisions = listOf(
-                PublicationRevision(previousRevisionId, publicationId, PublicationRevisionState.ACTIVE),
-                PublicationRevision(stagingRevisionId, publicationId, PublicationRevisionState.STAGING),
-            ),
-            members = listOf(PublicationMember(stagingRevisionId, rootPostId, parentPostId = null, depth = 0)),
-        )
+        val publicationRepository =
+            RecordingPublicationRepository(
+                publication = BlogPublication(publicationId, rootPostId, previousRevisionId),
+                revisions =
+                    listOf(
+                        PublicationRevision(previousRevisionId, publicationId, PublicationRevisionState.ACTIVE),
+                        PublicationRevision(stagingRevisionId, publicationId, PublicationRevisionState.STAGING),
+                    ),
+                members = listOf(PublicationMember(stagingRevisionId, rootPostId, parentPostId = null, depth = 0)),
+            )
         val postRepository = RecordingPostRepository(mapOf(rootPostId to published(rootPostId)), emptySet())
         val syncStateRepository = RecordingSyncStateRepository()
 
@@ -146,14 +158,16 @@ class ActivatePublicationServiceTest {
 
     @Test
     fun `activation rejects members without a confirmed availability before changing any state`() {
-        val publicationRepository = RecordingPublicationRepository(
-            publication = BlogPublication(publicationId, rootPostId, previousRevisionId),
-            revisions = listOf(
-                PublicationRevision(previousRevisionId, publicationId, PublicationRevisionState.ACTIVE),
-                PublicationRevision(stagingRevisionId, publicationId, PublicationRevisionState.STAGING),
-            ),
-            members = listOf(PublicationMember(stagingRevisionId, rootPostId, parentPostId = null, depth = 0)),
-        )
+        val publicationRepository =
+            RecordingPublicationRepository(
+                publication = BlogPublication(publicationId, rootPostId, previousRevisionId),
+                revisions =
+                    listOf(
+                        PublicationRevision(previousRevisionId, publicationId, PublicationRevisionState.ACTIVE),
+                        PublicationRevision(stagingRevisionId, publicationId, PublicationRevisionState.STAGING),
+                    ),
+                members = listOf(PublicationMember(stagingRevisionId, rootPostId, parentPostId = null, depth = 0)),
+            )
         val syncStateRepository = RecordingSyncStateRepository()
 
         assertThatIllegalArgumentException().isThrownBy {
@@ -170,21 +184,25 @@ class ActivatePublicationServiceTest {
 
     @Test
     fun `activation rejects a disconnected graph before changing any state`() {
-        val publicationRepository = RecordingPublicationRepository(
-            publication = BlogPublication(publicationId, rootPostId, previousRevisionId),
-            revisions = listOf(
-                PublicationRevision(previousRevisionId, publicationId, PublicationRevisionState.ACTIVE),
-                PublicationRevision(stagingRevisionId, publicationId, PublicationRevisionState.STAGING),
-            ),
-            members = listOf(
-                PublicationMember(stagingRevisionId, rootPostId, parentPostId = null, depth = 0),
-                PublicationMember(stagingRevisionId, unpublishedPostId, parentPostId = rootPostId, depth = 2),
-            ),
-        )
-        val postRepository = RecordingPostRepository(
-            mapOf(rootPostId to published(rootPostId), unpublishedPostId to unpublished(unpublishedPostId)),
-            setOf(rootPostId),
-        )
+        val publicationRepository =
+            RecordingPublicationRepository(
+                publication = BlogPublication(publicationId, rootPostId, previousRevisionId),
+                revisions =
+                    listOf(
+                        PublicationRevision(previousRevisionId, publicationId, PublicationRevisionState.ACTIVE),
+                        PublicationRevision(stagingRevisionId, publicationId, PublicationRevisionState.STAGING),
+                    ),
+                members =
+                    listOf(
+                        PublicationMember(stagingRevisionId, rootPostId, parentPostId = null, depth = 0),
+                        PublicationMember(stagingRevisionId, unpublishedPostId, parentPostId = rootPostId, depth = 2),
+                    ),
+            )
+        val postRepository =
+            RecordingPostRepository(
+                mapOf(rootPostId to published(rootPostId), unpublishedPostId to unpublished(unpublishedPostId)),
+                setOf(rootPostId),
+            )
 
         assertThatIllegalArgumentException().isThrownBy {
             service(publicationRepository, postRepository, RecordingSyncStateRepository()).activate(stagingRevisionId)
@@ -227,27 +245,45 @@ class ActivatePublicationServiceTest {
 
         override fun findRevision(revisionId: PublicationRevisionId): PublicationRevision? = revisions[revisionId]
 
-        override fun findActiveRevision(publicationId: PublicationId): PublicationRevision? = revisions.values
-            .singleOrNull { it.publicationId == publicationId && it.state == PublicationRevisionState.ACTIVE }
+        override fun findActiveRevision(publicationId: PublicationId): PublicationRevision? =
+            revisions.values
+                .singleOrNull { it.publicationId == publicationId && it.state == PublicationRevisionState.ACTIVE }
 
-        override fun findStagingRevisions(publicationId: PublicationId): List<PublicationRevision> = revisions.values
-            .filter { it.publicationId == publicationId && it.state == PublicationRevisionState.STAGING }
+        override fun findStagingRevisions(publicationId: PublicationId): List<PublicationRevision> =
+            revisions.values
+                .filter { it.publicationId == publicationId && it.state == PublicationRevisionState.STAGING }
 
-        override fun createRevision(revision: PublicationRevision, transitionedAt: Instant) = Unit
+        override fun createRevision(
+            revision: PublicationRevision,
+            transitionedAt: Instant,
+        ) = Unit
 
-        override fun updateRevision(revision: PublicationRevision, transitionedAt: Instant) {
+        override fun updateRevision(
+            revision: PublicationRevision,
+            transitionedAt: Instant,
+        ) {
             revisions[revision.id] = revision
             events += "update:${revision.id}:${revision.state}"
         }
 
-        override fun saveMembers(revisionId: PublicationRevisionId, members: Collection<PublicationMember>) = Unit
+        override fun saveMembers(
+            revisionId: PublicationRevisionId,
+            members: Collection<PublicationMember>,
+        ) = Unit
 
-        override fun findMembers(revisionId: PublicationRevisionId): List<PublicationMember> = members
-            .filter { it.revisionId == revisionId }
+        override fun findMembers(revisionId: PublicationRevisionId): List<PublicationMember> =
+            members
+                .filter { it.revisionId == revisionId }
 
-        override fun findActiveMemberPostIds(publicationId: PublicationId, postIds: Set<PostId>): Set<PostId> = emptySet()
+        override fun findActiveMemberPostIds(
+            publicationId: PublicationId,
+            postIds: Set<PostId>,
+        ): Set<PostId> = emptySet()
 
-        override fun findActiveDirectChildren(publicationId: PublicationId, parentPostId: PostId): List<PublicationMember> = emptyList()
+        override fun findActiveDirectChildren(
+            publicationId: PublicationId,
+            parentPostId: PostId,
+        ): List<PublicationMember> = emptyList()
     }
 
     private class RecordingPostRepository(
@@ -260,15 +296,27 @@ class ActivatePublicationServiceTest {
 
         override fun findBinding(sourceDocument: SourceDocumentRef): PostSourceBinding? = null
 
-        override fun findBindingsBySourceDocuments(sourceDocuments: Set<SourceDocumentRef>): Map<SourceDocumentRef, PostSourceBinding> = emptyMap()
+        override fun findBindingsBySourceDocuments(sourceDocuments: Set<SourceDocumentRef>): Map<SourceDocumentRef, PostSourceBinding> =
+            emptyMap()
 
         override fun findBindingsByPostIds(postIds: Set<PostId>): Map<PostId, PostSourceBinding> = emptyMap()
 
-        override fun saveIdentity(binding: PostSourceBinding, title: String, changedAt: Instant) = Unit
+        override fun saveIdentity(
+            binding: PostSourceBinding,
+            title: String,
+            changedAt: Instant,
+        ) = Unit
 
-        override fun saveSnapshot(post: Post, sourceRevision: SourceRevision, capturedAt: Instant) = Unit
+        override fun saveSnapshot(
+            post: Post,
+            sourceRevision: SourceRevision,
+            capturedAt: Instant,
+        ) = Unit
 
-        override fun recordFirstPublication(postId: PostId, observedAt: Instant) {
+        override fun recordFirstPublication(
+            postId: PostId,
+            observedAt: Instant,
+        ) {
             error("publication activation does not record first publication times")
         }
 
@@ -293,7 +341,10 @@ class ActivatePublicationServiceTest {
         var saved: SyncState? = null
         private val states = mutableMapOf<SyncTarget, SyncState>()
 
-        override fun findDue(now: Instant, limit: Int): List<SyncState> = emptyList()
+        override fun findDue(
+            now: Instant,
+            limit: Int,
+        ): List<SyncState> = emptyList()
 
         override fun find(target: SyncTarget): SyncState? = states[target]
 

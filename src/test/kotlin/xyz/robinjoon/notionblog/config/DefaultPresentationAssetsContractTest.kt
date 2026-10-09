@@ -10,25 +10,29 @@ import java.util.Base64
 class DefaultPresentationAssetsContractTest {
     @Test
     fun `default presentation assets are pinned classpath resources with matching integrity`() {
-        val properties = YamlPropertiesFactoryBean().apply {
-            setResources(ClassPathResource("application.yml"))
-        }.getObject()!!
-        val assets = generateSequence(0) { it + 1 }
-            .map { index ->
-                val prefix = "blog.presentation.assets[$index]"
-                val key = properties.getProperty("$prefix.key") ?: return@map null
-                ConfiguredAsset(
-                    key = key,
-                    version = properties.getProperty("$prefix.version").toLong(),
-                    integrity = properties.getProperty("$prefix.integrity"),
-                    publicPath = properties.getProperty("$prefix.public-path"),
-                    mediaType = properties.getProperty("$prefix.media-type"),
-                    current = properties.getProperty("$prefix.current").toBoolean(),
-                )
-            }
-            .takeWhile { it != null }
-            .filterNotNull()
-            .toList()
+        val properties =
+            checkNotNull(
+                YamlPropertiesFactoryBean()
+                    .apply {
+                        setResources(ClassPathResource("application.yml"))
+                    }.getObject(),
+            )
+        val assets =
+            generateSequence(0) { it + 1 }
+                .map { index ->
+                    val prefix = "blog.presentation.assets[$index]"
+                    val key = properties.getProperty("$prefix.key") ?: return@map null
+                    ConfiguredAsset(
+                        key = key,
+                        version = properties.getProperty("$prefix.version").toLong(),
+                        integrity = properties.getProperty("$prefix.integrity"),
+                        publicPath = properties.getProperty("$prefix.public-path"),
+                        mediaType = properties.getProperty("$prefix.media-type"),
+                        current = properties.getProperty("$prefix.current").toBoolean(),
+                    )
+                }.takeWhile { it != null }
+                .filterNotNull()
+                .toList()
 
         assertThat(assets.map { it.key to it.version }).containsExactly(
             "notion-core" to 1L,

@@ -95,25 +95,28 @@ class SynchronizeSiteConfigurationServiceTest {
             .noneMatch { it.findAnnotation<Transactional>() != null }
     }
 
-    private fun imported(): ImportedSiteConfiguration = ImportedSiteConfiguration(
-        rootDocument = sourceDocument("root"),
-        headerDocument = null,
-        footerDocument = null,
-        metadata = ImportedSiteMetadata("Blog", null, "ko-KR", null),
-        presentationProfileKey = null,
-    )
-
-    private fun applied(rootChanged: Boolean): AppliedSiteConfiguration = AppliedSiteConfiguration(
-        configuration = SiteConfiguration(
-            publicationId = PublicationId(UUID.randomUUID()),
+    private fun imported(): ImportedSiteConfiguration =
+        ImportedSiteConfiguration(
             rootDocument = sourceDocument("root"),
             headerDocument = null,
             footerDocument = null,
-            metadata = SiteMetadata("Blog", null, "ko-KR", null),
-            presentationProfile = PresentationProfileRef(PresentationProfileId(UUID.randomUUID()), 1),
-        ),
-        rootChanged = rootChanged,
-    )
+            metadata = ImportedSiteMetadata("Blog", null, "ko-KR", null),
+            presentationProfileKey = null,
+        )
+
+    private fun applied(rootChanged: Boolean): AppliedSiteConfiguration =
+        AppliedSiteConfiguration(
+            configuration =
+                SiteConfiguration(
+                    publicationId = PublicationId(UUID.randomUUID()),
+                    rootDocument = sourceDocument("root"),
+                    headerDocument = null,
+                    footerDocument = null,
+                    metadata = SiteMetadata("Blog", null, "ko-KR", null),
+                    presentationProfile = PresentationProfileRef(PresentationProfileId(UUID.randomUUID()), 1),
+                ),
+            rootChanged = rootChanged,
+        )
 
     private fun sourceDocument(externalId: String) = SourceDocumentRef(SourceId("notion-main"), externalId)
 }

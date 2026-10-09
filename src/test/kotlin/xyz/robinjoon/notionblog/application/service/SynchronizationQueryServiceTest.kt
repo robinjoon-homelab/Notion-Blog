@@ -15,6 +15,7 @@ import xyz.robinjoon.notionblog.application.port.output.persistence.PublicationR
 import xyz.robinjoon.notionblog.application.port.output.persistence.SiteConfigurationRepository
 import xyz.robinjoon.notionblog.application.port.output.persistence.SyncStateRepository
 import xyz.robinjoon.notionblog.domain.post.PostId
+import xyz.robinjoon.notionblog.domain.post.PostSourceBinding
 import xyz.robinjoon.notionblog.domain.publication.BlogPublication
 import xyz.robinjoon.notionblog.domain.publication.PublicationId
 import xyz.robinjoon.notionblog.domain.publication.PublicationMember
@@ -23,7 +24,6 @@ import xyz.robinjoon.notionblog.domain.site.PresentationProfileId
 import xyz.robinjoon.notionblog.domain.site.PresentationProfileRef
 import xyz.robinjoon.notionblog.domain.site.SiteConfiguration
 import xyz.robinjoon.notionblog.domain.site.SiteMetadata
-import xyz.robinjoon.notionblog.domain.source.PostSourceBinding
 import xyz.robinjoon.notionblog.domain.source.SourceDocumentRef
 import xyz.robinjoon.notionblog.domain.source.SourceId
 import xyz.robinjoon.notionblog.domain.sync.SyncState
@@ -40,15 +40,22 @@ class SynchronizationQueryServiceTest {
     private val service = SynchronizationQueryService(siteConfigurations, publications, posts, syncStates)
 
     @Test
-    fun `is a service and owns read only transaction for every public query`() {
-        assertThat(SynchronizationQueryService::class.java.isAnnotationPresent(Service::class.java)).isTrue()
+    fun `owns read only transactions for every public query without a component scanning stereotype`() {
+        assertThat(SynchronizationQueryService::class.java.isAnnotationPresent(Service::class.java)).isFalse()
 
-        val methods = SynchronizationQueryService::class.memberFunctions
-            .filter { it.name in setOf("loadPublication", "loadPost", "findDueTargets") }
+        val methods =
+            SynchronizationQueryService::class
+                .memberFunctions
+                .filter { it.name in setOf("loadPublication", "loadPost", "findDueTargets") }
 
         assertThat(methods).hasSize(3)
         assertThat(methods).allSatisfy { method ->
-            assertThat(method.annotations.filterIsInstance<Transactional>().single().readOnly).isTrue()
+            assertThat(
+                method.annotations
+                    .filterIsInstance<Transactional>()
+                    .single()
+                    .readOnly,
+            ).isTrue()
         }
     }
 
@@ -115,14 +122,16 @@ class SynchronizationQueryServiceTest {
         every { publications.findCurrent() } returns activePublication(publicationId)
         every { publications.findActiveMemberPostIds(publicationId, setOf(postId)) } returns setOf(postId)
         every { posts.findBinding(postId) } returns PostSourceBinding(postId, sourceDocument)
-        every { publications.findActiveDirectChildren(publicationId, postId) } returns listOf(
-            PublicationMember(PublicationRevisionId(UUID.randomUUID()), childOne, postId, 1),
-            PublicationMember(PublicationRevisionId(UUID.randomUUID()), childTwo, postId, 1),
-        )
-        every { posts.findBindingsByPostIds(setOf(childOne, childTwo)) } returns mapOf(
-            childOne to PostSourceBinding(childOne, childOneSource),
-            childTwo to PostSourceBinding(childTwo, childTwoSource),
-        )
+        every { publications.findActiveDirectChildren(publicationId, postId) } returns
+            listOf(
+                PublicationMember(PublicationRevisionId(UUID.randomUUID()), childOne, postId, 1),
+                PublicationMember(PublicationRevisionId(UUID.randomUUID()), childTwo, postId, 1),
+            )
+        every { posts.findBindingsByPostIds(setOf(childOne, childTwo)) } returns
+            mapOf(
+                childOne to PostSourceBinding(childOne, childOneSource),
+                childTwo to PostSourceBinding(childTwo, childTwoSource),
+            )
 
         assertThat(service.loadPost(postId)).isEqualTo(
             PostSynchronizationContext(
@@ -143,9 +152,10 @@ class SynchronizationQueryServiceTest {
         every { publications.findCurrent() } returns activePublication(publicationId)
         every { publications.findActiveMemberPostIds(publicationId, setOf(postId)) } returns setOf(postId)
         every { posts.findBinding(postId) } returns PostSourceBinding(postId, sourceDocument("post"))
-        every { publications.findActiveDirectChildren(publicationId, postId) } returns listOf(
-            PublicationMember(PublicationRevisionId(UUID.randomUUID()), child, postId, 1),
-        )
+        every { publications.findActiveDirectChildren(publicationId, postId) } returns
+            listOf(
+                PublicationMember(PublicationRevisionId(UUID.randomUUID()), child, postId, 1),
+            )
         every { posts.findBindingsByPostIds(setOf(child)) } returns emptyMap()
 
         assertThatThrownBy { service.loadPost(postId) }
@@ -172,18 +182,23 @@ class SynchronizationQueryServiceTest {
         verify(exactly = 0) { syncStates.findDue(any(), any()) }
     }
 
-    private fun siteConfiguration(publicationId: PublicationId): SiteConfiguration = SiteConfiguration(
-        publicationId = publicationId,
-        rootDocument = sourceDocument("root"),
-        headerDocument = null,
-        footerDocument = null,
-        metadata = SiteMetadata("Blog", null, "ko-KR", null),
-        presentationProfile = PresentationProfileRef(PresentationProfileId(UUID.randomUUID()), 1),
-    )
+    private fun siteConfiguration(publicationId: PublicationId): SiteConfiguration =
+        SiteConfiguration(
+            publicationId = publicationId,
+            rootDocument = sourceDocument("root"),
+            headerDocument = null,
+            footerDocument = null,
+            metadata = SiteMetadata("Blog", null, "ko-KR", null),
+            presentationProfile = PresentationProfileRef(PresentationProfileId(UUID.randomUUID()), 1),
+        )
 
-    private fun syncState(target: SyncTarget, refreshAfter: Instant): SyncState = SyncState(target, null, refreshAfter, 0, null)
+    private fun syncState(
+        target: SyncTarget,
+        refreshAfter: Instant,
+    ): SyncState = SyncState(target, null, refreshAfter, 0, null)
 
-    private fun activePublication(publicationId: PublicationId): BlogPublication = BlogPublication(publicationId, postId(), PublicationRevisionId(UUID.randomUUID()))
+    private fun activePublication(publicationId: PublicationId): BlogPublication =
+        BlogPublication(publicationId, postId(), PublicationRevisionId(UUID.randomUUID()))
 
     private fun postId(): PostId = PostId(UUID.randomUUID())
 

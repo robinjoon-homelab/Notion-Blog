@@ -4,15 +4,18 @@ import xyz.robinjoon.notionblog.domain.post.block.style.ColorToken
 import xyz.robinjoon.notionblog.domain.source.SourceDocumentRef
 import java.net.URI
 
-data class TextAnnotations(
-    val bold: Boolean = false,
-    val italic: Boolean = false,
-    val strikethrough: Boolean = false,
-    val underline: Boolean = false,
-    val code: Boolean = false,
-    val foreground: ColorToken? = null,
-    val background: ColorToken? = null,
-)
+data class TextAnnotations
+    // quality-exception: Seven independent text styles preserve the normalized snapshot and inline rendering contract.
+    @Suppress("LongParameterList")
+    constructor(
+        val bold: Boolean = false,
+        val italic: Boolean = false,
+        val strikethrough: Boolean = false,
+        val underline: Boolean = false,
+        val code: Boolean = false,
+        val foreground: ColorToken? = null,
+        val background: ColorToken? = null,
+    )
 
 enum class MentionKind {
     DOCUMENT,
@@ -25,7 +28,9 @@ enum class MentionKind {
 }
 
 sealed interface LinkTarget {
-    data class ExternalUrl(val url: URI) : LinkTarget
+    data class ExternalUrl(
+        val url: URI,
+    ) : LinkTarget
 
     data class SourceDocument(
         val reference: SourceDocumentRef,

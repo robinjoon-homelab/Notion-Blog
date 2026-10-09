@@ -12,6 +12,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.aop.support.AopUtils
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
@@ -32,12 +33,12 @@ import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
 import org.w3c.dom.NodeList
-import xyz.robinjoon.notionblog.adapter.output.persistence.exposed.ExposedSiteConfigurationRepository
 import xyz.robinjoon.notionblog.application.model.ImportedPost
 import xyz.robinjoon.notionblog.application.model.ImportedPublicationStatus
 import xyz.robinjoon.notionblog.application.model.ImportedSiteConfiguration
 import xyz.robinjoon.notionblog.application.model.ImportedSiteMetadata
 import xyz.robinjoon.notionblog.application.model.PostFeedLookupResult
+import xyz.robinjoon.notionblog.application.port.input.GetPostFeedUseCase
 import xyz.robinjoon.notionblog.application.port.output.persistence.PostRepository
 import xyz.robinjoon.notionblog.application.port.output.persistence.PublicationRepository
 import xyz.robinjoon.notionblog.application.port.output.persistence.SiteConfigurationRepository
@@ -88,17 +89,31 @@ import javax.xml.xpath.XPathFactory
 @Testcontainers
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class PostFeedIntegrationTest(
-    @Autowired private val importedPosts: ApplyImportedPostService,
-    @Autowired private val importedSettings: ApplyImportedSiteConfigurationService,
-    @Autowired private val activatePublication: ActivatePublicationService,
-    @Autowired private val feedService: GetPostFeedService,
-    @Autowired private val posts: PostRepository,
-    @Autowired private val publications: PublicationRepository,
-    @Autowired private val sites: PausingSiteConfigurationRepository,
     @Autowired transactionManager: PlatformTransactionManager,
     @Autowired dataSource: DataSource,
     @Autowired private val webContext: WebApplicationContext,
 ) {
+    @Autowired
+    private lateinit var importedPosts: ApplyImportedPostService
+
+    @Autowired
+    private lateinit var importedSettings: ApplyImportedSiteConfigurationService
+
+    @Autowired
+    private lateinit var activatePublication: ActivatePublicationService
+
+    @Autowired
+    private lateinit var feedService: GetPostFeedUseCase
+
+    @Autowired
+    private lateinit var posts: PostRepository
+
+    @Autowired
+    private lateinit var publications: PublicationRepository
+
+    @Autowired
+    private lateinit var sites: PausingSiteConfigurationRepository
+
     private val transactions = TransactionTemplate(transactionManager)
     private val jdbc = JdbcTemplate(dataSource)
     private val mvc by lazy { MockMvcBuilders.webAppContextSetup(webContext).build() }
@@ -131,12 +146,13 @@ class PostFeedIntegrationTest(
         val newArticle = published("new-article", "New article")
         val original = configureSite("old-root", "old-header", "old-footer")
         activateScope(original.publicationId, oldRoot, listOf(oldHeader, oldFooter, revoked, retainedOld))
-        val replacement = original.copy(
-            rootDocument = reference("new-root"),
-            headerDocument = reference("new-header"),
-            footerDocument = reference("new-footer"),
-            metadata = SiteMetadata("Replacement blog", "Replacement description", "ko", null),
-        )
+        val replacement =
+            original.copy(
+                rootDocument = reference("new-root"),
+                headerDocument = reference("new-header"),
+                footerDocument = reference("new-footer"),
+                metadata = SiteMetadata("Replacement blog", "Replacement description", "ko", null),
+            )
         val pause = ReadPause()
         sites.pauseAfterRead.set(pause)
         val executor = Executors.newSingleThreadExecutor()
@@ -149,13 +165,13 @@ class PostFeedIntegrationTest(
             assertThat(pause.readOnly).isTrue()
             transactions.executeWithoutResult {
                 assertThat(connectionBackendId()).isNotEqualTo(pause.backendId)
-                sites.save(replacement, NOW.plusSeconds(1))
+                sites.save(replacement, now.plusSeconds(1))
                 activateScope(original.publicationId, newRoot, listOf(newHeader, newFooter, revoked, newArticle))
-                posts.saveAvailability(PostAvailability(revoked, PostAvailabilityStatus.UNPUBLISHED, NOW.plusSeconds(1)))
+                posts.saveAvailability(PostAvailability(revoked, PostAvailabilityStatus.UNPUBLISHED, now.plusSeconds(1)))
             }
             pause.resume.countDown()
 
-            val inFlight = pendingRead.get(10, TimeUnit.SECONDS) as PostFeedLookupResult.Found
+            val inFlight = requireNotNull(pendingRead.get(10, TimeUnit.SECONDS)) as PostFeedLookupResult.Found
             assertThat(inFlight.feed.metadata).isEqualTo(original.metadata)
             assertThat(inFlight.feed.entries.map { it.post.id }).containsExactlyInAnyOrder(revoked, retainedOld)
 
@@ -174,14 +190,15 @@ class PostFeedIntegrationTest(
     fun `unpublished root and unavailable presentation profile do not hide a published descendant from RSS`() {
         val fixture = seedFeed()
         transactions.executeWithoutResult {
-            posts.saveAvailability(PostAvailability(fixture.rootId, PostAvailabilityStatus.UNPUBLISHED, NOW))
+            posts.saveAvailability(PostAvailability(fixture.rootId, PostAvailabilityStatus.UNPUBLISHED, now))
         }
         sites.profilesUnavailable = true
 
         val response = requestFeed()
 
         assertThat(itemTitles(response)).containsExactly("Published article")
-        mvc.perform(get("/posts/${fixture.articleId.value}"))
+        mvc
+            .perform(get("/posts/${fixture.articleId.value}"))
             .andExpect(status().isServiceUnavailable)
     }
 
@@ -190,9 +207,12 @@ class PostFeedIntegrationTest(
         val fixture = seedFeed()
 
         listOf("/", "/posts/${fixture.articleId.value}").forEach { path ->
-            val html = mvc.perform(get(path))
-                .andExpect(status().isOk)
-                .andReturn().response.contentAsString
+            val html =
+                mvc
+                    .perform(get(path))
+                    .andExpect(status().isOk)
+                    .andReturn()
+                    .response.contentAsString
 
             val alternate = Regex("""<link\b[^>]*rel="alternate"[^>]*>""").findAll(html).toList()
             assertThat(alternate).hasSize(1)
@@ -214,9 +234,12 @@ class PostFeedIntegrationTest(
 
         assertThat(itemTitles(after)).isEmpty()
         assertThat(etag(after)).isNotEqualTo(oldEtag)
-        val unchanged = mvc.perform(get("/feed.xml").header("If-None-Match", etag(after)))
-            .andExpect(status().isNotModified)
-            .andReturn().response
+        val unchanged =
+            mvc
+                .perform(get("/feed.xml").header("If-None-Match", etag(after)))
+                .andExpect(status().isNotModified)
+                .andReturn()
+                .response
         assertThat(unchanged.contentAsByteArray).isEmpty()
         assertThat(unchanged.getHeader("ETag")).isEqualTo(etag(after))
         assertThat(unchanged.getHeader("Cache-Control")).isEqualTo("no-cache")
@@ -241,7 +264,7 @@ class PostFeedIntegrationTest(
         transactions.executeWithoutResult {
             sites.save(
                 fixture.configuration.copy(metadata = SiteMetadata("Renamed blog", "New description", "ko", null)),
-                NOW.plusSeconds(1),
+                now.plusSeconds(1),
             )
         }
 
@@ -284,7 +307,7 @@ class PostFeedIntegrationTest(
         jdbc.update("delete from site_configuration")
         assertUnavailableFor(oldEtag)
 
-        transactions.executeWithoutResult { sites.save(fixture.configuration, NOW) }
+        transactions.executeWithoutResult { sites.save(fixture.configuration, now) }
         jdbc.update("update publication set root_post_id = null, active_revision_id = null")
         assertUnavailableFor(oldEtag)
     }
@@ -307,9 +330,16 @@ class PostFeedIntegrationTest(
         return FeedFixture(configuration, rootId, articleId, article)
     }
 
-    private fun published(externalId: String, title: String): PostId = importedPosts.apply(imported(externalId, title, title))
+    private fun published(
+        externalId: String,
+        title: String,
+    ): PostId = importedPosts.apply(imported(externalId, title, title))
 
-    private fun imported(externalId: String, title: String, summary: String) = ImportedPost(
+    private fun imported(
+        externalId: String,
+        title: String,
+        summary: String,
+    ) = ImportedPost(
         sourceDocument = reference(externalId),
         title = title,
         publicationStatus = ImportedPublicationStatus.PUBLISHED,
@@ -318,24 +348,35 @@ class PostFeedIntegrationTest(
         containedChildren = emptyList(),
     )
 
-    private fun paragraph(text: String) = BlockTree(
-        listOf(BlockNode(BlockId("paragraph"), TextBlockContent.Paragraph(listOf(InlineContent.Text(text))))),
-    )
+    private fun paragraph(text: String) =
+        BlockTree(
+            listOf(BlockNode(BlockId("paragraph"), TextBlockContent.Paragraph(listOf(InlineContent.Text(text))))),
+        )
 
-    private fun configureSite(root: String, header: String? = null, footer: String? = null): SiteConfiguration = importedSettings.apply(
-        ImportedSiteConfiguration(
-            rootDocument = reference(root),
-            headerDocument = header?.let(::reference),
-            footerDocument = footer?.let(::reference),
-            metadata = ImportedSiteMetadata("Feed blog", "Feed description", "en", null),
-            presentationProfileKey = null,
-        ),
-    ).configuration
+    private fun configureSite(
+        root: String,
+        header: String? = null,
+        footer: String? = null,
+    ): SiteConfiguration =
+        importedSettings
+            .apply(
+                ImportedSiteConfiguration(
+                    rootDocument = reference(root),
+                    headerDocument = header?.let(::reference),
+                    footerDocument = footer?.let(::reference),
+                    metadata = ImportedSiteMetadata("Feed blog", "Feed description", "en", null),
+                    presentationProfileKey = null,
+                ),
+            ).configuration
 
-    private fun activateScope(publicationId: PublicationId, root: PostId, children: List<PostId>) {
+    private fun activateScope(
+        publicationId: PublicationId,
+        root: PostId,
+        children: List<PostId>,
+    ) {
         transactions.executeWithoutResult {
             val revision = PublicationRevision(PublicationRevisionId(UUID.randomUUID()), publicationId, PublicationRevisionState.STAGING)
-            publications.createRevision(revision, NOW)
+            publications.createRevision(revision, now)
             publications.saveMembers(
                 revision.id,
                 listOf(PublicationMember(revision.id, root, null, 0)) + children.map { PublicationMember(revision.id, it, root, 1) },
@@ -347,7 +388,12 @@ class PostFeedIntegrationTest(
     private fun requestFeed(validator: String? = null): MockHttpServletResponse {
         val request = get("/feed.xml")
         validator?.let { request.header("If-None-Match", it) }
-        val response = mvc.perform(request).andExpect(status().isOk).andReturn().response
+        val response =
+            mvc
+                .perform(request)
+                .andExpect(status().isOk)
+                .andReturn()
+                .response
         assertThat(response.getHeader("Cache-Control")).isEqualTo("no-cache")
         assertThat(response.contentType).startsWith("application/rss+xml")
         return response
@@ -355,9 +401,12 @@ class PostFeedIntegrationTest(
 
     private fun assertUnavailableFor(oldEtag: String) {
         listOf(oldEtag, "*").forEach { validator ->
-            val response = mvc.perform(get("/feed.xml").header("If-None-Match", validator))
-                .andExpect(status().isServiceUnavailable)
-                .andReturn().response
+            val response =
+                mvc
+                    .perform(get("/feed.xml").header("If-None-Match", validator))
+                    .andExpect(status().isServiceUnavailable)
+                    .andReturn()
+                    .response
             assertThat(response.getHeader("Cache-Control")).isEqualTo("no-store")
             assertThat(response.getHeader("ETag")).isNull()
         }
@@ -367,10 +416,17 @@ class PostFeedIntegrationTest(
 
     private fun itemTitles(response: MockHttpServletResponse): List<String> = xmlValues(response, "/rss/channel/item/title")
 
-    private fun xmlValues(response: MockHttpServletResponse, expression: String): List<String> {
-        val document = DocumentBuilderFactory.newInstance().apply { isNamespaceAware = true }
-            .newDocumentBuilder().parse(ByteArrayInputStream(response.contentAsByteArray))
-        val nodes = XPathFactory.newInstance().newXPath().evaluate(expression, document, XPathConstants.NODESET) as NodeList
+    private fun xmlValues(
+        response: MockHttpServletResponse,
+        expression: String,
+    ): List<String> {
+        val document =
+            DocumentBuilderFactory
+                .newInstance()
+                .apply { isNamespaceAware = true }
+                .newDocumentBuilder()
+                .parse(ByteArrayInputStream(response.contentAsByteArray))
+        val nodes = requireNotNull(XPathFactory.newInstance().newXPath().evaluate(expression, document, XPathConstants.NODESET)) as NodeList
         return (0 until nodes.length).map { nodes.item(it).textContent }
     }
 
@@ -387,14 +443,18 @@ class PostFeedIntegrationTest(
     class FeedTestConfiguration {
         @Bean
         @Primary
-        fun feedClock(): Clock = Clock.fixed(NOW, ZoneOffset.UTC)
+        fun feedClock(): Clock = Clock.fixed(now, ZoneOffset.UTC)
 
         @Bean
         @Primary
-        fun pausingSiteConfigurationRepository(delegate: ExposedSiteConfigurationRepository): PausingSiteConfigurationRepository = PausingSiteConfigurationRepository(delegate)
+        fun pausingSiteConfigurationRepository(
+            @Qualifier("siteConfigurationRepository") delegate: SiteConfigurationRepository,
+        ): PausingSiteConfigurationRepository = PausingSiteConfigurationRepository(delegate)
     }
 
-    class PausingSiteConfigurationRepository(private val delegate: SiteConfigurationRepository) : SiteConfigurationRepository by delegate {
+    class PausingSiteConfigurationRepository(
+        private val delegate: SiteConfigurationRepository,
+    ) : SiteConfigurationRepository by delegate {
         val pauseAfterRead = AtomicReference<ReadPause?>()
         var profilesUnavailable = false
 
@@ -411,7 +471,8 @@ class PostFeedIntegrationTest(
             return configuration
         }
 
-        override fun findProfile(reference: PresentationProfileRef): PresentationProfile? = if (profilesUnavailable) null else delegate.findProfile(reference)
+        override fun findProfile(reference: PresentationProfileRef): PresentationProfile? =
+            if (profilesUnavailable) null else delegate.findProfile(reference)
     }
 
     class ReadPause {
@@ -423,20 +484,23 @@ class PostFeedIntegrationTest(
     }
 
     companion object {
-        private val NOW = Instant.parse("2026-10-05T03:04:05Z")
-        private val server = MockWebServer().apply {
-            dispatcher = object : Dispatcher() {
-                override fun dispatch(request: RecordedRequest): MockResponse = MockResponse().setResponseCode(404)
+        private val now = Instant.parse("2026-10-05T03:04:05Z")
+        private val server =
+            MockWebServer().apply {
+                dispatcher =
+                    object : Dispatcher() {
+                        override fun dispatch(request: RecordedRequest): MockResponse = MockResponse().setResponseCode(404)
+                    }
+                start()
             }
-            start()
-        }
 
-        private fun connectionBackendId(): Int = requireNotNull(
-            TransactionManager.current().exec("select pg_backend_pid()") { result ->
-                check(result.next())
-                result.getInt(1)
-            },
-        )
+        private fun connectionBackendId(): Int =
+            requireNotNull(
+                TransactionManager.current().exec("select pg_backend_pid()") { result ->
+                    check(result.next())
+                    result.getInt(1)
+                },
+            )
 
         @Container
         @JvmStatic

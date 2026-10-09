@@ -8,10 +8,11 @@ import xyz.robinjoon.notionblog.application.port.output.source.SourceException
 import xyz.robinjoon.notionblog.application.port.output.source.SourceMappingException
 import xyz.robinjoon.notionblog.domain.sync.SyncFailureKind
 
-internal fun SourceException.toSyncFailureKind(): SyncFailureKind = when (this) {
-    is RetryableSourceException -> SyncFailureKind.RETRYABLE_SOURCE
-    is SourceAuthenticationException -> SyncFailureKind.AUTHENTICATION
-    is SourceAccessException -> SyncFailureKind.ACCESS
-    is SourceConfigurationException -> SyncFailureKind.CONFIGURATION
-    is SourceMappingException -> SyncFailureKind.MAPPING
-}
+internal fun SourceException.toSyncFailureKind(): SyncFailureKind =
+    when (this) {
+        is RetryableSourceException -> SyncFailureKind.RETRYABLE_SOURCE
+        is SourceAuthenticationException -> SyncFailureKind.AUTHENTICATION
+        is SourceAccessException -> SyncFailureKind.ACCESS
+        is SourceConfigurationException -> SyncFailureKind.CONFIGURATION
+        is SourceMappingException -> SyncFailureKind.MAPPING
+    }

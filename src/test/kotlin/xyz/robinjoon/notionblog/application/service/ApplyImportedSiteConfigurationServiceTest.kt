@@ -41,21 +41,24 @@ import kotlin.reflect.full.memberFunctions
 class ApplyImportedSiteConfigurationServiceTest {
     private val now = Instant.parse("2026-08-25T00:00:00Z")
     private val clock = Clock.fixed(now, ZoneOffset.UTC)
-    private val refreshPolicy = RefreshPolicy(
-        successInterval = Duration.ofMinutes(15),
-        initialFailureDelay = Duration.ofMinutes(2),
-        maximumFailureDelay = Duration.ofMinutes(30),
-    )
+    private val refreshPolicy =
+        RefreshPolicy(
+            successInterval = Duration.ofMinutes(15),
+            initialFailureDelay = Duration.ofMinutes(2),
+            maximumFailureDelay = Duration.ofMinutes(30),
+        )
 
     @Test
     fun `apply and record failure own transaction boundaries`() {
         assertThat(
-            ApplyImportedSiteConfigurationService::class.memberFunctions
+            ApplyImportedSiteConfigurationService::class
+                .memberFunctions
                 .single { it.name == "apply" }
                 .findAnnotation<Transactional>(),
         ).isNotNull()
         assertThat(
-            ApplyImportedSiteConfigurationService::class.memberFunctions
+            ApplyImportedSiteConfigurationService::class
+                .memberFunctions
                 .single { it.name == "recordFailure" }
                 .findAnnotation<Transactional>(),
         ).isNotNull()
@@ -70,15 +73,18 @@ class ApplyImportedSiteConfigurationServiceTest {
         val configurations = RecordingSiteConfigurationRepository().apply { currentProfile = profile }
         val publications = RecordingPublicationRepository()
         val states = RecordingSyncStateRepository()
-        val assets = RecordingPresentationAssetCatalog().apply {
-            exact[style] = descriptor(style)
-            exact[script] = descriptor(script)
-            current["favicon"] = ResolvedPresentationAsset(favicon, descriptor(favicon))
-        }
+        val assets =
+            RecordingPresentationAssetCatalog().apply {
+                exact[style] = descriptor(style)
+                exact[script] = descriptor(script)
+                current["favicon"] = ResolvedPresentationAsset(favicon, descriptor(favicon))
+            }
         val publicationId = PublicationId(UUID.fromString("00000000-0000-0000-0000-000000000010"))
+        val resolver = resolver(configurations, assets) { publicationId }
 
-        val applied = service(configurations, publications, assets, states) { publicationId }
-            .apply(imported(profileKey = PresentationProfileKey("selected"), faviconAssetKey = "favicon"))
+        val applied =
+            service(configurations, publications, resolver, states)
+                .apply(imported(profileKey = PresentationProfileKey("selected"), faviconAssetKey = "favicon"))
 
         assertThat(applied.rootChanged).isTrue()
         assertThat(applied.configuration).isEqualTo(
@@ -107,19 +113,24 @@ class ApplyImportedSiteConfigurationServiceTest {
     fun `apply passes its initial instant to configuration persistence and sync success`() {
         val initial = Instant.parse("2026-08-25T00:00:00Z")
         val later = initial.plusSeconds(1)
-        val configurations = RecordingSiteConfigurationRepository().apply {
-            currentProfile = profile(PresentationProfileKey("default"))
-        }
+        val configurations =
+            RecordingSiteConfigurationRepository().apply {
+                currentProfile = profile(PresentationProfileKey("default"))
+            }
         val states = RecordingSyncStateRepository()
-        val service = ApplyImportedSiteConfigurationService(
-            configurations,
-            RecordingPublicationRepository(),
-            RecordingPresentationAssetCatalog(),
-            states,
-            SequencedClock(initial, later),
-            refreshPolicy,
-            PresentationProfileKey("default"),
-        ) { PublicationId(UUID.fromString("00000000-0000-0000-0000-000000000015")) }
+        val resolver =
+            resolver(configurations, RecordingPresentationAssetCatalog()) {
+                PublicationId(UUID.fromString("00000000-0000-0000-0000-000000000015"))
+            }
+        val service =
+            ApplyImportedSiteConfigurationService(
+                configurations,
+                RecordingPublicationRepository(),
+                resolver,
+                states,
+                SequencedClock(initial, later),
+                refreshPolicy,
+            )
 
         service.apply(imported())
 
@@ -132,17 +143,20 @@ class ApplyImportedSiteConfigurationServiceTest {
     @Test
     fun `invalid profile or exact profile asset leaves the existing configuration and publication untouched`() {
         val currentConfiguration = configuration(PublicationId(UUID.fromString("00000000-0000-0000-0000-000000000011")))
-        val configurations = RecordingSiteConfigurationRepository().apply {
-            this.currentConfiguration = currentConfiguration
-            currentProfile = profile(PresentationProfileKey("selected"), styleSheets = listOf(asset("missing", 1)))
-        }
-        val publications = RecordingPublicationRepository().apply {
-            currentPublication = BlogPublication(currentConfiguration.publicationId, null, null)
-        }
+        val configurations =
+            RecordingSiteConfigurationRepository().apply {
+                this.currentConfiguration = currentConfiguration
+                currentProfile = profile(PresentationProfileKey("selected"), styleSheets = listOf(asset("missing", 1)))
+            }
+        val publications =
+            RecordingPublicationRepository().apply {
+                currentPublication = BlogPublication(currentConfiguration.publicationId, null, null)
+            }
         val assets = RecordingPresentationAssetCatalog()
+        val resolver = resolver(configurations, assets) { error("must not create a publication") }
 
         assertThatIllegalArgumentException().isThrownBy {
-            service(configurations, publications, assets) { error("must not create a publication") }
+            service(configurations, publications, resolver)
                 .apply(imported(profileKey = PresentationProfileKey("selected")))
         }
 
@@ -154,18 +168,20 @@ class ApplyImportedSiteConfigurationServiceTest {
 
     @Test
     fun `an unregistered profile and malformed BCP47 tag are rejected before configuration is saved`() {
-        val configurations = RecordingSiteConfigurationRepository().apply {
-            currentProfile = profile(PresentationProfileKey("default"))
-        }
+        val configurations =
+            RecordingSiteConfigurationRepository().apply {
+                currentProfile = profile(PresentationProfileKey("default"))
+            }
         val publications = RecordingPublicationRepository()
         val assets = RecordingPresentationAssetCatalog()
+        val resolver = resolver(configurations, assets) { error("must not create a publication") }
 
         assertThatIllegalArgumentException().isThrownBy {
-            service(configurations, publications, assets) { error("must not create a publication") }
+            service(configurations, publications, resolver)
                 .apply(imported(profileKey = PresentationProfileKey("missing")))
         }
         assertThatIllegalArgumentException().isThrownBy {
-            service(configurations, publications, assets) { error("must not create a publication") }
+            service(configurations, publications, resolver)
                 .apply(imported(languageTag = "ko_KR"))
         }
 
@@ -178,17 +194,21 @@ class ApplyImportedSiteConfigurationServiceTest {
         val publicationId = PublicationId(UUID.fromString("00000000-0000-0000-0000-000000000012"))
         val old = configuration(publicationId, root = document("old-root"))
         val profile = profile(PresentationProfileKey("default"))
-        val configurations = RecordingSiteConfigurationRepository().apply {
-            currentConfiguration = old
-            currentProfile = profile
-        }
-        val publications = RecordingPublicationRepository().apply {
-            currentPublication = BlogPublication(publicationId, null, null)
-        }
+        val configurations =
+            RecordingSiteConfigurationRepository().apply {
+                currentConfiguration = old
+                currentProfile = profile
+            }
+        val publications =
+            RecordingPublicationRepository().apply {
+                currentPublication = BlogPublication(publicationId, null, null)
+            }
+        val resolver =
+            resolver(configurations, RecordingPresentationAssetCatalog()) {
+                error("an existing configuration must keep its publication")
+            }
 
-        val applied = service(configurations, publications, RecordingPresentationAssetCatalog()) {
-            error("an existing configuration must keep its publication")
-        }.apply(imported())
+        val applied = service(configurations, publications, resolver).apply(imported())
 
         assertThat(applied.rootChanged).isTrue()
         assertThat(applied.configuration.publicationId).isEqualTo(publicationId)
@@ -199,17 +219,21 @@ class ApplyImportedSiteConfigurationServiceTest {
     fun `unchanged root is reported without creating another publication`() {
         val publicationId = PublicationId(UUID.fromString("00000000-0000-0000-0000-000000000013"))
         val profile = profile(PresentationProfileKey("default"))
-        val configurations = RecordingSiteConfigurationRepository().apply {
-            currentConfiguration = configuration(publicationId)
-            currentProfile = profile
-        }
-        val publications = RecordingPublicationRepository().apply {
-            currentPublication = BlogPublication(publicationId, null, null)
-        }
+        val configurations =
+            RecordingSiteConfigurationRepository().apply {
+                currentConfiguration = configuration(publicationId)
+                currentProfile = profile
+            }
+        val publications =
+            RecordingPublicationRepository().apply {
+                currentPublication = BlogPublication(publicationId, null, null)
+            }
+        val resolver =
+            resolver(configurations, RecordingPresentationAssetCatalog()) {
+                error("an existing configuration must keep its publication")
+            }
 
-        val applied = service(configurations, publications, RecordingPresentationAssetCatalog()) {
-            error("an existing configuration must keep its publication")
-        }.apply(imported())
+        val applied = service(configurations, publications, resolver).apply(imported())
 
         assertThat(applied.rootChanged).isFalse()
         assertThat(publications.saved).isEmpty()
@@ -219,25 +243,31 @@ class ApplyImportedSiteConfigurationServiceTest {
     fun `external failure only records the site configuration retry state`() {
         val publicationId = PublicationId(UUID.fromString("00000000-0000-0000-0000-000000000014"))
         val currentConfiguration = configuration(publicationId)
-        val configurations = RecordingSiteConfigurationRepository().apply {
-            this.currentConfiguration = currentConfiguration
-        }
-        val publications = RecordingPublicationRepository().apply {
-            currentPublication = BlogPublication(publicationId, null, null)
-        }
-        val states = RecordingSyncStateRepository().apply {
-            existing = SyncState(
-                target = SyncTarget.SiteConfiguration,
-                lastSuccessAt = now.minusSeconds(30),
-                refreshAfter = now,
-                failureCount = 1,
-                lastErrorKind = SyncFailureKind.RETRYABLE_SOURCE,
-            )
-        }
+        val configurations =
+            RecordingSiteConfigurationRepository().apply {
+                this.currentConfiguration = currentConfiguration
+            }
+        val publications =
+            RecordingPublicationRepository().apply {
+                currentPublication = BlogPublication(publicationId, null, null)
+            }
+        val states =
+            RecordingSyncStateRepository().apply {
+                existing =
+                    SyncState(
+                        target = SyncTarget.SiteConfiguration,
+                        lastSuccessAt = now.minusSeconds(30),
+                        refreshAfter = now,
+                        failureCount = 1,
+                        lastErrorKind = SyncFailureKind.RETRYABLE_SOURCE,
+                    )
+            }
+        val resolver =
+            resolver(configurations, RecordingPresentationAssetCatalog()) {
+                error("failure recording must not create a publication")
+            }
 
-        service(configurations, publications, RecordingPresentationAssetCatalog(), states) {
-            error("failure recording must not create a publication")
-        }.recordFailure(SyncFailureKind.ACCESS)
+        service(configurations, publications, resolver, states).recordFailure(SyncFailureKind.ACCESS)
 
         assertThat(configurations.saved).isEmpty()
         assertThat(publications.saved).isEmpty()
@@ -257,16 +287,24 @@ class ApplyImportedSiteConfigurationServiceTest {
     private fun service(
         configurations: SiteConfigurationRepository,
         publications: PublicationRepository,
-        assets: PresentationAssetCatalog,
+        resolver: ImportedSiteConfigurationResolver,
         syncStates: SyncStateRepository = RecordingSyncStateRepository(),
-        publicationIdFactory: () -> PublicationId,
     ) = ApplyImportedSiteConfigurationService(
         configurations,
         publications,
-        assets,
+        resolver,
         syncStates,
         clock,
         refreshPolicy,
+    )
+
+    private fun resolver(
+        configurations: SiteConfigurationRepository,
+        assets: PresentationAssetCatalog,
+        publicationIdFactory: () -> PublicationId,
+    ) = ImportedSiteConfigurationResolver(
+        configurations,
+        assets,
         PresentationProfileKey("default"),
         publicationIdFactory,
     )
@@ -308,15 +346,21 @@ class ApplyImportedSiteConfigurationServiceTest {
         scripts = scripts,
     )
 
-    private fun PresentationProfile.reference() = xyz.robinjoon.notionblog.domain.site.PresentationProfileRef(id, version)
+    private fun PresentationProfile.reference() =
+        xyz.robinjoon.notionblog.domain.site
+            .PresentationProfileRef(id, version)
 
-    private fun asset(key: String, version: Long) = PresentationAssetRef(key, version, "sha384-$key-$version")
+    private fun asset(
+        key: String,
+        version: Long,
+    ) = PresentationAssetRef(key, version, "sha384-$key-$version")
 
-    private fun descriptor(reference: PresentationAssetRef) = PresentationAssetDescriptor(
-        publicPath = "/presentation/${reference.key}-${reference.version}",
-        mediaType = "text/css",
-        integrity = reference.integrity,
-    )
+    private fun descriptor(reference: PresentationAssetRef) =
+        PresentationAssetDescriptor(
+            publicPath = "/presentation/${reference.key}-${reference.version}",
+            mediaType = "text/css",
+            integrity = reference.integrity,
+        )
 
     private fun document(externalId: String) = SourceDocumentRef(SourceId("notion-main"), externalId)
 
@@ -331,7 +375,10 @@ class ApplyImportedSiteConfigurationServiceTest {
 
         val synchronizedAt = mutableListOf<Instant>()
 
-        override fun save(configuration: SiteConfiguration, synchronizedAt: Instant) {
+        override fun save(
+            configuration: SiteConfiguration,
+            synchronizedAt: Instant,
+        ) {
             currentConfiguration = configuration
             saved += configuration
             this.synchronizedAt += synchronizedAt
@@ -344,7 +391,10 @@ class ApplyImportedSiteConfigurationServiceTest {
             return currentProfile
         }
 
-        override fun saveProfile(profile: PresentationProfile, createdAt: Instant) {
+        override fun saveProfile(
+            profile: PresentationProfile,
+            createdAt: Instant,
+        ) {
             savedProfiles += profile
         }
 
@@ -368,11 +418,20 @@ class ApplyImportedSiteConfigurationServiceTest {
 
         override fun findStagingRevisions(publicationId: PublicationId): List<PublicationRevision> = emptyList()
 
-        override fun createRevision(revision: PublicationRevision, transitionedAt: Instant) = Unit
+        override fun createRevision(
+            revision: PublicationRevision,
+            transitionedAt: Instant,
+        ) = Unit
 
-        override fun updateRevision(revision: PublicationRevision, transitionedAt: Instant) = Unit
+        override fun updateRevision(
+            revision: PublicationRevision,
+            transitionedAt: Instant,
+        ) = Unit
 
-        override fun saveMembers(revisionId: PublicationRevisionId, members: Collection<PublicationMember>) = Unit
+        override fun saveMembers(
+            revisionId: PublicationRevisionId,
+            members: Collection<PublicationMember>,
+        ) = Unit
 
         override fun findMembers(revisionId: PublicationRevisionId): List<PublicationMember> = emptyList()
 
@@ -413,7 +472,10 @@ class ApplyImportedSiteConfigurationServiceTest {
             saved = saved?.takeUnless { it.target == target }
         }
 
-        override fun findDue(now: Instant, limit: Int): List<SyncState> = emptyList()
+        override fun findDue(
+            now: Instant,
+            limit: Int,
+        ): List<SyncState> = emptyList()
 
         override fun find(target: SyncTarget): SyncState? = existing
 

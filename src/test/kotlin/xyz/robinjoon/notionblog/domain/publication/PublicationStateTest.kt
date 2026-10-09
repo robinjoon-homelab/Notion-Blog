@@ -33,9 +33,10 @@ class PublicationStateTest {
         assertThatIllegalArgumentException().isThrownBy { stagingRevision().supersede() }
     }
 
-    private fun stagingRevision() = PublicationRevision(
-        id = revisionId,
-        publicationId = publicationId,
-        state = PublicationRevisionState.STAGING,
-    )
+    private fun stagingRevision() =
+        PublicationRevision(
+            id = revisionId,
+            publicationId = publicationId,
+            state = PublicationRevisionState.STAGING,
+        )
 }

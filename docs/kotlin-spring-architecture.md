@@ -3,15 +3,21 @@
 ## 1. 문서 상태
 
 - 상태: 현재 구현 및 유지보수 기준선
-- 기준일: 2026-10-05
+- 기준일: 2026-10-08
 - 런타임 기준: JDK 25
 - 적용 범위: 단일 사이트, 단일 Spring Boot 애플리케이션
 
 이 문서는 기존 Kotlin/Spring MVP PoC의 Notion 중심 구조를 대체한 구현의 설계 기준이다. 현재 코드는 소스 중립적인 `Post`·`BlockTree`, 공개 범위와 게시 상태의 분리, 목적별 저장소, `/posts/{postId}` 경로와 Thymeleaf 렌더링을 적용했다. 이후 변경도 이 문서의 경계와 계약을 기준으로 진행한다.
 
-기본 구조 전환과 전체 완료 조건은 구분한다. 공개 범위에서 제외된 글의 동기화 예약은 범위 활성화와 함께 삭제하고, 이전 실행에서 남은 예약도 대상 확인 시 정리한다. 데스크톱·모바일 시각 회귀, 최초 수집의 실행 중단 후 복구와 동기화 전체 재설계, 13.6절의 타입별 DTO 디코딩 원칙과 실제 JSON 파싱 경로의 정합성은 후속 검토·검증 과제로 남아 있다. Notion 어댑터는 13.8절의 구조 설계를 먼저 정리하며, 수집량·깊이·시간 제한과 현재 수집 동작은 이번 변경에서 유지한다.
+기본 구조 전환과 전체 완료 조건은 구분한다. 공개 범위에서 제외된 글의 동기화 예약은 범위 활성화와 함께 삭제하고, 이전 실행에서 남은 예약도 대상 확인 시 정리한다. 최초 수집의 실행 중단 후 복구와 동기화 전체 재설계, 13.6절의 타입별 DTO 디코딩 원칙과 실제 JSON 파싱 경로의 정합성은 별도 후속 과제다. 이번 템플릿 정렬에서는 실제 매핑 경로를 책임별로 분리하고 사용하지 않는 DTO 선언을 제거하며, 수집량·깊이·시간 제한과 입력 허용 정책을 유지한다.
 
 구조적 결정이 바뀌면 프로덕션 코드보다 이 문서를 먼저 갱신한다. PoC 전환에서는 기존 DB와의 하위 호환성을 제공하지 않고 빈 DB에 목표 스키마만 생성하는 새 Flyway 기준선을 적용했다. 현재 기준선과 이후 마이그레이션은 수정하지 않고 변경을 추가 전용으로 관리한다.
+
+2026-10-08 공통 기준을 `kotlin-springboot-exposed-template` 원격 master의 `ddfbfef26e7af1ab3ee3fc4f00bc137fdb0a4a87`로 갱신했다. 입력 use case port, config의 `@Bean` 조립, inbound/outbound 패키지, Exposed 1.5의 단일 Spring 트랜잭션 매니저, ArchUnit과 타입 분석 detekt를 적용한다. application service의 선언적 트랜잭션은 최신 템플릿이 허용하는 경계이므로 제거하거나 저장소별 트랜잭션으로 옮기지 않는다. 상세 적용·예외 기준은 `docs/development.md`와 `docs/code-quality.md`에 둔다.
+
+`PostSourceBinding`은 게시글 ID에 대한 외부 참조 연결이므로 `domain.post`가 소유한다. 소스 참조 값 패키지가 게시글에 역으로 의존하지 않게 하여 블록·리치 텍스트·소스 참조 사이의 package cycle을 제거한다. 필드와 저장된 바인딩 계약은 바꾸지 않는다.
+
+손상된 스냅샷의 조회 불가·재수집 복구는 기존 fallback을 유지하되 원인을 조용히 버리지 않는다. `application.port.output.diagnostics.SnapshotFailureReporter`로 동일한 `SnapshotContentException`, 작업 종류와 선택적인 내부 `PostId`를 넘긴다. `adapter.outbound.diagnostics`의 로깅 구현은 작업·내부 ID·예외/원인 타입만 기록하고 예외 메시지·스택·본문·URL은 기록하지 않는다. application은 로깅 프레임워크를 직접 참조하지 않으며, 이 포트는 스냅샷 실패의 외부 진단에만 사용한다.
 
 ## 2. 제품 정의
 
@@ -54,6 +60,8 @@
 ### ADR-002: 동기식 실행 모델
 
 Spring MVC, Spring `RestClient`, Exposed JDBC DSL을 사용한다. WebFlux, R2DBC, 코루틴 기반 DB 접근을 섞지 않는다.
+
+템플릿과 같이 가상 스레드와 `spring.main.keep-alive`를 활성화한다. readiness는 `readinessState,db`, liveness는 `livenessState`로 구성한다. PostgreSQL 장애는 요청 처리 가능 여부에 반영하고 Notion 장애는 readiness에 연결하지 않는다. 외부 HTTP 요청과 실제 DB 중단을 사용하는 통합 테스트로 이 경계를 검증한다.
 
 ### ADR-003: 소스 중립적인 블로그 도메인
 
@@ -155,11 +163,23 @@ config  -> adapter/application
 domain  -> Kotlin/JDK only
 ```
 
-렌더링은 외부 시스템으로 데이터를 내보내는 별도 출력 도메인이 아니라 HTTP 표현 계층의 일부다. 따라서 컨트롤러, 뷰 조립기, Thymeleaf 뷰 모델은 `adapter.input.web`에 둔다.
+렌더링은 외부 시스템으로 데이터를 내보내는 별도 출력 도메인이 아니라 HTTP 표현 계층의 일부다. 현재 컨트롤러, 뷰 조립기, Thymeleaf 뷰 모델은 `adapter.inbound.web`에 있다. `web`이라는 그룹 이름 자체를 컨트롤러의 필수 조건으로 고정하지 않으며, 다른 입력 어댑터 그룹에서도 같은 역할·공개 경로 제약을 적용한다.
 
 ## 7. 전체 패키지 구조
 
 기준 패키지는 `xyz.robinjoon.notionblog`로 유지한다.
+
+2026-10-09 공통 규칙은 계층 우선과 기능 우선 패키지 구조를 같은 경계로 검사한다. 패키지는 `<root>.[feature...].<layer>.[role/implementation...]`으로 해석하며 첫 `domain`, `application`, `adapter`, `config` 세그먼트가 계층의 시작이다. 기능 경로와 역할 경로의 깊이를 고정하지 않는다.
+
+포트의 `input`·`output` 뒤 전체 역할 경로는 구현 경로 안에 연속된 완전한 세그먼트로 있어야 한다. 루트 포트는 기능별 구현에서도 사용할 수 있고, 기능 소유 포트는 해당 기능에서 구현한다. 입력 포트를 구현한 클래스는 서비스에 두지만 협력 서비스에 불필요한 입력 포트를 추가하지 않는다. 블로그의 현재 `output.source` 구현 두 개는 `adapter.outbound.notion.source`에 있으며 Notion 클라이언트·매퍼·DTO는 같은 `notion` 그룹에 유지한다.
+
+이전의 `source` 포트는 반드시 `notion` 그룹에서 구현한다는 제품별 대응표와 `Controller`는 반드시 `web` 그룹에 있어야 한다는 제한은 의도적으로 제거했다. `presentation`·`diagnostics`·`persistence` 포트도 그룹 이름을 포트 이름과 일치시키는 별도 규칙을 두지 않는다. 유효한 기능·전체 역할 경로를 가진 다른 그룹의 구현을 허용하면서 소스 중립성, 외부 기술 타입 격리, 공개 경로와 트랜잭션·직렬화의 업무 경계는 유지한다. 현재 선택한 구현의 조립은 설정과 컨텍스트 테스트로 확인한다.
+
+어댑터 격리 단위는 기능 경로·입력/출력 방향·첫 그룹 이름이다. 그룹 내부의 클라이언트·매퍼·코덱은 서로 참조할 수 있고 다른 그룹의 구현을 직접 참조하지 않는다. 공급자별 격리가 필요하면 공급자를 첫 그룹으로 구분한다. 도메인·모델·입력 계약과 루트 공용 포트는 기능 간에 공유할 수 있으며 다른 기능의 서비스·출력 포트·어댑터·설정은 조립용 `config` 외에서 직접 참조하지 않는다.
+
+공통 패키지 파서는 블로그의 추가 기술·업무 검사에서도 재사용한다. Exposed는 `persistence.exposed`, 스냅샷 구현 메타데이터 검사는 `persistence.snapshot`으로 한정하고 Notion DTO·HTTP, 공개 경로와 소스 중립성의 기존 경계를 유지한다. 깊은 패키지나 기능 접두어를 사용해 검사를 피할 수 없어야 한다.
+
+다음은 주요 역할과 경계를 보여 주는 구조다. 블록·스냅샷의 종류별 변환기는 해당 어댑터 아래의 구체 클래스로 나눈다.
 
 ```text
 src/main/kotlin/xyz/robinjoon/notionblog/
@@ -169,6 +189,7 @@ src/main/kotlin/xyz/robinjoon/notionblog/
 │   ├── post/
 │   │   ├── Post.kt
 │   │   ├── PostId.kt
+│   │   ├── PostSourceBinding.kt
 │   │   └── block/
 │   │       ├── BlockTree.kt
 │   │       ├── BlockNode.kt
@@ -199,8 +220,7 @@ src/main/kotlin/xyz/robinjoon/notionblog/
 │   ├── source/
 │   │   ├── SourceId.kt
 │   │   ├── SourceDocumentRef.kt
-│   │   ├── SourceRevision.kt
-│   │   └── PostSourceBinding.kt
+│   │   └── SourceRevision.kt
 │   ├── site/
 │   │   ├── SiteConfiguration.kt
 │   │   ├── SiteMetadata.kt
@@ -225,6 +245,7 @@ src/main/kotlin/xyz/robinjoon/notionblog/
 │   │   ├── SynchronizationContext.kt
 │   │   └── PresentationAssetDescriptor.kt
 │   ├── port/
+│   │   ├── input/                # HTTP·scheduler 진입 use case 계약
 │   │   └── output/
 │   │       ├── source/
 │   │       │   ├── PostSource.kt
@@ -251,7 +272,7 @@ src/main/kotlin/xyz/robinjoon/notionblog/
 │       └── SynchronizeSiteConfigurationService.kt
 │
 ├── adapter/
-│   ├── input/
+│   ├── inbound/
 │   │   ├── web/
 │   │   │   ├── BlogController.kt
 │   │   │   ├── PostPageViewAssembler.kt
@@ -262,27 +283,19 @@ src/main/kotlin/xyz/robinjoon/notionblog/
 │   │   │       └── LinkView.kt
 │   │   └── scheduling/
 │   │       └── SynchronizationScheduler.kt
-│   └── output/
+│   └── outbound/
 │       ├── notion/
-│       │   ├── NotionPostSource.kt
-│       │   ├── NotionSiteConfigurationSource.kt
-│       │   ├── NotionFailureTranslator.kt
+│       │   ├── source/
+│       │   │   ├── NotionPostSource.kt
+│       │   │   └── NotionSiteConfigurationSource.kt
 │       │   ├── client/
-│       │   │   └── NotionApiClient.kt
+│       │   │   ├── NotionApiClient.kt
+│       │   │   └── NotionFailureTranslator.kt
 │       │   ├── dto/
 │       │   │   ├── NotionPageResponse.kt
 │       │   │   ├── NotionBlockEnvelope.kt
 │       │   │   ├── NotionSettingsRowResponse.kt
-│       │   │   ├── NotionPaginationResponse.kt
-│       │   │   ├── block/
-│       │   │   │   ├── NotionTextBlockData.kt
-│       │   │   │   ├── NotionLayoutBlockData.kt
-│       │   │   │   ├── NotionMediaBlockData.kt
-│       │   │   │   ├── NotionReferenceBlockData.kt
-│       │   │   │   └── NotionMeetingNotesData.kt
-│       │   │   └── richtext/
-│       │   │       ├── NotionRichTextEnvelope.kt
-│       │   │       └── NotionAnnotationsResponse.kt
+│       │   │   └── NotionPaginationResponse.kt
 │       │   └── mapping/
 │       │       ├── NotionPageMapper.kt
 │       │       ├── NotionBlockMapper.kt
@@ -310,16 +323,20 @@ src/main/kotlin/xyz/robinjoon/notionblog/
 │           │       └── SyncStateTable.kt
 │           └── snapshot/
 │               ├── JsonBlockTreeSnapshotCodec.kt
-│               ├── BlockTreeSnapshotMapper.kt
-│               └── dto/
-│                   ├── BlockTreeSnapshotDocument.kt
-│                   └── BlockSnapshotDocument.kt
+│               └── BlockTreeSnapshotMapper.kt
 │
 └── config/
-    ├── ApplicationConfiguration.kt
+    ├── ApplicationConfig.kt
+    ├── QueryConfig.kt
+    ├── SynchronizationConfig.kt
+    ├── SynchronizationStateConfig.kt
+    ├── NotionConfig.kt
+    ├── PersistenceConfig.kt
+    ├── PresentationConfig.kt
+    ├── WebConfig.kt
     ├── BlogProperties.kt
     ├── NotionProperties.kt
-    └── SchedulingConfiguration.kt
+    └── SchedulingConfig.kt
 ```
 
 리소스와 테스트 구조는 다음 경계를 따른다.
@@ -336,13 +353,13 @@ src/main/resources/
 src/test/kotlin/xyz/robinjoon/notionblog/
 ├── domain/                       # 순수 불변식과 상태 전이
 ├── application/                  # 유스케이스와 트랜잭션 경계
-├── adapter/input/web/            # MockMvc, HTML, 공개 여부
-├── adapter/output/notion/        # MockWebServer, DTO, 페이지네이션, 매핑
-├── adapter/output/persistence/   # Testcontainers PostgreSQL, Flyway, Exposed
+├── adapter/inbound/web/          # MockMvc, HTML, 공개 여부
+├── adapter/outbound/notion/      # MockWebServer, DTO, 페이지네이션, 매핑
+├── adapter/outbound/persistence/ # Testcontainers PostgreSQL, Flyway, Exposed
 └── architecture/                 # 의존 방향과 금지 타입 검사
 ```
 
-`application.port.input`은 기본 패키지로 미리 만들지 않는다. 웹과 스케줄러가 동일한 유스케이스를 실제로 공유하고 교체 가능한 진입 계약이 필요할 때만 좁은 입력 포트를 추가한다.
+외부 진입점은 `application.port.input`의 use case 계약을 호출한다. controller와 scheduler가 application service 구현에 직접 의존하지 않으며 내부 협력만을 위한 인터페이스는 추가하지 않는다.
 
 식별자와 작은 값 타입은 가장 가까운 관련 파일에 둘 수 있다. 파일을 나누는 기준은 선언 수가 아니라 응집도다. 반대로 위 트리의 서로 다른 하위 도메인을 한 파일의 무관한 최상위 선언으로 합치지 않는다.
 
@@ -1139,7 +1156,7 @@ Notion 어댑터는 다음 소스 중립 오류로 변환한다.
 
 ### 13.6 어댑터 호환성 원칙
 
-아래는 목표 해석 구조의 계약이다. 현재 구현에는 `JsonNode`를 직접 읽는 매퍼와 사용되지 않는 타입별 DTO가 함께 남아 있으며, 13.8절의 설계를 기준으로 후속 전환한다.
+아래는 목표 해석 구조의 계약이다. 현재 실행 경로는 Notion 어댑터 내부의 책임별 매퍼에서 `JsonNode`를 읽는다. 사용되지 않는 `dto/block`·`dto/richtext`의 7개 파일은 활성 매핑 테스트를 확인한 뒤 제거한다. 이 제거를 타입별 디코더 전환 완료로 간주하지 않으며, 완전한 응답 모델 분리는 13.8절의 별도 후속 설계를 따른다.
 
 - 공식 블록 응답 유니언과 리치 텍스트 유니언을 JSON 고정 데이터로 보관한다.
 - `NotionBlockEnvelope`은 공통 필드, 열린 `type`, 타입별 JSON payload만 받는다. 어댑터 내부 디코더가 `type`에 맞는 DTO로 명시적으로 해석하고 `NotionBlockMapper`가 블로그 모델로 변환한다. 36개 타입의 필드를 한 DTO의 nullable 속성 가방으로 모으지 않는다.
@@ -1181,7 +1198,7 @@ HTTP 클라이언트는 전달받은 스키마 속성 ID를 URI에 넣을 때만
 
 ### 13.8 Notion 플랫폼 구조를 먼저 정의한다
 
-Notion이 정한 응답 형태·필드 규칙과 블로그의 변환·표시 정책을 구분하는 내부 구조를 [Notion 어댑터 구조 설계](notion-adapter-structure.md)에 정리한다. 이는 구현 전 설계이며, 현재 일부 DTO 선언은 실제 JSON 해석 경로에서 사용되지 않는다. 문서에 목표 타입을 적었다는 이유로 기존 파싱 경로가 전환되었다고 간주하지 않는다.
+Notion이 정한 응답 형태·필드 규칙과 블로그의 변환·표시 정책을 구분하는 내부 구조를 [Notion 어댑터 구조 설계](notion-adapter-structure.md)에 정리한다. 이는 응답 모델 분리의 후속 설계다. 현재의 매퍼 책임 분리와 미사용 DTO 제거를 전체 파싱 경로 전환으로 간주하지 않는다.
 
 같은 플랫폼 자료인 미디어·리치 텍스트 등을 본문, 아이콘, 데이터베이스 카드가 함께 사용하도록 형식 해석의 책임을 정한다. 블로그의 공개 범위·게시 상태·미지원 처리 정책은 별도로 유지한다. 구조 전환과 입력 허용 정책 변경을 한꺼번에 수행하지 않으며, 수집 순서·수집 제한·스케줄러의 전면 재설계는 이번 구조 정의에 포함하지 않는다.
 
@@ -1294,7 +1311,7 @@ sync_state
 
 ### 14.2 Exposed 구현
 
-- Exposed `Table`, `ResultRow`, SQL 표현식은 `adapter.output.persistence.exposed` 밖으로 노출하지 않는다.
+- Exposed `Table`, `ResultRow`, SQL 표현식은 `adapter.outbound.persistence.exposed` 밖으로 노출하지 않는다.
 - 저장소는 도메인 모델 또는 명시적 애플리케이션 프로젝션을 반환한다.
 - 쓰기 트랜잭션은 애플리케이션 서비스의 공개 메서드가 소유한다.
 - 저장소 내부에서 임의로 `transaction {}`을 중첩하지 않는다.
@@ -1550,7 +1567,7 @@ CSS 클래스 이름은 웹 어댑터의 고정 매핑이다. 스냅샷에는 �
 - 무결성 값 또는 콘텐츠 해시
 - `SiteConfiguration`이 선택한 활성 프로필 참조
 
-`presentation_profile`은 디자인 토큰을, `presentation_profile_asset`은 정렬된 자산 참조만 저장한다. 자산 키를 실제 공개 경로로 바꾸는 `PresentationAssetCatalog`의 구현체는 `ClasspathPresentationAssetCatalog`다. `ApplicationConfiguration`은 타입 안전한 `BlogProperties`에서 배포 산출물의 자산 목록을 읽어 이 어댑터에 주입한다. DB에는 파일 경로, 원격 URL, CSS 본문, JavaScript 본문을 저장하지 않는다.
+`presentation_profile`은 디자인 토큰을, `presentation_profile_asset`은 정렬된 자산 참조만 저장한다. 자산 키를 실제 공개 경로로 바꾸는 `PresentationAssetCatalog`의 구현체는 `ClasspathPresentationAssetCatalog`다. `PresentationConfig`는 타입 안전한 `BlogProperties`에서 배포 산출물의 자산 목록을 읽어 이 어댑터에 주입한다. DB에는 파일 경로, 원격 URL, CSS 본문, JavaScript 본문을 저장하지 않는다.
 
 초기 부트스트랩은 애플리케이션이 제공하는 불변 기본 프로필을 추가 전용 Flyway 마이그레이션으로 등록한다. 이 기본 프로필의 ID·version·토큰·정렬된 자산 참조와 무결성 값은 해당 애플리케이션 버전의 `ClasspathPresentationAssetCatalog` 등록값과 정확히 일치해야 한다. 애플리케이션 시작 runner가 임의 시각에 DB를 수정하거나 외부 소스를 호출하지 않는다. 관리자가 새 프로필을 활성화할 때는 새 migration 또는 별도 관리 유스케이스가 모든 자산 키와 무결성 값을 카탈로그에서 검증한 뒤 `SiteConfiguration.presentationProfile`을 원자적으로 교체한다.
 
@@ -1805,7 +1822,13 @@ PostgreSQL 동작은 H2로 대체하지 않고 Testcontainers PostgreSQL로 검�
 
 Helm chart, Kubernetes manifest, GitOps 설정, 복제본과 스케줄러 리더 정책, Secret/ConfigMap 주입, Ingress와 TLS는 외부 하네스 저장소가 소유한다.
 
+배포 자동화는 공통 템플릿의 명시적 `APP_NAME`, `REGISTRY_HOST`, `REGISTRY_IMAGE` 계약을 사용한다. 하네스 앱 조회가 HTTP 404일 때만 최초 생성을 요청한다. 앱별 `.github/deployment.json`은 이 요청에 필요한 DB명·도메인·런타임 환경변수와 Secret 참조를 선언하며 Kubernetes manifest를 소유하지 않는다. 블로그는 `notion-blog`, DB `notion_blog`, 도메인 `blog.homelab.robinjoon.xyz`를 유지한다.
+
+기존 워크로드는 정확한 `app` 컨테이너와 이미지 repository를 확인한 뒤 태그만 변경하고 DB·Ingress·환경변수·ServiceAccount를 재적용하지 않는다. 배포 성공은 하네스 `main`에서 목표 repository와 태그를 다시 확인한 상태다. 실제 Secret 값·클러스터 상태와 Argo CD 동기화는 별도로 검증해야 한다. 상세 최초 생성 설정과 권한 조건은 `docs/deployment.md`를 따른다.
+
 런타임 산출물은 단일 Spring Boot OCI 이미지다. 애플리케이션은 `8080` 포트와 Actuator liveness/readiness 엔드포인트를 제공한다. Notion 장애는 readiness를 내리지 않는다.
+
+컨테이너는 명시적인 JVM·메모리 옵션 없이 JRE 25의 기본값으로 실행한다. 힙 크기·메모리 비율·OOM 종료 옵션을 이미지나 앱 배포 설정에 추가하지 않는다. Gradle 빌드 JVM 설정, JDK 25 toolchain과 Spring 가상 스레드 설정은 별도 개발·애플리케이션 계약으로 유지한다. 하네스 리소스 제한은 이 저장소에서 변경하지 않는다.
 
 ## 25. 완료 조건
 

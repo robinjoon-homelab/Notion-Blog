@@ -15,8 +15,9 @@ import java.net.URI
 import java.time.Duration
 
 class ApplicationPropertiesTest {
-    private val contextRunner = ApplicationContextRunner()
-        .withUserConfiguration(PropertiesConfiguration::class.java)
+    private val contextRunner =
+        ApplicationContextRunner()
+            .withUserConfiguration(PropertiesConfiguration::class.java)
 
     @Test
     fun `permits typed configuration without a public base URL`() {
@@ -43,7 +44,10 @@ class ApplicationPropertiesTest {
         "http://[::1]:8080/, http://[::1]:8080/",
         "https://[2001:db8::1], https://[2001:db8::1]/",
     )
-    fun `binds an HTTP origin and normalizes its root path`(value: String, normalized: String) {
+    fun `binds an HTTP origin and normalizes its root path`(
+        value: String,
+        normalized: String,
+    ) {
         contextRunner.withPropertyValues(*validProperties("blog.public-base-url=$value")).run { context ->
             assertThat(context).hasNotFailed()
             assertThat(context.getBean(BlogProperties::class.java).publicBaseUri).isEqualTo(URI(normalized))
@@ -86,14 +90,16 @@ class ApplicationPropertiesTest {
         )
     }
 
-    private fun assertPublicOriginFromEnvironment(environment: Map<String, Any>, expected: URI?) {
+    private fun assertPublicOriginFromEnvironment(
+        environment: Map<String, Any>,
+        expected: URI?,
+    ) {
         contextRunner
             .withPropertyValues(
                 "spring.config.location=classpath:/application.yml",
                 "notion.token=test-token",
                 "notion.settings-data-source-id=settings-data-source",
-            )
-            .withInitializer { context ->
+            ).withInitializer { context ->
                 context.environment.propertySources.replace(
                     StandardEnvironment.SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME,
                     SystemEnvironmentPropertySource(
@@ -102,8 +108,7 @@ class ApplicationPropertiesTest {
                     ),
                 )
                 ConfigDataApplicationContextInitializer().initialize(context)
-            }
-            .run { context ->
+            }.run { context ->
                 assertThat(context).hasNotFailed()
                 assertThat(context.getBean(BlogProperties::class.java).publicBaseUri)
                     .isEqualTo(expected)
@@ -153,8 +158,7 @@ class ApplicationPropertiesTest {
             .withPropertyValues(
                 "notion.token=test-token",
                 "notion.settings-data-source-id=settings-data-source",
-            )
-            .run { context ->
+            ).run { context ->
                 assertThat(context).hasNotFailed()
                 val notion = context.getBean(NotionProperties::class.java)
                 assertThat(notion.apiVersion).isEqualTo("2026-03-11")
@@ -201,26 +205,28 @@ class ApplicationPropertiesTest {
 
     @Test
     fun `rejects duplicate exact assets and multiple current assets for one key`() {
-        val duplicate = arrayOf(
-            "blog.presentation.assets[1].key=notion-core",
-            "blog.presentation.assets[1].version=1",
-            "blog.presentation.assets[1].integrity=sha384-core",
-            "blog.presentation.assets[1].public-path=/presentation/notion/v1/duplicate.css",
-            "blog.presentation.assets[1].media-type=text/css",
-            "blog.presentation.assets[1].current=false",
-        )
+        val duplicate =
+            arrayOf(
+                "blog.presentation.assets[1].key=notion-core",
+                "blog.presentation.assets[1].version=1",
+                "blog.presentation.assets[1].integrity=sha384-core",
+                "blog.presentation.assets[1].public-path=/presentation/notion/v1/duplicate.css",
+                "blog.presentation.assets[1].media-type=text/css",
+                "blog.presentation.assets[1].current=false",
+            )
         contextRunner.withPropertyValues(*validProperties(*duplicate)).run { context ->
             assertThat(context).hasFailed()
         }
 
-        val duplicateCurrent = arrayOf(
-            "blog.presentation.assets[1].key=notion-core",
-            "blog.presentation.assets[1].version=2",
-            "blog.presentation.assets[1].integrity=sha384-core-v2",
-            "blog.presentation.assets[1].public-path=/presentation/notion/v2/notion.css",
-            "blog.presentation.assets[1].media-type=text/css",
-            "blog.presentation.assets[1].current=true",
-        )
+        val duplicateCurrent =
+            arrayOf(
+                "blog.presentation.assets[1].key=notion-core",
+                "blog.presentation.assets[1].version=2",
+                "blog.presentation.assets[1].integrity=sha384-core-v2",
+                "blog.presentation.assets[1].public-path=/presentation/notion/v2/notion.css",
+                "blog.presentation.assets[1].media-type=text/css",
+                "blog.presentation.assets[1].current=true",
+            )
         contextRunner.withPropertyValues(*validProperties(*duplicateCurrent)).run { context ->
             assertThat(context).hasFailed()
         }
@@ -228,14 +234,15 @@ class ApplicationPropertiesTest {
 
     @Test
     fun `rejects assets that reuse a key and version with a different integrity`() {
-        val duplicateLogicalIdentity = arrayOf(
-            "blog.presentation.assets[1].key=notion-core",
-            "blog.presentation.assets[1].version=1",
-            "blog.presentation.assets[1].integrity=sha384-core-replaced",
-            "blog.presentation.assets[1].public-path=/presentation/notion/v1/replaced.css",
-            "blog.presentation.assets[1].media-type=text/css",
-            "blog.presentation.assets[1].current=false",
-        )
+        val duplicateLogicalIdentity =
+            arrayOf(
+                "blog.presentation.assets[1].key=notion-core",
+                "blog.presentation.assets[1].version=1",
+                "blog.presentation.assets[1].integrity=sha384-core-replaced",
+                "blog.presentation.assets[1].public-path=/presentation/notion/v1/replaced.css",
+                "blog.presentation.assets[1].media-type=text/css",
+                "blog.presentation.assets[1].current=false",
+            )
 
         contextRunner.withPropertyValues(*validProperties(*duplicateLogicalIdentity)).run { context ->
             assertThat(context).hasFailed()
@@ -244,44 +251,46 @@ class ApplicationPropertiesTest {
 
     @Test
     fun `allows different versions for the same asset key when only one is current`() {
-        val olderVersion = arrayOf(
-            "blog.presentation.assets[1].key=notion-core",
-            "blog.presentation.assets[1].version=2",
-            "blog.presentation.assets[1].integrity=sha384-core-v2",
-            "blog.presentation.assets[1].public-path=/presentation/notion/v2/notion.css",
-            "blog.presentation.assets[1].media-type=text/css",
-            "blog.presentation.assets[1].current=false",
-        )
+        val olderVersion =
+            arrayOf(
+                "blog.presentation.assets[1].key=notion-core",
+                "blog.presentation.assets[1].version=2",
+                "blog.presentation.assets[1].integrity=sha384-core-v2",
+                "blog.presentation.assets[1].public-path=/presentation/notion/v2/notion.css",
+                "blog.presentation.assets[1].media-type=text/css",
+                "blog.presentation.assets[1].current=false",
+            )
 
         contextRunner.withPropertyValues(*validProperties(*olderVersion)).run { context ->
             assertThat(context).hasNotFailed()
         }
     }
 
-    private fun validProperties(vararg overrides: String): Array<String> = arrayOf(
-        "notion.token=test-token",
-        "notion.settings-data-source-id=settings-data-source",
-        "notion.api-version=2026-03-11",
-        "notion.base-url=https://api.notion.test/v1",
-        "notion.request-timeout=4s",
-        "notion.collection-timeout=20s",
-        "notion.max-block-depth=12",
-        "notion.max-block-count=4000",
-        "blog.synchronization.enabled=false",
-        "blog.synchronization.interval-ms=45000",
-        "blog.synchronization.due-batch-size=24",
-        "blog.synchronization.success-interval=5m",
-        "blog.synchronization.initial-failure-delay=5s",
-        "blog.synchronization.maximum-failure-delay=1m",
-        "blog.presentation.default-profile-key=notion-default",
-        "blog.presentation.assets[0].key=notion-core",
-        "blog.presentation.assets[0].version=1",
-        "blog.presentation.assets[0].integrity=sha384-core",
-        "blog.presentation.assets[0].public-path=/presentation/notion/v1/notion.css",
-        "blog.presentation.assets[0].media-type=text/css",
-        "blog.presentation.assets[0].current=true",
-        *overrides,
-    )
+    private fun validProperties(vararg overrides: String): Array<String> =
+        arrayOf(
+            "notion.token=test-token",
+            "notion.settings-data-source-id=settings-data-source",
+            "notion.api-version=2026-03-11",
+            "notion.base-url=https://api.notion.test/v1",
+            "notion.request-timeout=4s",
+            "notion.collection-timeout=20s",
+            "notion.max-block-depth=12",
+            "notion.max-block-count=4000",
+            "blog.synchronization.enabled=false",
+            "blog.synchronization.interval-ms=45000",
+            "blog.synchronization.due-batch-size=24",
+            "blog.synchronization.success-interval=5m",
+            "blog.synchronization.initial-failure-delay=5s",
+            "blog.synchronization.maximum-failure-delay=1m",
+            "blog.presentation.default-profile-key=notion-default",
+            "blog.presentation.assets[0].key=notion-core",
+            "blog.presentation.assets[0].version=1",
+            "blog.presentation.assets[0].integrity=sha384-core",
+            "blog.presentation.assets[0].public-path=/presentation/notion/v1/notion.css",
+            "blog.presentation.assets[0].media-type=text/css",
+            "blog.presentation.assets[0].current=true",
+            *overrides,
+        )
 
     @Configuration(proxyBeanMethods = false)
     @EnableConfigurationProperties(NotionProperties::class, BlogProperties::class)

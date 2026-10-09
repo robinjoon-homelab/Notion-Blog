@@ -14,7 +14,9 @@ data class DataSet(
         require(title.isNotBlank()) { "data set title must not be blank" }
         require(columns.isNotEmpty()) { "data set columns must not be empty" }
         require(rows.all { it.cells.size == columns.size }) { "data set rows must contain exactly the column count" }
-        require(titleColumnIndex == null || titleColumnIndex in columns.indices) { "data set title column index must be within the columns" }
+        require(
+            titleColumnIndex == null || titleColumnIndex in columns.indices,
+        ) { "data set title column index must be within the columns" }
     }
 }
 

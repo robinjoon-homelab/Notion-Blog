@@ -16,8 +16,9 @@ class PostTest {
 
     @Test
     fun `rejects a title that is blank after normalization`() {
-        assertThatIllegalArgumentException().isThrownBy {
-            Post(PostId(UUID.randomUUID()), " \t\n ", BlockTree(emptyList()))
-        }.withMessage("post title must not be blank")
+        assertThatIllegalArgumentException()
+            .isThrownBy {
+                Post(PostId(UUID.randomUUID()), " \t\n ", BlockTree(emptyList()))
+            }.withMessage("post title must not be blank")
     }
 }

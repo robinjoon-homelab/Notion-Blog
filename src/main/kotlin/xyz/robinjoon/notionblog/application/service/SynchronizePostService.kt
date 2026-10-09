@@ -1,22 +1,21 @@
 package xyz.robinjoon.notionblog.application.service
 
-import org.springframework.stereotype.Service
 import xyz.robinjoon.notionblog.application.model.ImportedPost
+import xyz.robinjoon.notionblog.application.port.input.SynchronizePostUseCase
 import xyz.robinjoon.notionblog.application.port.output.source.PostSource
 import xyz.robinjoon.notionblog.application.port.output.source.SourceException
 import xyz.robinjoon.notionblog.domain.post.PostId
 import xyz.robinjoon.notionblog.domain.source.SourceDocumentRef
 import xyz.robinjoon.notionblog.domain.sync.SyncFailureKind
 
-@Service
 class SynchronizePostService(
     private val queryService: SynchronizationQueryService,
     private val source: PostSource,
     private val applyService: ApplyImportedPostService,
     private val publicationService: SynchronizePublicationService,
     private val cancelService: CancelInactivePostSynchronizationService,
-) {
-    fun synchronize(postId: PostId) {
+) : SynchronizePostUseCase {
+    override fun synchronize(postId: PostId) {
         val context = queryService.loadPost(postId)
         if (context == null) {
             cancelService.cancelIfInactive(postId)
@@ -30,12 +29,16 @@ class SynchronizePostService(
         }
     }
 
-    private fun fetch(postId: PostId, sourceDocument: SourceDocumentRef): ImportedPost = try {
-        source.fetch(sourceDocument)
-    } catch (exception: SourceException) {
-        applyService.recordFailure(postId, exception.toSyncFailureKind())
-        throw exception
-    }
+    private fun fetch(
+        postId: PostId,
+        sourceDocument: SourceDocumentRef,
+    ): ImportedPost =
+        try {
+            source.fetch(sourceDocument)
+        } catch (exception: SourceException) {
+            applyService.recordFailure(postId, exception.toSyncFailureKind())
+            throw exception
+        }
 
     private fun apply(
         postId: PostId,

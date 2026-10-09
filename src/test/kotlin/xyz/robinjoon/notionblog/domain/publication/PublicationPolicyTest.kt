@@ -17,21 +17,23 @@ class PublicationPolicyTest {
     @Test
     fun `an unpublished parent remains a structural member when its published descendant is activated`() {
         val revision = stagingRevision()
-        val members = listOf(
-            PublicationMember(revision.id, rootPostId, parentPostId = null, depth = 0),
-            PublicationMember(revision.id, unpublishedParentPostId, parentPostId = rootPostId, depth = 1),
-            PublicationMember(
-                revision.id,
-                publishedDescendantPostId,
-                parentPostId = unpublishedParentPostId,
-                depth = 2,
-            ),
-        )
-        val availabilityByPostId = mapOf(
-            rootPostId to published(rootPostId),
-            unpublishedParentPostId to unpublished(unpublishedParentPostId),
-            publishedDescendantPostId to published(publishedDescendantPostId),
-        )
+        val members =
+            listOf(
+                PublicationMember(revision.id, rootPostId, parentPostId = null, depth = 0),
+                PublicationMember(revision.id, unpublishedParentPostId, parentPostId = rootPostId, depth = 1),
+                PublicationMember(
+                    revision.id,
+                    publishedDescendantPostId,
+                    parentPostId = unpublishedParentPostId,
+                    depth = 2,
+                ),
+            )
+        val availabilityByPostId =
+            mapOf(
+                rootPostId to published(rootPostId),
+                unpublishedParentPostId to unpublished(unpublishedParentPostId),
+                publishedDescendantPostId to published(publishedDescendantPostId),
+            )
 
         assertThatCode {
             PublicationPolicy.validateForActivation(
@@ -50,14 +52,16 @@ class PublicationPolicyTest {
         assertThatIllegalArgumentException().isThrownBy {
             PublicationPolicy.validateForActivation(
                 revision = revision,
-                members = listOf(
-                    PublicationMember(revision.id, rootPostId, parentPostId = null, depth = 0),
-                    PublicationMember(revision.id, publishedDescendantPostId, unpublishedParentPostId, depth = 2),
-                ),
-                availabilityByPostId = mapOf(
-                    rootPostId to published(rootPostId),
-                    publishedDescendantPostId to published(publishedDescendantPostId),
-                ),
+                members =
+                    listOf(
+                        PublicationMember(revision.id, rootPostId, parentPostId = null, depth = 0),
+                        PublicationMember(revision.id, publishedDescendantPostId, unpublishedParentPostId, depth = 2),
+                    ),
+                availabilityByPostId =
+                    mapOf(
+                        rootPostId to published(rootPostId),
+                        publishedDescendantPostId to published(publishedDescendantPostId),
+                    ),
                 renderablePostIds = setOf(rootPostId, publishedDescendantPostId),
             )
         }
@@ -98,14 +102,16 @@ class PublicationPolicyTest {
         assertThatIllegalArgumentException().isThrownBy {
             PublicationPolicy.validateForActivation(
                 revision = revision,
-                members = listOf(
-                    PublicationMember(revision.id, rootPostId, parentPostId = null, depth = 0),
-                    PublicationMember(revision.id, publishedDescendantPostId, rootPostId, depth = 2),
-                ),
-                availabilityByPostId = mapOf(
-                    rootPostId to published(rootPostId),
-                    publishedDescendantPostId to published(publishedDescendantPostId),
-                ),
+                members =
+                    listOf(
+                        PublicationMember(revision.id, rootPostId, parentPostId = null, depth = 0),
+                        PublicationMember(revision.id, publishedDescendantPostId, rootPostId, depth = 2),
+                    ),
+                availabilityByPostId =
+                    mapOf(
+                        rootPostId to published(rootPostId),
+                        publishedDescendantPostId to published(publishedDescendantPostId),
+                    ),
                 renderablePostIds = setOf(rootPostId, publishedDescendantPostId),
             )
         }
@@ -132,21 +138,24 @@ class PublicationPolicyTest {
         assertThatCode { publication.activate(rootPostId, revisionId) }.doesNotThrowAnyException()
     }
 
-    private fun stagingRevision() = PublicationRevision(
-        id = revisionId,
-        publicationId = publicationId,
-        state = PublicationRevisionState.STAGING,
-    )
+    private fun stagingRevision() =
+        PublicationRevision(
+            id = revisionId,
+            publicationId = publicationId,
+            state = PublicationRevisionState.STAGING,
+        )
 
-    private fun published(postId: PostId) = PostAvailability(
-        postId = postId,
-        status = PostAvailabilityStatus.PUBLISHED,
-        confirmedAt = Instant.parse("2026-08-25T00:00:00Z"),
-    )
+    private fun published(postId: PostId) =
+        PostAvailability(
+            postId = postId,
+            status = PostAvailabilityStatus.PUBLISHED,
+            confirmedAt = Instant.parse("2026-08-25T00:00:00Z"),
+        )
 
-    private fun unpublished(postId: PostId) = PostAvailability(
-        postId = postId,
-        status = PostAvailabilityStatus.UNPUBLISHED,
-        confirmedAt = Instant.parse("2026-08-25T00:00:00Z"),
-    )
+    private fun unpublished(postId: PostId) =
+        PostAvailability(
+            postId = postId,
+            status = PostAvailabilityStatus.UNPUBLISHED,
+            confirmedAt = Instant.parse("2026-08-25T00:00:00Z"),
+        )
 }

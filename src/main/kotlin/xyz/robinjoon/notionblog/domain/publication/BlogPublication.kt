@@ -13,8 +13,12 @@ data class BlogPublication(
         }
     }
 
-    fun activate(rootPostId: PostId, revisionId: PublicationRevisionId): BlogPublication = copy(
-        rootPostId = rootPostId,
-        activeRevisionId = revisionId,
-    )
+    fun activate(
+        rootPostId: PostId,
+        revisionId: PublicationRevisionId,
+    ): BlogPublication =
+        copy(
+            rootPostId = rootPostId,
+            activeRevisionId = revisionId,
+        )
 }

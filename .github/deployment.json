@@ -1,0 +1,69 @@
+{
+  "database": "notion_blog",
+  "host": "blog.homelab.robinjoon.xyz",
+  "env": [
+    {
+      "name": "DB_PORT",
+      "secretKeyRef": {
+        "name": "shared-db-app",
+        "key": "port"
+      }
+    },
+    {
+      "name": "SPRING_DATASOURCE_URL",
+      "value": "jdbc:postgresql://$(DB_HOST):$(DB_PORT)/notion_blog"
+    },
+    {
+      "name": "SPRING_DATASOURCE_USERNAME",
+      "secretKeyRef": {
+        "name": "shared-db-app",
+        "key": "username"
+      }
+    },
+    {
+      "name": "SPRING_DATASOURCE_PASSWORD",
+      "secretKeyRef": {
+        "name": "shared-db-app",
+        "key": "password"
+      }
+    },
+    {
+      "name": "NOTION_TOKEN",
+      "secretKeyRef": {
+        "name": "notion-blog-runtime",
+        "key": "NOTION_TOKEN"
+      }
+    },
+    {
+      "name": "NOTION_SETTINGS_DATA_SOURCE_ID",
+      "secretKeyRef": {
+        "name": "notion-blog-runtime",
+        "key": "NOTION_SETTINGS_DATA_SOURCE_ID"
+      }
+    },
+    {
+      "name": "NOTION_API_VERSION",
+      "value": "2026-03-11"
+    },
+    {
+      "name": "BLOG_SYNCHRONIZATION_ENABLED",
+      "value": "true"
+    },
+    {
+      "name": "BLOG_SYNCHRONIZATION_INTERVAL_MS",
+      "value": "60000"
+    },
+    {
+      "name": "BLOG_SYNCHRONIZATION_SUCCESS_INTERVAL",
+      "value": "1m"
+    },
+    {
+      "name": "BLOG_PUBLIC_BASE_URL",
+      "value": "https://blog.homelab.robinjoon.xyz"
+    },
+    {
+      "name": "SPRING_PROFILES_ACTIVE",
+      "value": "prod"
+    }
+  ]
+}

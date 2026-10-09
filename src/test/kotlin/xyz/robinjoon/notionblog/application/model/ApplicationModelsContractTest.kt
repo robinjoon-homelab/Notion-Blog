@@ -48,14 +48,15 @@ class ApplicationModelsContractTest {
 
     @Test
     fun `applied site configuration reports whether the publication root changed`() {
-        val configuration = SiteConfiguration(
-            publicationId = PublicationId(UUID.randomUUID()),
-            rootDocument = SourceDocumentRef(SourceId("notion-main"), "root"),
-            headerDocument = null,
-            footerDocument = null,
-            metadata = SiteMetadata("Blog", null, "ko-KR", null),
-            presentationProfile = PresentationProfileRef(PresentationProfileId(UUID.randomUUID()), 1),
-        )
+        val configuration =
+            SiteConfiguration(
+                publicationId = PublicationId(UUID.randomUUID()),
+                rootDocument = SourceDocumentRef(SourceId("notion-main"), "root"),
+                headerDocument = null,
+                footerDocument = null,
+                metadata = SiteMetadata("Blog", null, "ko-KR", null),
+                presentationProfile = PresentationProfileRef(PresentationProfileId(UUID.randomUUID()), 1),
+            )
 
         val applied = AppliedSiteConfiguration(configuration, rootChanged = true)
 

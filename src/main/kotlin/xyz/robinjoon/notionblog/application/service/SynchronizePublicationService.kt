@@ -1,6 +1,6 @@
 package xyz.robinjoon.notionblog.application.service
 
-import org.springframework.stereotype.Service
+import xyz.robinjoon.notionblog.application.port.input.SynchronizePublicationUseCase
 import xyz.robinjoon.notionblog.application.port.output.source.PostSource
 import xyz.robinjoon.notionblog.application.port.output.source.SourceException
 import xyz.robinjoon.notionblog.domain.post.PostId
@@ -10,15 +10,14 @@ import xyz.robinjoon.notionblog.domain.source.SourceDocumentRef
 import xyz.robinjoon.notionblog.domain.sync.SyncFailureKind
 import java.util.ArrayDeque
 
-@Service
 class SynchronizePublicationService(
     private val synchronizationQueryService: SynchronizationQueryService,
     private val stagePublicationMemberService: StagePublicationMemberService,
     private val postSource: PostSource,
     private val applyImportedPostService: ApplyImportedPostService,
     private val activatePublicationService: ActivatePublicationService,
-) {
-    fun synchronize() {
+) : SynchronizePublicationUseCase {
+    override fun synchronize() {
         val context = synchronizationQueryService.loadPublication() ?: return
         val revision = stagePublicationMemberService.begin(context.publicationId)
 
@@ -37,7 +36,10 @@ class SynchronizePublicationService(
         }
     }
 
-    private fun collectMembers(revisionId: PublicationRevisionId, rootDocument: SourceDocumentRef) {
+    private fun collectMembers(
+        revisionId: PublicationRevisionId,
+        rootDocument: SourceDocumentRef,
+    ) {
         val scheduled = mutableSetOf(rootDocument)
         val queue = ArrayDeque<PendingDocument>()
         queue += PendingDocument(rootDocument, parentPostId = null, depth = 0)
@@ -45,8 +47,8 @@ class SynchronizePublicationService(
         while (queue.isNotEmpty()) {
             val pending = queue.removeFirst()
             val imported = postSource.fetch(pending.sourceDocument)
-            if (imported.sourceDocument != pending.sourceDocument) {
-                throw IllegalArgumentException("source returned a document different from the requested reference")
+            require(imported.sourceDocument == pending.sourceDocument) {
+                "source returned a document different from the requested reference"
             }
 
             val postId = applyImportedPostService.apply(imported)
@@ -55,9 +57,7 @@ class SynchronizePublicationService(
             )
 
             imported.containedChildren.forEach { child ->
-                if (!scheduled.add(child)) {
-                    throw IllegalArgumentException("structural publication graph revisits a source document")
-                }
+                require(scheduled.add(child)) { "structural publication graph revisits a source document" }
                 queue += PendingDocument(child, postId, pending.depth + 1)
             }
         }

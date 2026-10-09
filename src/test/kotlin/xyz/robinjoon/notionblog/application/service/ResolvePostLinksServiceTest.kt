@@ -9,6 +9,7 @@ import xyz.robinjoon.notionblog.application.model.LinkResolution
 import xyz.robinjoon.notionblog.application.port.output.persistence.PostRepository
 import xyz.robinjoon.notionblog.application.port.output.persistence.PublicationRepository
 import xyz.robinjoon.notionblog.domain.post.PostId
+import xyz.robinjoon.notionblog.domain.post.PostSourceBinding
 import xyz.robinjoon.notionblog.domain.post.block.BlockId
 import xyz.robinjoon.notionblog.domain.post.block.BlockNode
 import xyz.robinjoon.notionblog.domain.post.block.BlockTree
@@ -21,7 +22,6 @@ import xyz.robinjoon.notionblog.domain.post.block.content.TextBlockContent
 import xyz.robinjoon.notionblog.domain.post.block.inline.InlineContent
 import xyz.robinjoon.notionblog.domain.post.block.inline.LinkTarget
 import xyz.robinjoon.notionblog.domain.publication.PublicationId
-import xyz.robinjoon.notionblog.domain.source.PostSourceBinding
 import xyz.robinjoon.notionblog.domain.source.SourceDocumentRef
 import xyz.robinjoon.notionblog.domain.source.SourceId
 import java.net.URI
@@ -42,11 +42,12 @@ class ResolvePostLinksServiceTest {
         val postId = PostId(UUID.randomUUID())
         every { postRepository.findBindingsBySourceDocuments(any()) } returns mapOf(reference to PostSourceBinding(postId, reference))
         every { publicationRepository.findActiveMemberPostIds(publicationId, setOf(postId)) } returns setOf(postId)
-        val data = DataSet(
-            "View",
-            listOf(DataColumn("Name")),
-            listOf(DataRow(listOf(listOf(InlineContent.Text("Cell", link = target))), link = rowTarget)),
-        )
+        val data =
+            DataSet(
+                "View",
+                listOf(DataColumn("Name")),
+                listOf(DataRow(listOf(listOf(InlineContent.Text("Cell", link = target))), link = rowTarget)),
+            )
         val views = listOf(DataViewContent.Table(data), DataViewContent.ListView(data), DataViewContent.Gallery(data))
 
         views.forEachIndexed { index, view ->
@@ -62,7 +63,8 @@ class ResolvePostLinksServiceTest {
         val reference = sourceDocument("active")
         val target = LinkTarget.SourceDocument(reference, URI("https://notion.so/active"))
         val targetPostId = PostId(UUID.randomUUID())
-        every { postRepository.findBindingsBySourceDocuments(setOf(reference)) } returns mapOf(reference to PostSourceBinding(targetPostId, reference))
+        every { postRepository.findBindingsBySourceDocuments(setOf(reference)) } returns
+            mapOf(reference to PostSourceBinding(targetPostId, reference))
         every { publicationRepository.findActiveMemberPostIds(publicationId, setOf(targetPostId)) } returns setOf(targetPostId)
 
         assertThat(service.resolve(publicationId, listOf(tree(target))))
@@ -76,7 +78,8 @@ class ResolvePostLinksServiceTest {
         val reference = sourceDocument("outside")
         val target = LinkTarget.SourceDocument(reference, URI("https://example.com/original"))
         val targetPostId = PostId(UUID.randomUUID())
-        every { postRepository.findBindingsBySourceDocuments(setOf(reference)) } returns mapOf(reference to PostSourceBinding(targetPostId, reference))
+        every { postRepository.findBindingsBySourceDocuments(setOf(reference)) } returns
+            mapOf(reference to PostSourceBinding(targetPostId, reference))
         every { publicationRepository.findActiveMemberPostIds(publicationId, setOf(targetPostId)) } returns emptySet()
 
         assertThat(service.resolve(publicationId, listOf(tree(target))))
@@ -104,24 +107,27 @@ class ResolvePostLinksServiceTest {
         val referencePostId = PostId(UUID.randomUUID())
         val sourceDocuments = setOf(inlineReference, referenceBlockDocument)
         val postIds = setOf(inlinePostId, referencePostId)
-        val tree = BlockTree(
-            listOf(
-                BlockNode(
-                    BlockId("root"),
-                    TextBlockContent.Paragraph(listOf(InlineContent.Text("linked", link = inlineTarget))),
-                    children = listOf(
-                        BlockNode(
-                            BlockId("reference"),
-                            ReferenceBlockContent.DocumentLink(referenceBlockDocument, referenceTarget.originalUrl),
-                        ),
+        val tree =
+            BlockTree(
+                listOf(
+                    BlockNode(
+                        BlockId("root"),
+                        TextBlockContent.Paragraph(listOf(InlineContent.Text("linked", link = inlineTarget))),
+                        children =
+                            listOf(
+                                BlockNode(
+                                    BlockId("reference"),
+                                    ReferenceBlockContent.DocumentLink(referenceBlockDocument, referenceTarget.originalUrl),
+                                ),
+                            ),
                     ),
                 ),
-            ),
-        )
-        every { postRepository.findBindingsBySourceDocuments(sourceDocuments) } returns mapOf(
-            inlineReference to PostSourceBinding(inlinePostId, inlineReference),
-            referenceBlockDocument to PostSourceBinding(referencePostId, referenceBlockDocument),
-        )
+            )
+        every { postRepository.findBindingsBySourceDocuments(sourceDocuments) } returns
+            mapOf(
+                inlineReference to PostSourceBinding(inlinePostId, inlineReference),
+                referenceBlockDocument to PostSourceBinding(referencePostId, referenceBlockDocument),
+            )
         every { publicationRepository.findActiveMemberPostIds(publicationId, postIds) } returns postIds
 
         assertThat(service.resolve(publicationId, listOf(tree))).containsExactlyInAnyOrderEntriesOf(
@@ -134,9 +140,10 @@ class ResolvePostLinksServiceTest {
         verify(exactly = 1) { publicationRepository.findActiveMemberPostIds(publicationId, postIds) }
     }
 
-    private fun tree(target: LinkTarget.SourceDocument): BlockTree = BlockTree(
-        listOf(BlockNode(BlockId("root"), TextBlockContent.Paragraph(listOf(InlineContent.Text("linked", link = target))))),
-    )
+    private fun tree(target: LinkTarget.SourceDocument): BlockTree =
+        BlockTree(
+            listOf(BlockNode(BlockId("root"), TextBlockContent.Paragraph(listOf(InlineContent.Text("linked", link = target))))),
+        )
 
     private fun sourceDocument(externalId: String): SourceDocumentRef = SourceDocumentRef(SourceId("notion"), externalId)
 }

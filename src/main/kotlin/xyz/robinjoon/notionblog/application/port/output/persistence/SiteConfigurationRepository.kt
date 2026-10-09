@@ -9,13 +9,19 @@ import java.time.Instant
 interface SiteConfigurationRepository {
     fun findCurrent(): SiteConfiguration?
 
-    fun save(configuration: SiteConfiguration, synchronizedAt: Instant)
+    fun save(
+        configuration: SiteConfiguration,
+        synchronizedAt: Instant,
+    )
 
     fun findProfile(reference: PresentationProfileRef): PresentationProfile?
 
     fun findCurrentProfile(key: PresentationProfileKey): PresentationProfile?
 
-    fun saveProfile(profile: PresentationProfile, createdAt: Instant)
+    fun saveProfile(
+        profile: PresentationProfile,
+        createdAt: Instant,
+    )
 
     fun activateProfile(reference: PresentationProfileRef)
 }

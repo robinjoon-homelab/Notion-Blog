@@ -16,16 +16,24 @@ data class SyncState(
         }
     }
 
-    fun recordSuccess(completedAt: Instant, refreshAfter: Instant): SyncState = copy(
-        lastSuccessAt = completedAt,
-        refreshAfter = refreshAfter,
-        failureCount = 0,
-        lastErrorKind = null,
-    )
+    fun recordSuccess(
+        completedAt: Instant,
+        refreshAfter: Instant,
+    ): SyncState =
+        copy(
+            lastSuccessAt = completedAt,
+            refreshAfter = refreshAfter,
+            failureCount = 0,
+            lastErrorKind = null,
+        )
 
-    fun recordFailure(kind: SyncFailureKind, refreshAfter: Instant): SyncState = copy(
-        refreshAfter = refreshAfter,
-        failureCount = Math.addExact(failureCount, 1),
-        lastErrorKind = kind,
-    )
+    fun recordFailure(
+        kind: SyncFailureKind,
+        refreshAfter: Instant,
+    ): SyncState =
+        copy(
+            refreshAfter = refreshAfter,
+            failureCount = Math.addExact(failureCount, 1),
+            lastErrorKind = kind,
+        )
 }

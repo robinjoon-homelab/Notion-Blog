@@ -59,13 +59,17 @@ enum class HeadingLevel {
 }
 
 sealed interface BlockIcon {
-    data class Emoji(val value: String) : BlockIcon {
+    data class Emoji(
+        val value: String,
+    ) : BlockIcon {
         init {
             require(value.isNotBlank()) { "emoji icon must not be blank" }
         }
     }
 
-    data class Media(val source: MediaSource) : BlockIcon
+    data class Media(
+        val source: MediaSource,
+    ) : BlockIcon
 
     data class Native(
         val name: String,

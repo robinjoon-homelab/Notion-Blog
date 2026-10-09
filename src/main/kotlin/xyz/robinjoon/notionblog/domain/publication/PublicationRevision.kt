@@ -3,7 +3,9 @@ package xyz.robinjoon.notionblog.domain.publication
 import java.util.UUID
 
 @JvmInline
-value class PublicationRevisionId(val value: UUID)
+value class PublicationRevisionId(
+    val value: UUID,
+)
 
 data class PublicationRevision(
     val id: PublicationRevisionId,

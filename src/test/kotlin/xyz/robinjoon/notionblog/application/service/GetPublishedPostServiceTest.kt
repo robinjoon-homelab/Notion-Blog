@@ -2,11 +2,14 @@ package xyz.robinjoon.notionblog.application.service
 
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.slot
 import io.mockk.verify
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import xyz.robinjoon.notionblog.application.model.PostLookupResult
 import xyz.robinjoon.notionblog.application.model.StoredPost
+import xyz.robinjoon.notionblog.application.port.output.diagnostics.SnapshotFailureOperation
+import xyz.robinjoon.notionblog.application.port.output.diagnostics.SnapshotFailureReporter
 import xyz.robinjoon.notionblog.application.port.output.persistence.PostRepository
 import xyz.robinjoon.notionblog.application.port.output.persistence.PublicationRepository
 import xyz.robinjoon.notionblog.application.port.output.persistence.SnapshotContentException
@@ -23,9 +26,10 @@ import java.time.Instant
 import java.util.UUID
 
 class GetPublishedPostServiceTest {
+    private val snapshotFailures = mockk<SnapshotFailureReporter>(relaxed = true)
     private val publicationRepository = mockk<PublicationRepository>()
     private val postRepository = mockk<PostRepository>()
-    private val service = GetPublishedPostService(publicationRepository, postRepository)
+    private val service = GetPublishedPostService(publicationRepository, postRepository, snapshotFailures)
 
     @Test
     fun `returns content unavailable when no active publication exists`() {
@@ -86,18 +90,23 @@ class GetPublishedPostServiceTest {
         every { postRepository.find(postId) } returns null
 
         assertThat(service.get(postId)).isEqualTo(PostLookupResult.ContentUnavailable)
+        verify(exactly = 0) { snapshotFailures.report(any(), any(), any()) }
     }
 
     @Test
-    fun `returns content unavailable when published member snapshot is corrupt`() {
+    fun `reports corrupt post snapshot with its identity and returns content unavailable`() {
         val publication = activePublication()
         val postId = postId()
         every { publicationRepository.findCurrent() } returns publication
         every { publicationRepository.findActiveMemberPostIds(publication.id, setOf(postId)) } returns setOf(postId)
         every { postRepository.findAvailability(postId) } returns availability(postId, PostAvailabilityStatus.PUBLISHED)
-        every { postRepository.find(postId) } throws SnapshotContentException("invalid snapshot")
+        val failure = SnapshotContentException("invalid snapshot", IllegalArgumentException("invalid content"))
+        val reported = slot<SnapshotContentException>()
+        every { postRepository.find(postId) } throws failure
 
         assertThat(service.get(postId)).isEqualTo(PostLookupResult.ContentUnavailable)
+        verify(exactly = 1) { snapshotFailures.report(capture(reported), SnapshotFailureOperation.POST_LOOKUP, postId) }
+        assertThat(reported.captured).isSameAs(failure)
     }
 
     @Test
@@ -120,13 +129,17 @@ class GetPublishedPostServiceTest {
         assertThat(service.getRoot()).isEqualTo(PostLookupResult.ContentUnavailable)
     }
 
-    private fun activePublication(rootPostId: PostId = postId()): BlogPublication = BlogPublication(
-        id = PublicationId(UUID.randomUUID()),
-        rootPostId = rootPostId,
-        activeRevisionId = PublicationRevisionId(UUID.randomUUID()),
-    )
+    private fun activePublication(rootPostId: PostId = postId()): BlogPublication =
+        BlogPublication(
+            id = PublicationId(UUID.randomUUID()),
+            rootPostId = rootPostId,
+            activeRevisionId = PublicationRevisionId(UUID.randomUUID()),
+        )
 
-    private fun availability(postId: PostId, status: PostAvailabilityStatus): PostAvailability = PostAvailability(postId, status, Instant.EPOCH)
+    private fun availability(
+        postId: PostId,
+        status: PostAvailabilityStatus,
+    ): PostAvailability = PostAvailability(postId, status, Instant.EPOCH)
 
     private fun postId(): PostId = PostId(UUID.randomUUID())
 }

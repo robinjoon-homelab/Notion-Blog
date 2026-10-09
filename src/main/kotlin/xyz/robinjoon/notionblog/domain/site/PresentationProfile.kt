@@ -3,10 +3,14 @@ package xyz.robinjoon.notionblog.domain.site
 import java.util.UUID
 
 @JvmInline
-value class PresentationProfileId(val value: UUID)
+value class PresentationProfileId(
+    val value: UUID,
+)
 
 @JvmInline
-value class PresentationProfileKey(val value: String) {
+value class PresentationProfileKey(
+    val value: String,
+) {
     init {
         require(value.isNotBlank()) { "presentation profile key must not be blank" }
     }

@@ -49,9 +49,10 @@ class StagePublicationMemberServiceTest {
 
     @Test
     fun `begin abandons stale staging revisions before creating a replacement`() {
-        val publicationRepository = RecordingPublicationRepository().apply {
-            revisions[stagingRevisionId] = revision(stagingRevisionId, PublicationRevisionState.STAGING)
-        }
+        val publicationRepository =
+            RecordingPublicationRepository().apply {
+                revisions[stagingRevisionId] = revision(stagingRevisionId, PublicationRevisionState.STAGING)
+            }
         val service = service(publicationRepository)
 
         val created = service.begin(publicationId)
@@ -67,9 +68,10 @@ class StagePublicationMemberServiceTest {
 
     @Test
     fun `stage saves a member only for a staging revision`() {
-        val publicationRepository = RecordingPublicationRepository().apply {
-            revisions[stagingRevisionId] = revision(stagingRevisionId, PublicationRevisionState.STAGING)
-        }
+        val publicationRepository =
+            RecordingPublicationRepository().apply {
+                revisions[stagingRevisionId] = revision(stagingRevisionId, PublicationRevisionState.STAGING)
+            }
         val member = PublicationMember(stagingRevisionId, rootPostId, parentPostId = null, depth = 0)
 
         service(publicationRepository).stage(member)
@@ -79,9 +81,10 @@ class StagePublicationMemberServiceTest {
 
     @Test
     fun `stage rejects a member for an inactive revision without saving it`() {
-        val publicationRepository = RecordingPublicationRepository().apply {
-            revisions[stagingRevisionId] = revision(stagingRevisionId, PublicationRevisionState.ABANDONED)
-        }
+        val publicationRepository =
+            RecordingPublicationRepository().apply {
+                revisions[stagingRevisionId] = revision(stagingRevisionId, PublicationRevisionState.ABANDONED)
+            }
         val member = PublicationMember(stagingRevisionId, rootPostId, parentPostId = null, depth = 0)
 
         assertThatIllegalArgumentException().isThrownBy { service(publicationRepository).stage(member) }
@@ -91,9 +94,10 @@ class StagePublicationMemberServiceTest {
 
     @Test
     fun `abandon records failure backoff after changing the staging revision state`() {
-        val publicationRepository = RecordingPublicationRepository().apply {
-            revisions[stagingRevisionId] = revision(stagingRevisionId, PublicationRevisionState.STAGING)
-        }
+        val publicationRepository =
+            RecordingPublicationRepository().apply {
+                revisions[stagingRevisionId] = revision(stagingRevisionId, PublicationRevisionState.STAGING)
+            }
         val syncStateRepository = RecordingSyncStateRepository()
         val service = service(publicationRepository, syncStateRepository)
 
@@ -122,9 +126,15 @@ class StagePublicationMemberServiceTest {
         revisionIdFactory = { replacementRevisionId },
     )
 
-    private fun revision(id: PublicationRevisionId, state: PublicationRevisionState) = PublicationRevision(id, publicationId, state)
+    private fun revision(
+        id: PublicationRevisionId,
+        state: PublicationRevisionState,
+    ) = PublicationRevision(id, publicationId, state)
 
-    private fun transactionalMethod(logicalName: String, vararg parameterTypes: Class<*>) = StagePublicationMemberService::class.java.declaredMethods.single { method ->
+    private fun transactionalMethod(
+        logicalName: String,
+        vararg parameterTypes: Class<*>,
+    ) = StagePublicationMemberService::class.java.declaredMethods.single { method ->
         method.name.startsWith(logicalName) && method.parameterTypes.toList() == parameterTypes.toList()
     }
 
@@ -139,33 +149,51 @@ class StagePublicationMemberServiceTest {
 
         override fun findRevision(revisionId: PublicationRevisionId): PublicationRevision? = revisions[revisionId]
 
-        override fun findActiveRevision(publicationId: PublicationId): PublicationRevision? = revisions.values
-            .singleOrNull { it.publicationId == publicationId && it.state == PublicationRevisionState.ACTIVE }
+        override fun findActiveRevision(publicationId: PublicationId): PublicationRevision? =
+            revisions.values
+                .singleOrNull { it.publicationId == publicationId && it.state == PublicationRevisionState.ACTIVE }
 
-        override fun findStagingRevisions(publicationId: PublicationId): List<PublicationRevision> = revisions.values
-            .filter { it.publicationId == publicationId && it.state == PublicationRevisionState.STAGING }
+        override fun findStagingRevisions(publicationId: PublicationId): List<PublicationRevision> =
+            revisions.values
+                .filter { it.publicationId == publicationId && it.state == PublicationRevisionState.STAGING }
 
-        override fun createRevision(revision: PublicationRevision, transitionedAt: Instant) {
+        override fun createRevision(
+            revision: PublicationRevision,
+            transitionedAt: Instant,
+        ) {
             revisions[revision.id] = revision
             events += "create:${revision.id}:${revision.state}:$transitionedAt"
         }
 
-        override fun updateRevision(revision: PublicationRevision, transitionedAt: Instant) {
+        override fun updateRevision(
+            revision: PublicationRevision,
+            transitionedAt: Instant,
+        ) {
             revisions[revision.id] = revision
             events += "update:${revision.id}:${revision.state}:$transitionedAt"
         }
 
-        override fun saveMembers(revisionId: PublicationRevisionId, members: Collection<PublicationMember>) {
+        override fun saveMembers(
+            revisionId: PublicationRevisionId,
+            members: Collection<PublicationMember>,
+        ) {
             require(members.all { it.revisionId == revisionId })
             this.members += members
         }
 
-        override fun findMembers(revisionId: PublicationRevisionId): List<PublicationMember> = members
-            .filter { it.revisionId == revisionId }
+        override fun findMembers(revisionId: PublicationRevisionId): List<PublicationMember> =
+            members
+                .filter { it.revisionId == revisionId }
 
-        override fun findActiveMemberPostIds(publicationId: PublicationId, postIds: Set<PostId>): Set<PostId> = emptySet()
+        override fun findActiveMemberPostIds(
+            publicationId: PublicationId,
+            postIds: Set<PostId>,
+        ): Set<PostId> = emptySet()
 
-        override fun findActiveDirectChildren(publicationId: PublicationId, parentPostId: PostId): List<PublicationMember> = emptyList()
+        override fun findActiveDirectChildren(
+            publicationId: PublicationId,
+            parentPostId: PostId,
+        ): List<PublicationMember> = emptyList()
     }
 
     private class RecordingSyncStateRepository : SyncStateRepository {
@@ -175,7 +203,10 @@ class StagePublicationMemberServiceTest {
             saved = saved?.takeUnless { it.target == target }
         }
 
-        override fun findDue(now: Instant, limit: Int): List<SyncState> = emptyList()
+        override fun findDue(
+            now: Instant,
+            limit: Int,
+        ): List<SyncState> = emptyList()
 
         override fun find(target: SyncTarget): SyncState? = saved?.takeIf { it.target == target }
 
