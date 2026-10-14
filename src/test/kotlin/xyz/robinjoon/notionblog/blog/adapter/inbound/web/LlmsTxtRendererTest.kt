@@ -42,6 +42,34 @@ class LlmsTxtRendererTest {
     }
 
     @Test
+    fun `keeps titles and summaries as plain text so they cannot add links markup or swallow the post link`() {
+        val url = "https://blog.example/posts/${PublicIndexFixtures.articleId.value}"
+        val autolink =
+            render(PublicIndexFixtures.index(entries = listOf(PublicIndexFixtures.article("<https://attacker.example>", "Safe text"))))
+        val markup =
+            render(
+                PublicIndexFixtures.index(
+                    entries = listOf(PublicIndexFixtures.article("*em* _u_ ~s~ !x", "<img src=x> [Extra](https://a.example) &amp;")),
+                ),
+            )
+        val backticks = render(PublicIndexFixtures.index(entries = listOf(PublicIndexFixtures.article("Title `", "Body `"))))
+
+        assertThat(autolink).contains("- [\\<https://attacker.example\\>]($url): Safe text\n")
+        assertThat(markup).contains(
+            "- [\\*em\\* \\_u\\_ \\~s\\~ \\!x]($url): \\<img src=x\\> \\[Extra\\](https://a.example) \\&amp;\n",
+        )
+        assertThat(backticks).contains("- [Title \\`]($url): Body \\`\n")
+    }
+
+    @Test
+    fun `site name and description cannot start block level markup`() {
+        val metadata = PublicIndexFixtures.metadata.copy(siteName = "# <b>Blog</b>", defaultDescription = "1. - > list")
+        val text = render(PublicIndexFixtures.index(metadata, emptyList()))
+
+        assertThat(text).startsWith("# \\# \\<b\\>Blog\\</b\\>\n\n> 1\\. - \\> list\n\n## Posts\n\n## Optional")
+    }
+
+    @Test
     fun `omits the description quote and empty summaries`() {
         val metadata = PublicIndexFixtures.metadata.copy(defaultDescription = null)
         val text = render(PublicIndexFixtures.index(metadata, listOf(PublicIndexFixtures.root(body = ""))))

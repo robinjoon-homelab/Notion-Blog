@@ -3,7 +3,8 @@ package xyz.robinjoon.notionblog.blog.adapter.inbound.web
 import xyz.robinjoon.notionblog.blog.application.model.PublicIndex
 import xyz.robinjoon.notionblog.blog.application.model.PublicIndexEntry
 
-// Follows the llmstxt.org proposal: a title, an optional summary quote, and Markdown link lists.
+// Follows the llmstxt.org proposal: a title, an optional summary quote, and Markdown link lists. Stored text is
+// written as literal Markdown text so only the generated links point anywhere.
 class LlmsTxtRenderer(
     private val summaries: PostSummaryExtractor,
 ) {
@@ -13,11 +14,11 @@ class LlmsTxtRenderer(
     ): ByteArray {
         val text =
             buildString {
-                append("# ").append(line(index.metadata.siteName)).append("\n\n")
+                append("# ").append(MarkdownText.escape(line(index.metadata.siteName))).append("\n\n")
                 index.metadata.defaultDescription
                     ?.let(::line)
                     ?.takeIf { it.isNotEmpty() }
-                    ?.let { append("> ").append(it).append("\n\n") }
+                    ?.let { append("> ").append(MarkdownText.escape(it)).append("\n\n") }
                 append("## Posts\n\n")
                 index.entries.forEach { append(entry(it, urls)).append('\n') }
                 if (index.entries.isNotEmpty()) append('\n')
@@ -33,8 +34,8 @@ class LlmsTxtRenderer(
         urls: PublicBlogUrls,
     ): String {
         val url = requireNotNull(urls.pageUrl(entry.post.id, entry.root)) { "A public blog origin is required" }
-        val title = RssXmlText.postTitle(line(entry.post.title)).replace(linkTextSpecials) { "\\" + it.value }
-        val summary = summaries.bodySummary(entry.post)
+        val title = MarkdownText.escape(RssXmlText.postTitle(line(entry.post.title)))
+        val summary = summaries.bodySummary(entry.post)?.let(MarkdownText::escape)
         return if (summary == null) "- [$title]($url)" else "- [$title]($url): $summary"
     }
 
@@ -42,6 +43,5 @@ class LlmsTxtRenderer(
 
     private companion object {
         val whitespace = Regex("(?U)\\s+")
-        val linkTextSpecials = Regex("[\\\\\\[\\]]")
     }
 }
