@@ -8,4 +8,5 @@ data class StoredPost(
     val post: Post,
     val sourceRevision: SourceRevision,
     val capturedAt: Instant,
+    val firstPublishedAt: Instant?,
 )

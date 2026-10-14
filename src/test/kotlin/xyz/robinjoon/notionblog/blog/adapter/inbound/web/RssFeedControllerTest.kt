@@ -235,6 +235,7 @@ class RssFeedControllerTest {
                         BlockTree(listOf(BlockNode(BlockId("text"), TextBlockContent.Paragraph(listOf(InlineContent.Text(summary)))))),
                     ),
                     Instant.parse("2026-10-05T03:04:05Z"),
+                    Instant.parse("2026-10-06T03:04:05Z"),
                 ),
             ),
         )

@@ -51,8 +51,10 @@ class ExposedPostRepositoryTest {
 
             assertThat(repository.find(binding.postId)).isEqualTo(
                 xyz.robinjoon.notionblog.blog.application.model
-                    .StoredPost(post, SourceRevision("revision-1"), capturedAt),
+                    .StoredPost(post, SourceRevision("revision-1"), capturedAt, null),
             )
+            repository.recordFirstPublication(binding.postId, capturedAt.plusSeconds(5))
+            assertThat(repository.find(binding.postId)?.firstPublishedAt).isEqualTo(capturedAt.plusSeconds(5))
             assertThat(repository.findBinding(binding.postId)).isEqualTo(binding)
             assertThat(repository.findBinding(binding.sourceDocument)).isEqualTo(binding)
             assertThat(repository.findAvailability(binding.postId)).isEqualTo(availability)

@@ -156,6 +156,7 @@ class RssFeedRendererTest {
             BlockTree(listOf(BlockNode(BlockId("text"), TextBlockContent.Paragraph(listOf(InlineContent.Text(summary)))))),
         ),
         publishedAt,
+        publishedAt,
     )
 
     private fun parse(bytes: ByteArray): Document =

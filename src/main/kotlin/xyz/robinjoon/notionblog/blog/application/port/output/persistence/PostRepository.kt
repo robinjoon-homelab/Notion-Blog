@@ -20,6 +20,11 @@ interface PostRepository {
         limit: Int,
     ): List<PostFeedEntry>
 
+    fun findPublishedPosts(
+        publicationId: PublicationId,
+        excludedPostIds: Set<PostId>,
+    ): List<PostFeedEntry>
+
     fun recordFirstPublication(
         postId: PostId,
         observedAt: Instant,
