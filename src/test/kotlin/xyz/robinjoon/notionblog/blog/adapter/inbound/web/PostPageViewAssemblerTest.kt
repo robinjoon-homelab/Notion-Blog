@@ -1440,6 +1440,9 @@ class PostPageViewAssemblerTest {
             null,
             null,
             links,
+            Instant.parse("2026-10-01T00:00:00Z"),
+            Instant.parse("2026-10-02T00:00:00Z"),
+            false,
         )
     }
 

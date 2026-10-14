@@ -283,10 +283,13 @@ class BlogHttpDocumentationTest {
             header = null,
             footer = null,
             links = emptyMap(),
+            firstPublishedAt = now,
+            lastModifiedAt = now,
+            root = post.id == rootId,
         )
     }
 
-    private fun feed() = PostFeed(metadata, listOf(PostFeedEntry(post(articleId, "A published article"), now)))
+    private fun feed() = PostFeed(metadata, listOf(PostFeedEntry(post(articleId, "A published article"), now, now)))
 
     private fun post(
         id: PostId,

@@ -34,10 +34,11 @@ class GetBlogPageService(
         when (postResult) {
             PostLookupResult.NotFound -> BlogPageLookupResult.NotFound
             PostLookupResult.ContentUnavailable -> BlogPageLookupResult.ContentUnavailable
-            is PostLookupResult.Found -> buildPage(postResult.post)
+            is PostLookupResult.Found -> buildPage(postResult)
         }
 
-    private fun buildPage(post: Post): BlogPageLookupResult {
+    private fun buildPage(found: PostLookupResult.Found): BlogPageLookupResult {
+        val post = found.post
         val site = siteConfigurations.findCurrent() ?: return BlogPageLookupResult.ContentUnavailable
         val profile = presentationProfiles.findProfile(site.presentationProfile) ?: return BlogPageLookupResult.ContentUnavailable
         val assets =
@@ -55,6 +56,9 @@ class GetBlogPageService(
                 header = header,
                 footer = footer,
                 links = links.resolve(site.publicationId, trees),
+                firstPublishedAt = found.firstPublishedAt,
+                lastModifiedAt = found.lastModifiedAt,
+                root = found.root,
             ),
         )
     }

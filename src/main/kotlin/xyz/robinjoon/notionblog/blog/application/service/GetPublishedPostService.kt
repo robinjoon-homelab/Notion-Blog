@@ -48,7 +48,9 @@ class GetPublishedPostService(
         }
 
         return try {
-            postRepository.find(postId)?.let { PostLookupResult.Found(it.post) } ?: PostLookupResult.ContentUnavailable
+            postRepository.find(postId)?.let {
+                PostLookupResult.Found(it.post, it.firstPublishedAt, it.capturedAt, postId == publication.rootPostId)
+            } ?: PostLookupResult.ContentUnavailable
         } catch (failure: SnapshotContentException) {
             snapshotFailures.report(failure, SnapshotFailureOperation.POST_LOOKUP, postId)
             PostLookupResult.ContentUnavailable

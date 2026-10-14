@@ -109,9 +109,27 @@ class GetPublishedPostServiceTest {
         every { publicationRepository.findCurrent() } returns publication
         every { publicationRepository.findActiveMemberPostIds(publication.id, setOf(postId)) } returns setOf(postId)
         every { postRepository.findAvailability(postId) } returns availability(postId, PostAvailabilityStatus.PUBLISHED)
-        every { postRepository.find(postId) } returns StoredPost(post, SourceRevision("revision"), Instant.EPOCH)
+        val publishedAt = Instant.parse("2026-10-01T00:00:00Z")
+        val capturedAt = Instant.parse("2026-10-02T00:00:00Z")
+        every { postRepository.find(postId) } returns StoredPost(post, SourceRevision("revision"), capturedAt, publishedAt)
 
-        assertThat(service.get(postId)).isEqualTo(PostLookupResult.Found(post))
+        assertThat(service.get(postId)).isEqualTo(PostLookupResult.Found(post, publishedAt, capturedAt, root = false))
+    }
+
+    @Test
+    fun `marks the active root as root whether it is looked up as root or by id`() {
+        val rootPostId = postId()
+        val publication = activePublication(rootPostId)
+        val root = Post.restore(rootPostId, "Root", BlockTree(emptyList()))
+        val capturedAt = Instant.parse("2026-10-02T00:00:00Z")
+        every { publicationRepository.findCurrent() } returns publication
+        every { publicationRepository.findActiveMemberPostIds(publication.id, setOf(rootPostId)) } returns setOf(rootPostId)
+        every { postRepository.findAvailability(rootPostId) } returns availability(rootPostId, PostAvailabilityStatus.PUBLISHED)
+        every { postRepository.find(rootPostId) } returns StoredPost(root, SourceRevision("revision"), capturedAt, null)
+
+        val expected = PostLookupResult.Found(root, null, capturedAt, root = true)
+        assertThat(service.getRoot()).isEqualTo(expected)
+        assertThat(service.get(rootPostId)).isEqualTo(expected)
     }
 
     @Test
