@@ -2,8 +2,6 @@ package xyz.robinjoon.notionblog.blog.adapter.inbound.web
 
 import xyz.robinjoon.notionblog.blog.application.model.PublicIndex
 import java.io.ByteArrayOutputStream
-import java.time.format.DateTimeFormatter
-import java.time.temporal.ChronoUnit
 import javax.xml.stream.XMLOutputFactory
 
 class SitemapRenderer {
@@ -24,7 +22,7 @@ class SitemapRenderer {
                 writer.writeCharacters(location)
                 writer.writeEndElement()
                 writer.writeStartElement("lastmod")
-                writer.writeCharacters(DateTimeFormatter.ISO_INSTANT.format(entry.lastModifiedAt.truncatedTo(ChronoUnit.SECONDS)))
+                writer.writeCharacters(entry.lastModifiedAt.toPublicTimestamp())
                 writer.writeEndElement()
                 writer.writeEndElement()
             }

@@ -82,7 +82,7 @@ class BlogHttpDocumentationTest {
     private val mvc: MockMvc =
         MockMvcBuilders
             .standaloneSetup(
-                BlogController(blogPages, PostPageViewAssembler(Clock.fixed(now, ZoneOffset.UTC), urls.feedUrl)),
+                BlogController(blogPages, PostPageViewAssembler(Clock.fixed(now, ZoneOffset.UTC), urls)),
                 RssFeedController(feeds, RssFeedRenderer(PostSummaryExtractor()), urls),
             ).setControllerAdvice(WebExceptionHandler())
             .setViewResolvers(thymeleafViewResolver())

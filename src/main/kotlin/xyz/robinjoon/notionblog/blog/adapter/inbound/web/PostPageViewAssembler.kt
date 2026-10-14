@@ -1,5 +1,6 @@
 package xyz.robinjoon.notionblog.blog.adapter.inbound.web
 
+import xyz.robinjoon.notionblog.blog.adapter.inbound.web.view.OpenGraphView
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.view.PostDocumentView
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.view.PostPageView
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.view.PresentationAssetView
@@ -14,14 +15,18 @@ import java.time.Clock
 
 class PostPageViewAssembler(
     private val clock: Clock,
-    private val feedUrl: String? = null,
+    private val urls: PublicBlogUrls = PublicBlogUrls(null),
+    private val summaries: PostSummaryExtractor = PostSummaryExtractor(),
+    private val jsonLd: JsonLdWriter = JsonLdWriter(),
 ) {
-    fun assemble(page: BlogPage): PostPageView =
-        PostPageView(
+    fun assemble(page: BlogPage): PostPageView {
+        val description = summaries.bodySummary(page.post) ?: page.site.metadata.defaultDescription
+        val pageUrl = urls.pageUrl(page.post.id, page.root)
+        return PostPageView(
             language = page.site.metadata.languageTag,
             siteName = page.site.metadata.siteName,
             title = page.post.title,
-            description = page.site.metadata.defaultDescription,
+            description = description,
             faviconHref =
                 page.site.metadata.favicon
                     ?.let { assetView(page.presentationAssets, it, faviconMediaTypes)?.publicPath },
@@ -35,7 +40,25 @@ class PostPageViewAssembler(
             header = page.header?.let { documentView(it, page.links, "header-${it.id.value}-") },
             post = documentView(page.post, page.links, ""),
             footer = page.footer?.let { documentView(it, page.links, "footer-${it.id.value}-") },
-            feedUrl = feedUrl,
+            feedUrl = urls.feedUrl,
+            canonicalUrl = pageUrl,
+            openGraph = openGraph(page, pageUrl),
+            jsonLd = jsonLd.write(page, description, urls),
+        )
+    }
+
+    private fun openGraph(
+        page: BlogPage,
+        pageUrl: String?,
+    ): OpenGraphView =
+        OpenGraphView(
+            type = if (page.root) "website" else "article",
+            locale =
+                page.site.metadata.languageTag
+                    .replace('-', '_'),
+            url = pageUrl,
+            publishedTime = page.firstPublishedAt?.takeUnless { page.root }?.toPublicTimestamp(),
+            modifiedTime = page.lastModifiedAt.takeUnless { page.root }?.toPublicTimestamp(),
         )
 
     private fun documentView(

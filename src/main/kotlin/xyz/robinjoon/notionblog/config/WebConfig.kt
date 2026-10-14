@@ -2,6 +2,7 @@ package xyz.robinjoon.notionblog.config
 
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import xyz.robinjoon.notionblog.blog.adapter.inbound.web.JsonLdWriter
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.LlmsTxtRenderer
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.PostPageViewAssembler
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.PostSummaryExtractor
@@ -29,10 +30,15 @@ internal class WebConfig {
     fun llmsTxtRenderer(summaryExtractor: PostSummaryExtractor): LlmsTxtRenderer = LlmsTxtRenderer(summaryExtractor)
 
     @Bean
+    fun jsonLdWriter(): JsonLdWriter = JsonLdWriter()
+
+    @Bean
     fun postPageViewAssembler(
         clock: Clock,
         urls: PublicBlogUrls,
-    ): PostPageViewAssembler = PostPageViewAssembler(clock, urls.feedUrl)
+        summaryExtractor: PostSummaryExtractor,
+        jsonLdWriter: JsonLdWriter,
+    ): PostPageViewAssembler = PostPageViewAssembler(clock, urls, summaryExtractor, jsonLdWriter)
 
     @Bean
     fun webSecurityHeadersFilter(): WebSecurityHeadersFilter = WebSecurityHeadersFilter()

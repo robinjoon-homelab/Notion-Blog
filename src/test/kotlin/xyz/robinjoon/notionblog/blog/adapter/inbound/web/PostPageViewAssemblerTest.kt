@@ -104,7 +104,7 @@ class PostPageViewAssemblerTest {
                     BlockTree(listOf(node("footer-content", TextBlockContent.Paragraph(listOf(InlineContent.Text("Footer text")))))),
                 ).takeIf { footerDocument }
         val page = page(emptyList()).copy(footer = footer)
-        val view = PostPageViewAssembler(clock, feedUrl).assemble(page)
+        val view = PostPageViewAssembler(clock, PublicBlogUrls(URI("https://blog.example:8443/").takeIf { configuredFeed })).assemble(page)
 
         val html = templateEngine().process("blog/post", Context().apply { setVariable("page", view) })
         val head = html.substringAfter("<head>").substringBefore("</head>")
@@ -376,7 +376,8 @@ class PostPageViewAssemblerTest {
                     ),
             )
 
-        val html = render(page)
+        // The head repeats body text as the description, so uniqueness is checked in the rendered body.
+        val html = render(page).substringAfter("<body>")
 
         assertThat(html).containsOnlyOnce("unique-linked-inline")
         assertThat(html).containsOnlyOnce("unique-plain-inline")
@@ -910,7 +911,8 @@ class PostPageViewAssemblerTest {
             html,
         ).contains("notion-data-list", "<ul", "<li", "<dl", "<dt>Status</dt>", "Article &lt;img&gt;", "Reading list &lt;script&gt;", "📚")
         assertThat(html).contains("href=\"/posts/00000000-0000-0000-0000-000000000123\"", "href=\"https://example.com/docs\"")
-        assertThat(html).doesNotContain("notion-data-table", "<table", "<dt>Name</dt>", "old-title-link", "<script", "<img>")
+        assertThat(html.substringAfter("<body>"))
+            .doesNotContain("notion-data-table", "<table", "<dt>Name</dt>", "old-title-link", "<script", "<img>")
         assertThat(Regex("<a\\b[^>]*>(?:(?!</a>).)*<a\\b", RegexOption.DOT_MATCHES_ALL).containsMatchIn(html)).isFalse()
     }
 
