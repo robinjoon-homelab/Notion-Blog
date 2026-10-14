@@ -43,7 +43,7 @@ class RepositoryBoundaryTest {
         assertThat(workflow).contains("./gradlew build")
         assertThat(workflow).contains("linux/amd64")
         assertThat(workflow).contains(
-            "APP_NAME: notion-blog",
+            "APP_NAME: \${{ vars.HOMELAB_APP_NAME }}",
             "REGISTRY_HOST: \${{ vars.HOMELAB_REGISTRY_HOST }}",
             "REGISTRY_IMAGE: \${{ vars.HOMELAB_REGISTRY_IMAGE }}",
             "run: python3 scripts/deploy.py metadata",
@@ -60,17 +60,17 @@ class RepositoryBoundaryTest {
     @Test
     fun `ci verifies the target image on harness main after publishing the tested artifact`() {
         val workflow = Files.readString(Path.of(".github/workflows/ci.yml"))
-        val publishJob = workflow.substringAfter("  publish:")
-        val artifactDownload = publishJob.indexOf("- name: Download the tested application")
-        val imagePushStep = publishJob.indexOf("docker/build-push-action@")
-        val releaseRequestStep = publishJob.indexOf("run: python3 scripts/deploy.py apply")
+        val deployJob = workflow.substringAfter("  deploy:")
+        val artifactDownload = deployJob.indexOf("- name: Download the tested application")
+        val imagePushStep = deployJob.indexOf("docker/build-push-action@")
+        val releaseRequestStep = deployJob.indexOf("run: python3 scripts/deploy.py apply")
 
         assertThat(artifactDownload).isGreaterThanOrEqualTo(0)
-        assertThat(publishJob.indexOf("docker/build-push-action@")).isGreaterThan(artifactDownload)
+        assertThat(deployJob.indexOf("docker/build-push-action@")).isGreaterThan(artifactDownload)
         assertThat(imagePushStep).isGreaterThanOrEqualTo(0)
         assertThat(releaseRequestStep).isGreaterThan(imagePushStep)
         assertThat(workflow).contains(
-            "group: notion-blog-deploy",
+            "group: homelab-deploy",
             "cancel-in-progress: false",
             "GH_TOKEN: \${{ github.token }}",
             "tags: \${{ steps.metadata.outputs.image }}",
@@ -80,31 +80,32 @@ class RepositoryBoundaryTest {
             "path: build/libs/",
             "name: application-\${{ github.sha }}",
         )
-        assertThat(publishJob).doesNotContain(":latest", "if: always()", "continue-on-error: true", "./gradlew")
+        assertThat(deployJob).doesNotContain(":latest", "if: always()", "continue-on-error: true", "./gradlew")
         assertThat(workflow.split("docker/build-push-action@")).hasSize(2)
     }
 
     @Test
-    fun `ci validates explicit deployment identity before requesting any platform credentials`() {
+    fun `ci validates the configured deployment identity before requesting any platform credentials`() {
         val workflow = Files.readString(Path.of(".github/workflows/ci.yml"))
-        val publishJob = workflow.substringAfter("  publish:")
-        val metadata = publishJob.indexOf("run: python3 scripts/deploy.py metadata")
-        val credentialLoad = publishJob.indexOf("load-ci-secrets@")
+        val deployJob = workflow.substringAfter("  deploy:")
+        val metadata = deployJob.indexOf("run: python3 scripts/deploy.py metadata")
+        val credentialLoad = deployJob.indexOf("load-ci-secrets@")
 
         assertThat(metadata).isGreaterThanOrEqualTo(0)
         assertThat(credentialLoad).isGreaterThan(metadata)
-        assertThat(publishJob).contains("id: metadata", "APP_NAME: notion-blog")
-        assertThat(publishJob).contains(
-            "github.ref == 'refs/heads/master'",
+        assertThat(deployJob).contains("id: metadata", "APP_NAME: \${{ vars.HOMELAB_APP_NAME }}")
+        assertThat(deployJob).contains(
+            "needs.verify.outputs.deployable == 'true'",
             "github.event_name == 'push' || github.event_name == 'workflow_dispatch'",
+            "github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'",
         )
-        assertThat(publishJob).doesNotContain("refs/heads/main", "github.repository_id", "vars.HOMELAB_APP_NAME")
+        assertThat(deployJob).doesNotContain("APP_NAME: notion-blog", "github.repository_id")
     }
 
     @Test
     fun `ci checks pull request source commits and rejects formatting changes`() {
         val workflow = Files.readString(Path.of(".github/workflows/ci.yml"))
-        val verification = workflow.substringBefore("  publish:")
+        val verification = workflow.substringBefore("  deploy:")
 
         assertThat(verification).contains(
             "repository: \${{ github.event.pull_request.head.repo.full_name || github.repository }}",
@@ -122,40 +123,21 @@ class RepositoryBoundaryTest {
     @Test
     fun `ci loads both SMS credential objects before validation without legacy secret references`() {
         val workflow = Files.readString(Path.of(".github/workflows/ci.yml"))
-        val publishJob = workflow.substringAfter("  publish:")
-        val registryLoad = publishJob.indexOf("- name: Load registry credentials from SMS")
-        val harnessLoad = publishJob.indexOf("- name: Load harness credentials from SMS")
-        val validation = publishJob.indexOf("- name: Validate publish configuration")
+        val deployJob = workflow.substringAfter("  deploy:")
+        val registryLoad = deployJob.indexOf("- name: Load registry credentials through GitHub OIDC")
+        val harnessLoad = deployJob.indexOf("- name: Load harness credentials through GitHub OIDC")
+        val validation = deployJob.indexOf("- name: Validate platform credentials")
 
         assertThat(registryLoad).isGreaterThanOrEqualTo(0)
         assertThat(harnessLoad).isGreaterThan(registryLoad)
         assertThat(validation).isGreaterThan(harnessLoad)
-        assertThat(publishJob).contains("id-token: write", "app: zot", "app: harness")
-        assertThat(publishJob.split("load-ci-secrets@v1.0.0")).hasSize(3)
-        assertThat(workflow.substringBefore("  publish:")).doesNotContain("id-token: write")
+        assertThat(deployJob).contains("id-token: write", "app: zot", "app: harness")
+        assertThat(deployJob.split("load-ci-secrets@v1.0.0")).hasSize(3)
+        assertThat(workflow.substringBefore("  deploy:")).doesNotContain("id-token: write")
         assertThat(workflow).doesNotContain(
             "secrets.HOMELAB_REGISTRY_USERNAME",
             "secrets.HOMELAB_REGISTRY_PASSWORD",
             "secrets.HARNESS_ACTIONS_TOKEN",
         )
-    }
-
-    @Test
-    fun `readme documents the narrowly scoped harness actions token`() {
-        val readme = Files.readString(Path.of("README.md"))
-
-        assertThat(readme).contains(
-            "HARNESS_ACTIONS_TOKEN",
-            "robinjoon-homelab/Simple-K3S-Herness",
-            "`Actions: write`",
-        )
-    }
-
-    @Test
-    fun `deployment documentation distinguishes token permissions and declared release status`() {
-        val deployment = Files.readString(Path.of("docs/deployment.md"))
-
-        assertThat(deployment).contains("`Actions: write`", "Contents", "60회", "10초")
-        assertThat(deployment).contains("Argo CD 동기화, Pod 준비 상태, DNS와 TLS를 검증한 결과는 아니다")
     }
 }

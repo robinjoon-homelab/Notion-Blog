@@ -4,24 +4,46 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
   push:
-    branches:
-      - master
+    branches: [main, master]
   workflow_dispatch:
-
-concurrency:
-  group: notion-blog-ci-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   verify:
     name: Build and test
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    outputs:
+      deployable: ${{ steps.repository.outputs.deployable }}
     steps:
-      - name: Check out application
+      - name: Check repository deployment role
+        if: github.event_name != 'pull_request'
+        id: repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          is_template="$(gh api "repos/${GITHUB_REPOSITORY}" --jq '.is_template')"
+          case "$is_template" in
+            true)
+              echo "deployable=false" >> "$GITHUB_OUTPUT"
+              echo "Template repository: application deployment is skipped." >> "$GITHUB_STEP_SUMMARY"
+              ;;
+            false)
+              echo "deployable=true" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "::error::Could not determine whether this repository is a template."
+              exit 1
+              ;;
+          esac
+      - name: Check out the source commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
@@ -31,7 +53,7 @@ jobs:
         uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
           distribution: temurin
-          java-version: "25"
+          java-version: '25'
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
         with:
@@ -43,7 +65,7 @@ jobs:
       - name: Require committed formatting changes
         run: git diff --exit-code
       - name: Save the tested application
-        if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: application-${{ github.sha }}
@@ -63,26 +85,27 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-  publish:
+  deploy:
     name: Publish and request deployment
     if: >-
-      github.ref == 'refs/heads/master' &&
-      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+      needs.verify.outputs.deployable == 'true' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
     needs: verify
-    permissions:
-      contents: read
-      id-token: write
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     concurrency:
-      group: notion-blog-deploy
+      group: homelab-deploy
       cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
     env:
-      APP_NAME: notion-blog
+      APP_NAME: ${{ vars.HOMELAB_APP_NAME }}
       REGISTRY_HOST: ${{ vars.HOMELAB_REGISTRY_HOST }}
       REGISTRY_IMAGE: ${{ vars.HOMELAB_REGISTRY_IMAGE }}
     steps:
-      - name: Check out application
+      - name: Check out the verified commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
@@ -95,21 +118,22 @@ jobs:
       - name: Validate deployment names and set the image tag
         id: metadata
         run: python3 scripts/deploy.py metadata
-      - name: Load registry credentials from SMS
+      # SMS must trust this repository, workflow and main/master ref first.
+      - name: Load registry credentials through GitHub OIDC
         uses: robinjoon-homelab/Simple-K3S-Herness/.github/actions/load-ci-secrets@v1.0.0
         with:
           app: zot
-      - name: Load harness credentials from SMS
+      - name: Load harness credentials through GitHub OIDC
         uses: robinjoon-homelab/Simple-K3S-Herness/.github/actions/load-ci-secrets@v1.0.0
         with:
           app: harness
-      - name: Validate publish configuration
+      - name: Validate platform credentials
         shell: bash
         run: |
           set -euo pipefail
           for name in REGISTRY_USERNAME REGISTRY_PASSWORD HARNESS_ACTIONS_TOKEN; do
             if [[ -z "${!name:-}" ]]; then
-              echo "::error::${name} is not configured"
+              echo "::error::SMS did not provide ${name}; check the platform OIDC policy."
               exit 1
             fi
           done
@@ -121,7 +145,7 @@ jobs:
           registry: ${{ env.REGISTRY_HOST }}
           username: ${{ env.REGISTRY_USERNAME }}
           password: ${{ env.REGISTRY_PASSWORD }}
-      - name: Build and push immutable image
+      - name: Publish the tested application image
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .

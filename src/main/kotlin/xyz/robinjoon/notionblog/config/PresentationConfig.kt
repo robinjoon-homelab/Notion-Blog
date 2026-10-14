@@ -2,10 +2,10 @@ package xyz.robinjoon.notionblog.config
 
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import xyz.robinjoon.notionblog.adapter.outbound.presentation.ClasspathPresentationAssetCatalog
-import xyz.robinjoon.notionblog.application.model.PresentationAssetDescriptor
-import xyz.robinjoon.notionblog.application.port.output.presentation.PresentationAssetCatalog
-import xyz.robinjoon.notionblog.domain.site.PresentationAssetRef
+import xyz.robinjoon.notionblog.blog.adapter.outbound.presentation.ClasspathPresentationAssetCatalog
+import xyz.robinjoon.notionblog.blog.application.model.PresentationAssetDescriptor
+import xyz.robinjoon.notionblog.blog.application.port.output.presentation.PresentationAssetCatalog
+import xyz.robinjoon.notionblog.blog.domain.presentation.PresentationAssetRef
 
 @Configuration(proxyBeanMethods = false)
 internal class PresentationConfig {

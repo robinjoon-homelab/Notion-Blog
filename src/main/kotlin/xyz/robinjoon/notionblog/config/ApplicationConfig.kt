@@ -3,12 +3,12 @@ package xyz.robinjoon.notionblog.config
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import xyz.robinjoon.notionblog.domain.post.PostId
-import xyz.robinjoon.notionblog.domain.publication.PublicationId
-import xyz.robinjoon.notionblog.domain.publication.PublicationRevisionId
-import xyz.robinjoon.notionblog.domain.site.PresentationProfileKey
-import xyz.robinjoon.notionblog.domain.source.SourceDocumentRef
-import xyz.robinjoon.notionblog.domain.sync.RefreshPolicy
+import xyz.robinjoon.notionblog.blog.domain.SourceDocumentRef
+import xyz.robinjoon.notionblog.blog.domain.post.PostId
+import xyz.robinjoon.notionblog.blog.domain.presentation.PresentationProfileKey
+import xyz.robinjoon.notionblog.blog.domain.publication.PublicationId
+import xyz.robinjoon.notionblog.blog.domain.publication.PublicationRevisionId
+import xyz.robinjoon.notionblog.blog.domain.sync.RefreshPolicy
 import java.time.Clock
 import java.util.UUID
 

@@ -2,11 +2,11 @@ package xyz.robinjoon.notionblog.config
 
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import xyz.robinjoon.notionblog.adapter.inbound.web.PostPageViewAssembler
-import xyz.robinjoon.notionblog.adapter.inbound.web.PublicBlogUrls
-import xyz.robinjoon.notionblog.adapter.inbound.web.RssFeedRenderer
-import xyz.robinjoon.notionblog.adapter.inbound.web.RssSummaryExtractor
-import xyz.robinjoon.notionblog.adapter.inbound.web.WebSecurityHeadersFilter
+import xyz.robinjoon.notionblog.blog.adapter.inbound.web.PostPageViewAssembler
+import xyz.robinjoon.notionblog.blog.adapter.inbound.web.PublicBlogUrls
+import xyz.robinjoon.notionblog.blog.adapter.inbound.web.RssFeedRenderer
+import xyz.robinjoon.notionblog.blog.adapter.inbound.web.RssSummaryExtractor
+import xyz.robinjoon.notionblog.blog.adapter.inbound.web.WebSecurityHeadersFilter
 import java.time.Clock
 
 @Configuration(proxyBeanMethods = false)

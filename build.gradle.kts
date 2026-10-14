@@ -58,8 +58,7 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter")
     testImplementation("org.assertj:assertj-core:3.27.7")
     testImplementation("io.mockk:mockk:1.14.11")
-    testImplementation("org.testcontainers:testcontainers-junit-jupiter:2.0.5")
-    testImplementation("org.testcontainers:testcontainers-postgresql:2.0.5")
+    testRuntimeOnly("com.h2database:h2")
     testImplementation("com.squareup.okhttp3:mockwebserver:5.5.0")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 

@@ -2,19 +2,19 @@ package xyz.robinjoon.notionblog.config
 
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import xyz.robinjoon.notionblog.application.port.input.SynchronizePostUseCase
-import xyz.robinjoon.notionblog.application.port.input.SynchronizeSiteConfigurationUseCase
-import xyz.robinjoon.notionblog.application.port.output.source.PostSource
-import xyz.robinjoon.notionblog.application.port.output.source.SiteConfigurationSource
-import xyz.robinjoon.notionblog.application.service.ActivatePublicationService
-import xyz.robinjoon.notionblog.application.service.ApplyImportedPostService
-import xyz.robinjoon.notionblog.application.service.ApplyImportedSiteConfigurationService
-import xyz.robinjoon.notionblog.application.service.CancelInactivePostSynchronizationService
-import xyz.robinjoon.notionblog.application.service.StagePublicationMemberService
-import xyz.robinjoon.notionblog.application.service.SynchronizationQueryService
-import xyz.robinjoon.notionblog.application.service.SynchronizePostService
-import xyz.robinjoon.notionblog.application.service.SynchronizePublicationService
-import xyz.robinjoon.notionblog.application.service.SynchronizeSiteConfigurationService
+import xyz.robinjoon.notionblog.blog.application.port.input.SynchronizePostUseCase
+import xyz.robinjoon.notionblog.blog.application.port.input.SynchronizeSiteConfigurationUseCase
+import xyz.robinjoon.notionblog.blog.application.port.output.source.PostSource
+import xyz.robinjoon.notionblog.blog.application.port.output.source.SiteConfigurationSource
+import xyz.robinjoon.notionblog.blog.application.service.ActivatePublicationService
+import xyz.robinjoon.notionblog.blog.application.service.ApplyImportedPostService
+import xyz.robinjoon.notionblog.blog.application.service.ApplyImportedSiteConfigurationService
+import xyz.robinjoon.notionblog.blog.application.service.CancelInactivePostSynchronizationService
+import xyz.robinjoon.notionblog.blog.application.service.StagePublicationMemberService
+import xyz.robinjoon.notionblog.blog.application.service.SynchronizationQueryService
+import xyz.robinjoon.notionblog.blog.application.service.SynchronizePostService
+import xyz.robinjoon.notionblog.blog.application.service.SynchronizePublicationService
+import xyz.robinjoon.notionblog.blog.application.service.SynchronizeSiteConfigurationService
 
 @Configuration(proxyBeanMethods = false)
 internal class SynchronizationConfig(

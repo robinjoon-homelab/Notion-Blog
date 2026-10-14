@@ -4,11 +4,11 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.scheduling.annotation.EnableScheduling
-import xyz.robinjoon.notionblog.adapter.inbound.scheduling.SynchronizationScheduler
-import xyz.robinjoon.notionblog.application.port.input.SynchronizationQueryUseCase
-import xyz.robinjoon.notionblog.application.port.input.SynchronizePostUseCase
-import xyz.robinjoon.notionblog.application.port.input.SynchronizePublicationUseCase
-import xyz.robinjoon.notionblog.application.port.input.SynchronizeSiteConfigurationUseCase
+import xyz.robinjoon.notionblog.blog.adapter.inbound.scheduling.SynchronizationScheduler
+import xyz.robinjoon.notionblog.blog.application.port.input.SynchronizationQueryUseCase
+import xyz.robinjoon.notionblog.blog.application.port.input.SynchronizePostUseCase
+import xyz.robinjoon.notionblog.blog.application.port.input.SynchronizePublicationUseCase
+import xyz.robinjoon.notionblog.blog.application.port.input.SynchronizeSiteConfigurationUseCase
 import java.time.Clock
 
 @Configuration(proxyBeanMethods = false)
