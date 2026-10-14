@@ -25,8 +25,8 @@ import xyz.robinjoon.notionblog.blog.domain.post.block.inline.MentionKind
 import java.net.URI
 import java.util.UUID
 
-class RssSummaryExtractorTest {
-    private val extractor = RssSummaryExtractor()
+class PostSummaryExtractorTest {
+    private val extractor = PostSummaryExtractor()
 
     @Test
     fun `allowed text blocks and their children follow document and inline run order`() {
@@ -110,6 +110,15 @@ class RssSummaryExtractorTest {
 
         assertThat(result).isEqualTo("😀".repeat(279) + "…")
         assertThat(extractor.extract(post(title = "\u0000\uD800\uFFFF"))).isEqualTo("제목 없는 글")
+    }
+
+    @Test
+    fun `body summary is absent when no allowed text exists while the full summary falls back to the title`() {
+        val post = post(node("code", TextBlockContent.Code(text("code"), "kotlin", emptyList())))
+
+        assertThat(extractor.bodySummary(post)).isNull()
+        assertThat(extractor.extract(post)).isEqualTo("Fallback title")
+        assertThat(extractor.bodySummary(post(node("paragraph", TextBlockContent.Paragraph(text(" body ")))))).isEqualTo("body")
     }
 
     private fun post(

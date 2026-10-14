@@ -30,10 +30,10 @@ import org.thymeleaf.templatemode.TemplateMode
 import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.BlogController
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.PostPageViewAssembler
+import xyz.robinjoon.notionblog.blog.adapter.inbound.web.PostSummaryExtractor
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.PublicBlogUrls
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.RssFeedController
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.RssFeedRenderer
-import xyz.robinjoon.notionblog.blog.adapter.inbound.web.RssSummaryExtractor
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.WebExceptionHandler
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.WebSecurityHeadersFilter
 import xyz.robinjoon.notionblog.blog.application.model.BlogPage
@@ -83,7 +83,7 @@ class BlogHttpDocumentationTest {
         MockMvcBuilders
             .standaloneSetup(
                 BlogController(blogPages, PostPageViewAssembler(Clock.fixed(now, ZoneOffset.UTC), urls.feedUrl)),
-                RssFeedController(feeds, RssFeedRenderer(RssSummaryExtractor()), urls),
+                RssFeedController(feeds, RssFeedRenderer(PostSummaryExtractor()), urls),
             ).setControllerAdvice(WebExceptionHandler())
             .setViewResolvers(thymeleafViewResolver())
             .addFilters<StandaloneMockMvcBuilder>(WebSecurityHeadersFilter())

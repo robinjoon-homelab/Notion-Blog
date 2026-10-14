@@ -17,6 +17,18 @@ class PublicBlogUrlsTest {
         assertThat(urls.rootUrl).isEqualTo("https://blog.example:8443/")
         assertThat(urls.feedUrl).isEqualTo("https://blog.example:8443/feed.xml")
         assertThat(urls.postUrl(postId)).isEqualTo("https://blog.example:8443/posts/00000000-0000-0000-0000-000000000123")
+        assertThat(urls.sitemapUrl).isEqualTo("https://blog.example:8443/sitemap.xml")
+        assertThat(urls.llmsTxtUrl).isEqualTo("https://blog.example:8443/llms.txt")
+    }
+
+    @Test
+    fun `uses the root URL as the page URL of the publication root`() {
+        val urls = PublicBlogUrls(URI("https://blog.example/"))
+
+        assertThat(urls.pageUrl(postId, root = true)).isEqualTo("https://blog.example/")
+        assertThat(urls.pageUrl(postId, root = false)).isEqualTo("https://blog.example/posts/00000000-0000-0000-0000-000000000123")
+        assertThat(PublicBlogUrls(null).pageUrl(postId, root = true)).isNull()
+        assertThat(PublicBlogUrls(null).pageUrl(postId, root = false)).isNull()
     }
 
     @Test
@@ -34,6 +46,8 @@ class PublicBlogUrlsTest {
 
         assertThat(urls.rootUrl).isNull()
         assertThat(urls.feedUrl).isNull()
+        assertThat(urls.sitemapUrl).isNull()
+        assertThat(urls.llmsTxtUrl).isNull()
         assertThatIllegalArgumentException().isThrownBy { urls.postUrl(postId) }
     }
 }

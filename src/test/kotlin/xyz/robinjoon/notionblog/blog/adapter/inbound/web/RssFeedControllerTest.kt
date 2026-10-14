@@ -32,7 +32,7 @@ import java.util.UUID
 
 class RssFeedControllerTest {
     private val service = mockk<GetPostFeedUseCase>()
-    private val renderer = RssFeedRenderer(RssSummaryExtractor())
+    private val renderer = RssFeedRenderer(PostSummaryExtractor())
     private val urls = PublicBlogUrls(URI("https://trusted.example"))
     private val mockMvc = MockMvcBuilders.standaloneSetup(RssFeedController(service, renderer, urls)).build()
 

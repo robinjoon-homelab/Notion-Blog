@@ -3,9 +3,9 @@ package xyz.robinjoon.notionblog.config
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.PostPageViewAssembler
+import xyz.robinjoon.notionblog.blog.adapter.inbound.web.PostSummaryExtractor
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.PublicBlogUrls
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.RssFeedRenderer
-import xyz.robinjoon.notionblog.blog.adapter.inbound.web.RssSummaryExtractor
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.WebSecurityHeadersFilter
 import java.time.Clock
 
@@ -15,10 +15,10 @@ internal class WebConfig {
     fun publicBlogUrls(properties: BlogProperties): PublicBlogUrls = PublicBlogUrls(properties.publicBaseUri)
 
     @Bean
-    fun rssSummaryExtractor(): RssSummaryExtractor = RssSummaryExtractor()
+    fun postSummaryExtractor(): PostSummaryExtractor = PostSummaryExtractor()
 
     @Bean
-    fun rssFeedRenderer(summaryExtractor: RssSummaryExtractor): RssFeedRenderer = RssFeedRenderer(summaryExtractor)
+    fun rssFeedRenderer(summaryExtractor: PostSummaryExtractor): RssFeedRenderer = RssFeedRenderer(summaryExtractor)
 
     @Bean
     fun postPageViewAssembler(

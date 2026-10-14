@@ -23,7 +23,7 @@ import java.util.UUID
 import javax.xml.parsers.DocumentBuilderFactory
 
 class RssFeedRendererTest {
-    private val renderer = RssFeedRenderer(RssSummaryExtractor())
+    private val renderer = RssFeedRenderer(PostSummaryExtractor())
     private val urls = PublicBlogUrls(URI("https://blog.example:8443"))
     private val publishedAt = Instant.parse("2026-10-05T03:04:05Z")
 
