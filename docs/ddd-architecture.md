@@ -65,6 +65,8 @@ BC가 정해져도 루트의 소유·생명주기가 미정이면 루트와 테�
 
 - 글을 제공하려면 **활성 revision의 구성원이고, 게시 상태가 `PUBLISHED`이며, 렌더링 가능한 스냅샷이 있어야 한다.** 범위 밖·미게시·없는 ID·UUID가 아닌 ID는 404, 초기화 전이나 사용할 수 없는 설정·스냅샷은 503이다.
 - HTML 경로는 `GET /`(활성 루트)와 `GET /posts/{postId}`(내부 UUID)뿐이다. RSS는 `GET /feed.xml`이다. 제목 기반 경로·slug·별칭을 만들지 않는다.
+- 크롤러용 경로는 `GET /robots.txt`, `GET /sitemap.xml`, `GET /llms.txt`다. robots.txt는 모든 크롤러를 허용하고 저장 데이터를 읽지 않는다. sitemap과 llms.txt는 글 제공과 같은 공개 판정을 쓰고 RSS처럼 헤더·푸터 문서를 제외한다. 루트 글은 `/`로만 싣고 글 HTML의 canonical도 `/`를 가리킨다.
+- 수정 시각(sitemap `lastmod`, JSON-LD `dateModified`)은 스냅샷 저장 시각이다. 원본 revision이 바뀔 때만 스냅샷을 다시 쓰므로 동기화 주기로 흔들리지 않는다. `SourceRevision`을 시각으로 해석하지 않는다.
 - 공개 범위는 루트 문서와 부모 정보로 확인한 구조적 자식·후손이다. 본문 링크·멘션·북마크·`link_to_page`는 범위를 넓히지 않는다. 루트 아래에 실제로 속한 인라인 데이터베이스의 행은 별도 게시글로 수집한다.
 - Notion 응답의 `public_url`이 명시적 `null`이거나 `in_trash`가 참일 때만 `UNPUBLISHED`로 기록한다. 필드 누락·잘못된 값·타임아웃·`429`·`5xx`·인증·매핑 실패는 동기화 실패로 기록하고 마지막 게시 상태와 스냅샷을 유지한다. Notion 장애를 readiness 실패로 연결하지 않는다.
 - 동기화는 갱신 시각이 지난 `SyncTarget`만 처리한다. 범위에서 빠진 글의 예약은 활성화 트랜잭션에서 삭제하고, 미게시 구성원은 재게시 확인을 위해 계속 동기화한다.

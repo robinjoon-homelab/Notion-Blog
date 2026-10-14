@@ -20,7 +20,7 @@
 [options="header,autowidth"]
 |===
 |상태 |의미
-|`200 OK` |HTML 또는 RSS를 제공합니다.
+|`200 OK` |HTML, RSS 또는 크롤러용 문서를 제공합니다.
 |`404 Not Found` |HTML 대상이 범위 밖이거나 미게시 상태입니다. 존재하지 않거나 형식이 잘못된 게시글 ID도 포함합니다.
 |`503 Service Unavailable` |아직 초기화되지 않았거나 필요한 저장본·설정을 사용할 수 없습니다.
 |===
@@ -125,3 +125,49 @@ include::{snippets}/feed-unavailable/http-request.adoc[]
 include::{snippets}/feed-unavailable/request-headers.adoc[]
 include::{snippets}/feed-unavailable/http-response.adoc[]
 include::{snippets}/feed-unavailable/response-headers.adoc[]
+
+== 검색엔진·AI 크롤러
+
+* 크롤러용 문서도 글 HTML과 같은 공개 판정을 따릅니다. sitemap과 llms.txt는 RSS처럼 헤더·푸터 문서를 제외합니다.
+* 루트 글은 `/`로만 싣습니다. 글 HTML의 `<link rel="canonical">`도 루트는 `/`, 나머지는 `/posts/{postId}`를 가리킵니다.
+* 글 HTML의 `<head>`에는 글 요약 description, Open Graph, `twitter:card`, schema.org JSON-LD(루트 `WebSite`, 글 `BlogPosting`)가 들어갑니다. 공개 기준 URL이 없으면 절대 URL 항목은 생략합니다.
+
+=== robots.txt
+
+모든 크롤러에 전체 경로를 허용합니다. 저장 데이터를 읽지 않으므로 초기화 전에도 `200`이며, 공개 기준 URL이 있으면 `Sitemap` 줄을 추가합니다.
+
+include::{snippets}/robots-found/http-request.adoc[]
+include::{snippets}/robots-found/http-response.adoc[]
+
+=== sitemap.xml
+
+sitemaps.org 0.9 형식입니다. 루트를 첫 항목으로, 나머지는 처음 게시한 시각이 최근인 순서로 싣습니다. `lastmod`는 마지막으로 내용이 바뀌어 저장본을 갱신한 시각(UTC)입니다.
+
+include::{snippets}/sitemap-found/http-request.adoc[]
+include::{snippets}/sitemap-found/response-headers.adoc[]
+include::{snippets}/sitemap-found/http-response.adoc[]
+
+==== 변경이 없는 경우
+
+RSS와 같이 `If-None-Match`가 맞으면 본문 없는 `304 Not Modified`입니다.
+
+include::{snippets}/sitemap-not-modified/http-request.adoc[]
+include::{snippets}/sitemap-not-modified/http-response.adoc[]
+
+==== 만들 수 없는 경우
+
+공개 기준 URL, 사이트 설정, 활성 공개 범위 또는 필요한 저장본이 없으면 `Cache-Control: no-store`와 본문 없는 `503`입니다. `If-None-Match: *`도 `304`로 바뀌지 않습니다.
+
+include::{snippets}/sitemap-unavailable/http-response.adoc[]
+
+=== llms.txt
+
+https://llmstxt.org/[llms.txt 제안] 형식의 Markdown입니다. 사이트 이름, 기본 설명, 공개 글 링크와 요약, RSS·sitemap 링크를 제공합니다. 캐시와 실패 규칙은 sitemap과 같습니다.
+
+include::{snippets}/llms-found/http-request.adoc[]
+include::{snippets}/llms-found/response-headers.adoc[]
+include::{snippets}/llms-found/http-response.adoc[]
+
+==== 만들 수 없는 경우
+
+include::{snippets}/llms-unavailable/http-response.adoc[]
