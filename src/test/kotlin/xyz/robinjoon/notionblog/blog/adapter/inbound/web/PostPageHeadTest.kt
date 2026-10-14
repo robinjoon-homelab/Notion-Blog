@@ -62,7 +62,7 @@ class PostPageHeadTest {
 
     @Test
     fun `omits description tags when neither body text nor site description exists`() {
-        val head = head(PostPageFixtures.page(body = "", metadata = PostPageFixtures.metadata.copy(defaultDescription = null)))
+        val head = head(PostPageFixtures.withoutSiteDescription(PostPageFixtures.page(body = "")))
 
         assertThat(head).doesNotContain("name=\"description\"", "og:description")
     }

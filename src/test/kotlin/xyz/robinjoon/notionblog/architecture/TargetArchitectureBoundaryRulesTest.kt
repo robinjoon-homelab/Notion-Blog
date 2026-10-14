@@ -124,7 +124,7 @@ class TargetArchitectureBoundaryRulesTest {
 
     @ParameterizedTest
     @ValueSource(booleans = [false, true])
-    fun `web mappings preserve exactly the three public routes across nested packages`(featureFirst: Boolean) {
+    fun `web mappings preserve exactly the public routes across nested packages`(featureFirst: Boolean) {
         val web = packageName("adapter.inbound", "web.controllers.posts", featureFirst)
         val valid = source(web, publicRoutes)
         val additional = source(web, "$publicRoutes\n@GetMapping(\"/private\")")
@@ -227,6 +227,8 @@ class TargetArchitectureBoundaryRulesTest {
 
     private companion object {
         const val ROOT = "xyz.robinjoon.notionblog"
-        val publicRoutes = "@GetMapping(\"/\")\n@GetMapping(\"/posts/{postId}\")\n@GetMapping(\"/feed.xml\")"
+        val publicRoutes =
+            listOf("/", "/posts/{postId}", "/feed.xml", "/robots.txt", "/sitemap.xml", "/llms.txt")
+                .joinToString("\n") { "@GetMapping(\"$it\")" }
     }
 }

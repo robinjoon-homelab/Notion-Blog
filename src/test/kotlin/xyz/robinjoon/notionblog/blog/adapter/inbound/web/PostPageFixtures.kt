@@ -36,7 +36,6 @@ internal object PostPageFixtures {
         body: String = "Article body text",
         root: Boolean = false,
         firstPublishedAt: Instant? = publishedAt,
-        metadata: SiteMetadata = this.metadata,
     ): BlogPage {
         val style = PresentationAssetRef("style", 1, "sha256-style")
         val profile =
@@ -71,4 +70,15 @@ internal object PostPageFixtures {
             root = root,
         )
     }
+
+    fun withoutSiteDescription(page: BlogPage): BlogPage =
+        page.copy(
+            site =
+                SiteConfiguration.restore(
+                    page.site.publicationId,
+                    page.site.documents,
+                    page.site.metadata.copy(defaultDescription = null),
+                    page.site.presentationProfile,
+                ),
+        )
 }

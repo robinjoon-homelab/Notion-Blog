@@ -98,10 +98,12 @@ class ExposedPostFeedRepositoryTest {
             insertPost(root, firstPublishedAt = observedAt.plusSeconds(50))
             insertPost(layout, firstPublishedAt = observedAt.plusSeconds(100))
             members.forEachIndexed { index, member ->
-                insertPost(
-                    member,
-                    firstPublishedAt = observedAt.plusSeconds(index / 2L),
-                    capturedAt = observedAt.plusSeconds(1_000L + index),
+                insertPost(member, firstPublishedAt = observedAt.plusSeconds(index / 2L))
+                // A later source revision rewrites only the snapshot, so its capture time moves independently.
+                repository.saveSnapshot(
+                    Post.restore(member, "Post ${member.value}", BlockTree(emptyList())),
+                    SourceRevision("changed"),
+                    observedAt.plusSeconds(1_000L + index),
                 )
             }
             createPublication(publicationId, revisionId, root)
@@ -272,11 +274,10 @@ class ExposedPostFeedRepositoryTest {
         status: PostAvailabilityStatus? = PostAvailabilityStatus.PUBLISHED,
         snapshot: Boolean = true,
         firstPublishedAt: Instant? = observedAt,
-        capturedAt: Instant = observedAt,
     ) {
         val title = "Post ${postId.value}"
         repository.saveIdentity(binding(postId), title, observedAt)
-        if (snapshot) repository.saveSnapshot(Post.restore(postId, title, BlockTree(emptyList())), SourceRevision("revision"), capturedAt)
+        if (snapshot) repository.saveSnapshot(Post.restore(postId, title, BlockTree(emptyList())), SourceRevision("revision"), observedAt)
         if (status != null) repository.saveAvailability(PostAvailability(postId, status, observedAt))
         if (firstPublishedAt != null) repository.recordFirstPublication(postId, firstPublishedAt)
     }
