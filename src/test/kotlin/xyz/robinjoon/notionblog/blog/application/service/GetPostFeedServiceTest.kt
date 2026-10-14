@@ -36,7 +36,8 @@ class GetPostFeedServiceTest {
     private val posts = mockk<PostRepository>()
     private val publications = mockk<PublicationRepository>()
     private val siteConfigurations = mockk<SiteConfigurationRepository>()
-    private val service = GetPostFeedService(posts, publications, siteConfigurations, snapshotFailures)
+    private val service =
+        GetPostFeedService(ActivePublicationScopeReader(posts, publications, siteConfigurations), posts, snapshotFailures)
     private val publicationId = PublicationId(UUID.randomUUID())
     private val rootPostId = PostId(UUID.randomUUID())
     private val revisionId = PublicationRevisionId(UUID.randomUUID())
@@ -228,5 +229,6 @@ class GetPostFeedServiceTest {
         PostFeedEntry(
             Post.restore(PostId(UUID.randomUUID()), title, BlockTree(emptyList())),
             Instant.parse("2026-10-05T03:00:00Z"),
+            Instant.parse("2026-10-06T03:00:00Z"),
         )
 }

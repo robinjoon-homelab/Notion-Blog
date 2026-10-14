@@ -4,6 +4,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import xyz.robinjoon.notionblog.blog.application.port.input.GetBlogPageUseCase
 import xyz.robinjoon.notionblog.blog.application.port.input.GetPostFeedUseCase
+import xyz.robinjoon.notionblog.blog.application.port.input.GetPublicIndexUseCase
 import xyz.robinjoon.notionblog.blog.application.port.output.diagnostics.SnapshotFailureReporter
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.PostRepository
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.PresentationProfileRepository
@@ -11,8 +12,10 @@ import xyz.robinjoon.notionblog.blog.application.port.output.persistence.Publica
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.SiteConfigurationRepository
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.SyncStateRepository
 import xyz.robinjoon.notionblog.blog.application.port.output.presentation.PresentationAssetCatalog
+import xyz.robinjoon.notionblog.blog.application.service.ActivePublicationScopeReader
 import xyz.robinjoon.notionblog.blog.application.service.GetBlogPageService
 import xyz.robinjoon.notionblog.blog.application.service.GetPostFeedService
+import xyz.robinjoon.notionblog.blog.application.service.GetPublicIndexService
 import xyz.robinjoon.notionblog.blog.application.service.GetPublishedPostService
 import xyz.robinjoon.notionblog.blog.application.service.ResolvePostLinksService
 import xyz.robinjoon.notionblog.blog.application.service.SynchronizationQueryService
@@ -39,7 +42,14 @@ internal class QueryConfig(
     ): GetBlogPageUseCase = GetBlogPageService(publishedPosts, posts, siteConfigurations, presentationProfiles, presentationAssets, links)
 
     @Bean
-    fun getPostFeedUseCase(): GetPostFeedUseCase = GetPostFeedService(posts, publications, siteConfigurations, snapshotFailures)
+    fun activePublicationScopeReader(): ActivePublicationScopeReader = ActivePublicationScopeReader(posts, publications, siteConfigurations)
+
+    @Bean
+    fun getPostFeedUseCase(scopes: ActivePublicationScopeReader): GetPostFeedUseCase = GetPostFeedService(scopes, posts, snapshotFailures)
+
+    @Bean
+    fun getPublicIndexUseCase(scopes: ActivePublicationScopeReader): GetPublicIndexUseCase =
+        GetPublicIndexService(scopes, posts, snapshotFailures)
 
     @Bean
     fun synchronizationQueryService(states: SyncStateRepository): SynchronizationQueryService =

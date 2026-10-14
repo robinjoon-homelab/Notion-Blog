@@ -14,5 +14,6 @@ interface SnapshotFailureReporter {
 enum class SnapshotFailureOperation {
     POST_LOOKUP,
     FEED_LOOKUP,
+    INDEX_LOOKUP,
     SNAPSHOT_REPAIR,
 }
