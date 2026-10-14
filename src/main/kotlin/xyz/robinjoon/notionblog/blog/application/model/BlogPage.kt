@@ -5,9 +5,10 @@ import xyz.robinjoon.notionblog.blog.domain.post.block.inline.LinkTarget
 import xyz.robinjoon.notionblog.blog.domain.presentation.PresentationAssetRef
 import xyz.robinjoon.notionblog.blog.domain.presentation.PresentationProfile
 import xyz.robinjoon.notionblog.blog.domain.site.SiteConfiguration
+import java.time.Instant
 
 data class BlogPage
-    // quality-exception: The complete page projection keeps its seven independently consumed rendering values together.
+    // quality-exception: The complete page projection keeps its ten independently consumed rendering values together.
     @Suppress("LongParameterList")
     constructor(
         val site: SiteConfiguration,
@@ -17,4 +18,7 @@ data class BlogPage
         val header: Post?,
         val footer: Post?,
         val links: Map<LinkTarget.SourceDocument, LinkResolution>,
+        val firstPublishedAt: Instant?,
+        val lastModifiedAt: Instant,
+        val root: Boolean,
     )

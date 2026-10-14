@@ -8,6 +8,7 @@ import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.isNull
 import org.jetbrains.exposed.v1.core.notInList
 import org.jetbrains.exposed.v1.core.or
+import org.jetbrains.exposed.v1.jdbc.Query
 import org.jetbrains.exposed.v1.jdbc.andWhere
 import org.jetbrains.exposed.v1.jdbc.batchUpsert
 import org.jetbrains.exposed.v1.jdbc.insert
@@ -54,6 +55,7 @@ class ExposedPostRepository(
             row.toPost(),
             SourceRevision(row[PostSnapshotTable.sourceRevision]),
             row[PostSnapshotTable.capturedAt].toInstant(),
+            row[PostTable.firstPublishedAt]?.toInstant(),
         )
     }
 
@@ -61,18 +63,33 @@ class ExposedPostRepository(
         publicationId: PublicationId,
         excludedPostIds: Set<PostId>,
         limit: Int,
-    ): List<PostFeedEntry> {
+    ): List<PostFeedEntry> =
+        publishedPosts(publicationId, excludedPostIds)
+            .limit(limit)
+            .map { it.toFeedEntry() }
+
+    override fun findPublishedPosts(
+        publicationId: PublicationId,
+        excludedPostIds: Set<PostId>,
+    ): List<PostFeedEntry> = publishedPosts(publicationId, excludedPostIds).map { it.toFeedEntry() }
+
+    private fun publishedPosts(
+        publicationId: PublicationId,
+        excludedPostIds: Set<PostId>,
+    ): Query {
         val query = publishedPostFeedQuery(publicationId)
         if (excludedPostIds.isNotEmpty()) {
             query.andWhere { PostTable.postId notInList excludedPostIds.map(PostId::value) }
         }
-        return query
-            .orderBy(PostTable.firstPublishedAt to SortOrder.DESC, PostTable.postId to SortOrder.ASC)
-            .limit(limit)
-            .map { row ->
-                PostFeedEntry(row.toPost(), requireNotNull(row[PostTable.firstPublishedAt]).toInstant())
-            }
+        return query.orderBy(PostTable.firstPublishedAt to SortOrder.DESC, PostTable.postId to SortOrder.ASC)
     }
+
+    private fun ResultRow.toFeedEntry(): PostFeedEntry =
+        PostFeedEntry(
+            toPost(),
+            requireNotNull(this[PostTable.firstPublishedAt]).toInstant(),
+            this[PostSnapshotTable.capturedAt].toInstant(),
+        )
 
     override fun recordFirstPublication(
         postId: PostId,

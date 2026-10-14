@@ -11,7 +11,7 @@ import javax.xml.stream.XMLOutputFactory
 import javax.xml.stream.XMLStreamWriter
 
 class RssFeedRenderer(
-    private val summaryExtractor: RssSummaryExtractor,
+    private val summaryExtractor: PostSummaryExtractor,
 ) {
     fun render(
         feed: PostFeed,

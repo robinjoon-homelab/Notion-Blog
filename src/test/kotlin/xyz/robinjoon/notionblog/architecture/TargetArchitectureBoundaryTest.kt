@@ -37,7 +37,7 @@ class TargetArchitectureBoundaryTest {
     }
 
     @Test
-    fun `web production mappings are limited to the root post id and RSS routes`() {
+    fun `web production mappings are limited to the root post id RSS and crawler index routes`() {
         assertThat(checks.webRoutes(productionFiles())).describedAs("public route mappings across all inbound groups").isEmpty()
     }
 
@@ -203,6 +203,6 @@ internal class TargetArchitectureChecks(
             Regex(
                 "\\\"(?:xyz\\.|java\\.|kotlin\\.)[^\\\"]+\\\"|(?:javaClass\\.name|::class\\.qualifiedName|Class\\.forName|qualifiedName)",
             )
-        val allowedWebRoutes = listOf("/", "/posts/{postId}", "/feed.xml")
+        val allowedWebRoutes = listOf("/", "/posts/{postId}", "/feed.xml", "/robots.txt", "/sitemap.xml", "/llms.txt")
     }
 }

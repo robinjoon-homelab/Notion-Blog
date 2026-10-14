@@ -6,4 +6,6 @@ import java.time.Instant
 data class PostFeedEntry(
     val post: Post,
     val firstPublishedAt: Instant,
+    // The snapshot capture time; it moves only when the source revision changes.
+    val lastModifiedAt: Instant,
 )

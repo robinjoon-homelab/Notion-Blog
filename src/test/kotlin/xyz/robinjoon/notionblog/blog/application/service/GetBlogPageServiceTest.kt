@@ -30,6 +30,7 @@ import xyz.robinjoon.notionblog.blog.domain.publication.PublicationId
 import xyz.robinjoon.notionblog.blog.domain.site.SiteConfiguration
 import xyz.robinjoon.notionblog.blog.domain.site.SiteDocuments
 import xyz.robinjoon.notionblog.blog.domain.site.SiteMetadata
+import java.time.Instant
 import java.util.UUID
 
 class GetBlogPageServiceTest {
@@ -40,6 +41,8 @@ class GetBlogPageServiceTest {
     private val assets = mockk<PresentationAssetCatalog>()
     private val links = mockk<ResolvePostLinksService>()
     private val service = GetBlogPageService(publishedPosts, postRepository, siteConfigurations, profiles, assets, links)
+    private val publishedAt = Instant.parse("2026-10-01T00:00:00Z")
+    private val modifiedAt = Instant.parse("2026-10-02T00:00:00Z")
 
     @Test
     fun `builds a page with publishable header footer trusted assets and resolved links`() {
@@ -53,13 +56,13 @@ class GetBlogPageServiceTest {
         val style = profile.assets.styleSheets.single()
         val script = profile.assets.scripts.single()
         val favicon = requireNotNull(configuration.metadata.favicon)
-        every { publishedPosts.get(body.id) } returns PostLookupResult.Found(body)
+        every { publishedPosts.get(body.id) } returns found(body)
         every { siteConfigurations.findCurrent() } returns configuration
         every { profiles.findProfile(configuration.presentationProfile) } returns profile
         every { postRepository.findBinding(headerDocument) } returns binding(header, headerDocument)
         every { postRepository.findBinding(footerDocument) } returns binding(footer, footerDocument)
-        every { publishedPosts.get(header.id) } returns PostLookupResult.Found(header)
-        every { publishedPosts.get(footer.id) } returns PostLookupResult.Found(footer)
+        every { publishedPosts.get(header.id) } returns found(header)
+        every { publishedPosts.get(footer.id) } returns found(footer)
         every { assets.resolve(style) } returns descriptor(style)
         every { assets.resolve(script) } returns descriptor(script)
         every { assets.resolve(favicon) } returns descriptor(favicon)
@@ -77,9 +80,29 @@ class GetBlogPageServiceTest {
                     header = header,
                     footer = footer,
                     links = emptyMap(),
+                    firstPublishedAt = publishedAt,
+                    lastModifiedAt = modifiedAt,
+                    root = false,
                 ),
             ),
         )
+    }
+
+    @Test
+    fun `carries the root marker and post times into the page`() {
+        val body = post("root")
+        val configuration = configuration()
+        every { publishedPosts.getRoot() } returns PostLookupResult.Found(body, null, modifiedAt, root = true)
+        every { siteConfigurations.findCurrent() } returns configuration
+        every { profiles.findProfile(configuration.presentationProfile) } returns profile()
+        every { assets.resolve(any()) } answers { descriptor(firstArg<PresentationAssetRef>()) }
+        every { links.resolve(configuration.publicationId, listOf(body.content)) } returns emptyMap()
+
+        val page = (service.getRoot() as BlogPageLookupResult.Found).page
+
+        assertThat(page.root).isTrue()
+        assertThat(page.firstPublishedAt).isNull()
+        assertThat(page.lastModifiedAt).isEqualTo(modifiedAt)
     }
 
     @Test
@@ -94,7 +117,7 @@ class GetBlogPageServiceTest {
                 footerDocument = footerDocument,
             )
         val profile = profile()
-        every { publishedPosts.get(body.id) } returns PostLookupResult.Found(body)
+        every { publishedPosts.get(body.id) } returns found(body)
         every { siteConfigurations.findCurrent() } returns configuration
         every { profiles.findProfile(configuration.presentationProfile) } returns profile
         every { postRepository.findBinding(headerDocument) } returns binding(unpublishedHeader, headerDocument)
@@ -124,13 +147,15 @@ class GetBlogPageServiceTest {
         val body = post("body")
         val configuration = configuration()
         val profile = profile()
-        every { publishedPosts.get(body.id) } returns PostLookupResult.Found(body)
+        every { publishedPosts.get(body.id) } returns found(body)
         every { siteConfigurations.findCurrent() } returns configuration
         every { profiles.findProfile(configuration.presentationProfile) } returns profile
         every { assets.resolve(profile.assets.styleSheets.single()) } returns null
 
         assertThat(service.get(body.id)).isEqualTo(BlogPageLookupResult.ContentUnavailable)
     }
+
+    private fun found(post: Post): PostLookupResult = PostLookupResult.Found(post, publishedAt, modifiedAt, root = false)
 
     private fun configuration(
         headerDocument: SourceDocumentRef? = null,

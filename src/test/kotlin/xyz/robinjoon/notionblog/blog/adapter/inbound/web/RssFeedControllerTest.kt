@@ -32,7 +32,7 @@ import java.util.UUID
 
 class RssFeedControllerTest {
     private val service = mockk<GetPostFeedUseCase>()
-    private val renderer = RssFeedRenderer(RssSummaryExtractor())
+    private val renderer = RssFeedRenderer(PostSummaryExtractor())
     private val urls = PublicBlogUrls(URI("https://trusted.example"))
     private val mockMvc = MockMvcBuilders.standaloneSetup(RssFeedController(service, renderer, urls)).build()
 
@@ -235,6 +235,7 @@ class RssFeedControllerTest {
                         BlockTree(listOf(BlockNode(BlockId("text"), TextBlockContent.Paragraph(listOf(InlineContent.Text(summary)))))),
                     ),
                     Instant.parse("2026-10-05T03:04:05Z"),
+                    Instant.parse("2026-10-06T03:04:05Z"),
                 ),
             ),
         )

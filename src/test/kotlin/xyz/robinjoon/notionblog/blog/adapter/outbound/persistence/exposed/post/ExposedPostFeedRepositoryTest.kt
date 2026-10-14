@@ -83,6 +83,45 @@ class ExposedPostFeedRepositoryTest {
             assertThat(entries.map { it.post.id }).containsExactly(visible)
             assertThat(entries.single().post.title).isEqualTo("Post ${visible.value}")
             assertThat(entries.single().firstPublishedAt).isEqualTo(observedAt)
+            assertThat(repository.findPublishedPosts(publicationId, emptySet())).isEqualTo(entries)
+        }
+    }
+
+    @Test
+    fun `lists every published member in feed order with the snapshot capture time`() {
+        val root = postId(100)
+        val layout = postId(101)
+        val members = (1..25).map(::postId)
+        val publicationId = PublicationId(UUID.randomUUID())
+        val revisionId = UUID.randomUUID()
+        database.inTransaction {
+            insertPost(root, firstPublishedAt = observedAt.plusSeconds(50))
+            insertPost(layout, firstPublishedAt = observedAt.plusSeconds(100))
+            members.forEachIndexed { index, member ->
+                insertPost(member, firstPublishedAt = observedAt.plusSeconds(index / 2L))
+                // A later source revision rewrites only the snapshot, so its capture time moves independently.
+                repository.saveSnapshot(
+                    Post.restore(member, "Post ${member.value}", BlockTree(emptyList())),
+                    SourceRevision("changed"),
+                    observedAt.plusSeconds(1_000L + index),
+                )
+            }
+            createPublication(publicationId, revisionId, root)
+            (members + layout).forEach { insertMember(revisionId, it, root) }
+        }
+
+        database.inTransaction {
+            val entries = repository.findPublishedPosts(publicationId, setOf(layout))
+            val expectedOrder =
+                members
+                    .withIndex()
+                    .sortedWith(compareByDescending<IndexedValue<PostId>> { it.index / 2 }.thenBy { it.value.value })
+                    .map { it.value }
+            assertThat(entries.map { it.post.id }).containsExactlyElementsOf(listOf(root) + expectedOrder)
+            assertThat(entries.first().lastModifiedAt).isEqualTo(observedAt)
+            entries.drop(1).forEach { entry ->
+                assertThat(entry.lastModifiedAt).isEqualTo(observedAt.plusSeconds(1_000L + members.indexOf(entry.post.id)))
+            }
         }
     }
 

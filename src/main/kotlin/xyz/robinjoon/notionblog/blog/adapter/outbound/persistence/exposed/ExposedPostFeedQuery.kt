@@ -21,8 +21,13 @@ internal fun publishedPostFeedQuery(publicationId: PublicationId): Query =
     activePublicationPosts()
         .innerJoin(PostAvailabilityTable)
         .innerJoin(PostSnapshotTable)
-        .select(PostTable.postId, PostTable.title, PostTable.firstPublishedAt, PostSnapshotTable.snapshotJson)
-        .where {
+        .select(
+            PostTable.postId,
+            PostTable.title,
+            PostTable.firstPublishedAt,
+            PostSnapshotTable.snapshotJson,
+            PostSnapshotTable.capturedAt,
+        ).where {
             (PublicationTable.publicationId eq publicationId.value) and
                 (PublicationRevisionTable.state eq PublicationRevisionState.ACTIVE.name) and
                 (PostAvailabilityTable.status eq PostAvailabilityStatus.PUBLISHED.name) and

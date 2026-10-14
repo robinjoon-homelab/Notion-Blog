@@ -6,8 +6,11 @@ import xyz.robinjoon.notionblog.blog.domain.post.block.content.ListBlockContent
 import xyz.robinjoon.notionblog.blog.domain.post.block.content.TextBlockContent
 import xyz.robinjoon.notionblog.blog.domain.post.block.inline.InlineContent
 
-class RssSummaryExtractor {
-    fun extract(post: Post): String {
+class PostSummaryExtractor {
+    fun extract(post: Post): String = bodySummary(post) ?: limit(RssXmlText.postTitle(normalize(post.title)))
+
+    // Summary from readable body text only; null when the post has no text to summarize.
+    fun bodySummary(post: Post): String? {
         val body =
             normalize(
                 post.content.roots
@@ -15,13 +18,15 @@ class RssSummaryExtractor {
                     .flatMap(::text)
                     .joinToString(" "),
             )
-        val summary = body.ifEmpty { RssXmlText.postTitle(normalize(post.title)) }
-        return if (summary.codePointCount(0, summary.length) <= MAX_CODE_POINTS) {
+        return body.takeIf { it.isNotEmpty() }?.let(::limit)
+    }
+
+    private fun limit(summary: String): String =
+        if (summary.codePointCount(0, summary.length) <= MAX_CODE_POINTS) {
             summary
         } else {
             summary.substring(0, summary.offsetByCodePoints(0, MAX_CODE_POINTS - 1)) + "…"
         }
-    }
 
     private fun text(node: BlockNode): Sequence<String> =
         sequence {
