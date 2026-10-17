@@ -4,10 +4,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import tools.jackson.databind.JsonNode
-import tools.jackson.databind.json.JsonMapper
 import xyz.robinjoon.notionblog.blog.adapter.outbound.notion.dto.NotionBlockEnvelope
-import xyz.robinjoon.notionblog.blog.application.port.output.source.SourceMappingException
-import xyz.robinjoon.notionblog.blog.domain.SourceId
 import xyz.robinjoon.notionblog.blog.domain.post.block.BlockId
 import xyz.robinjoon.notionblog.blog.domain.post.block.BlockNode
 import xyz.robinjoon.notionblog.blog.domain.post.block.content.BlockIcon
@@ -21,19 +18,18 @@ import xyz.robinjoon.notionblog.blog.domain.post.block.content.ReusableBlockCont
 import xyz.robinjoon.notionblog.blog.domain.post.block.content.TextBlockContent
 import xyz.robinjoon.notionblog.blog.domain.post.block.content.UnsupportedBlockContent
 import xyz.robinjoon.notionblog.blog.domain.post.block.inline.InlineContent
-import xyz.robinjoon.notionblog.blog.domain.post.block.inline.LinkTarget
 import xyz.robinjoon.notionblog.blog.domain.post.block.media.MediaSource
 import xyz.robinjoon.notionblog.blog.domain.post.block.style.ColorToken
 import java.net.URI
 import java.time.Instant
 
 class NotionBlockMapperTest {
-    private val objectMapper = JsonMapper.builder().build()
-    private val mapper = NotionBlockMapper(SourceId("notion-main"))
+    private val fixture = NotionBlockMapperFixture()
+    private val mapper = fixture.mapper
 
     @Test
     fun `recognizes every official 2026-03-11 block response alternative`() {
-        val fixture = objectMapper.readTree(readResource("notion/2026-03-11/block-alternatives.json"))
+        val fixture = fixture.objectMapper.readTree(readResource("notion/2026-03-11/block-alternatives.json"))
         val alternatives = fixture.toList()
         val mapped =
             alternatives.map { entry ->
@@ -55,143 +51,11 @@ class NotionBlockMapperTest {
     }
 
     @Test
-    fun `maps rich text variants mentions and annotation foreground background separately`() {
-        val block =
-            envelope(
-                type = "paragraph",
-                payload =
-                    """
-                    {
-                      "rich_text": [
-                        {"type":"text","text":{"content":"linked","link":{"url":"https://example.com"}},"annotations":{"bold":true,
-                          "color":"red_background"},"plain_text":"linked","href":"https://example.com"},
-                        {"type":"equation","equation":{"expression":"E=mc^2"},"annotations":{"italic":true,"color":"blue"},
-                          "plain_text":"E=mc^2","href":null},
-                        {"type":"mention","mention":{"type":"page","page":{"id":"a1b2c3d4e5f64a5b8c9d0e1f2a3b4c5d"}},
-                          "annotations":{"color":"default"},"plain_text":"Page","href":"https://www.notion.so/page-1"},
-                        {"type":"mention","mention":{"type":"database","database":{"id":"database-1"}},
-                          "annotations":{"color":"default"},"plain_text":"Database","href":null},
-                        {"type":"mention","mention":{"type":"date","date":{"start":"2026-01-01"}},"annotations":{"color":"default"},
-                          "plain_text":"Jan 1","href":null},
-                        {"type":"mention","mention":{"type":"template_mention","template_mention":{"type":"template_mention_date",
-                          "template_mention_date":"today"}},"annotations":{"color":"default"},"plain_text":"Today","href":null},
-                        {"type":"mention","mention":{"type":"link_preview","link_preview":{"url":"https://example.com/preview"}},
-                          "annotations":{"color":"default"},"plain_text":"Preview","href":"https://example.com/preview"},
-                        {"type":"mention","mention":{"type":"user","user":{"id":"user-1"}},"annotations":{"color":"default"},
-                          "plain_text":"Ada","href":null}
-                      ],
-                      "color":"green_background"
-                    }
-                    """.trimIndent(),
-            )
-
-        val mapped = mapper.map(block)
-        val content = mapped.content as TextBlockContent.Paragraph
-
-        assertThat(mapped.style.foreground).isNull()
-        assertThat(mapped.style.background).isEqualTo(ColorToken.GREEN)
-        val linked = content.richText[0] as InlineContent.Text
-        assertThat(linked.text).isEqualTo("linked")
-        assertThat(linked.annotations.bold).isTrue()
-        assertThat(linked.annotations.foreground).isNull()
-        assertThat(linked.annotations.background).isEqualTo(ColorToken.RED)
-        assertThat(content.richText).hasSize(8)
-        assertThat(content.richText[1]).isInstanceOf(InlineContent.Equation::class.java)
-        assertThat(content.richText.drop(2).map { (it as InlineContent.Mention).kind.name }).containsExactly(
-            "DOCUMENT",
-            "DATABASE",
-            "DATE",
-            "TEMPLATE",
-            "LINK_PREVIEW",
-            "USER",
-        )
-    }
-
-    @Test
-    fun `preserves safe hrefs for non-page mentions while keeping page mentions as source documents`() {
-        val block =
-            envelope(
-                type = "paragraph",
-                payload =
-                    """
-                    {
-                      "rich_text": [
-                        {"type":"mention","mention":{"type":"page","page":{"id":"a1b2c3d4e5f64a5b8c9d0e1f2a3b4c5d"}},
-                          "annotations":{"color":"default"},"plain_text":"Page","href":"https://www.notion.so/page"},
-                        {"type":"mention","mention":{"type":"database","database":{"id":"database-1"}},
-                          "annotations":{"color":"default"},"plain_text":"Database","href":"https://www.notion.so/database"},
-                        {"type":"mention","mention":{"type":"data_source","data_source":{"id":"data-source-1"}},
-                          "annotations":{"color":"default"},"plain_text":"Data source","href":"https://www.notion.so/data-source"},
-                        {"type":"mention","mention":{"type":"user","user":{"id":"user-1"}},"annotations":{"color":"default"},
-                          "plain_text":"Ada","href":"https://www.notion.so/user"},
-                        {"type":"mention","mention":{"type":"agent","agent":{"id":"agent-1"}},"annotations":{"color":"default"},
-                          "plain_text":"Agent","href":"https://www.notion.so/agent"},
-                        {"type":"mention","mention":{"type":"date","date":{"start":"2026-01-01"}},"annotations":{"color":"default"},
-                          "plain_text":"Jan 1","href":"https://www.notion.so/date"},
-                        {"type":"mention","mention":{"type":"template_mention","template_mention":{"type":"template_mention_date",
-                          "template_mention_date":"today"}},"annotations":{"color":"default"},"plain_text":"Today",
-                          "href":"https://www.notion.so/template"},
-                        {"type":"mention","mention":{"type":"link_preview","link_preview":{"url":"https://example.com/preview"}},
-                          "annotations":{"color":"default"},"plain_text":"Preview","href":"https://www.notion.so/preview"},
-                        {"type":"mention","mention":{"type":"future_mention","future_mention":{}},"annotations":{"color":"default"},
-                          "plain_text":"Future","href":"https://www.notion.so/future"}
-                      ]
-                    }
-                    """.trimIndent(),
-            )
-
-        val mentions =
-            (mapper.map(block).content as TextBlockContent.Paragraph)
-                .richText
-                .map { it as InlineContent.Mention }
-
-        assertThat(mentions.first().target).isEqualTo(
-            LinkTarget.SourceDocument(
-                reference =
-                    xyz.robinjoon.notionblog.blog.domain.SourceDocumentRef(
-                        SourceId("notion-main"),
-                        "a1b2c3d4e5f64a5b8c9d0e1f2a3b4c5d",
-                    ),
-                originalUrl = URI("https://www.notion.so/page"),
-            ),
-        )
-        assertThat(mentions.drop(1).map { it.target }).containsExactly(
-            LinkTarget.ExternalUrl(URI("https://www.notion.so/database")),
-            LinkTarget.ExternalUrl(URI("https://www.notion.so/data-source")),
-            LinkTarget.ExternalUrl(URI("https://www.notion.so/user")),
-            LinkTarget.ExternalUrl(URI("https://www.notion.so/agent")),
-            LinkTarget.ExternalUrl(URI("https://www.notion.so/date")),
-            LinkTarget.ExternalUrl(URI("https://www.notion.so/template")),
-            LinkTarget.ExternalUrl(URI("https://www.notion.so/preview")),
-            LinkTarget.ExternalUrl(URI("https://www.notion.so/future")),
-        )
-    }
-
-    @Test
-    fun `rejects an unsafe href on a non-page mention`() {
-        val block =
-            envelope(
-                type = "paragraph",
-                payload =
-                    """
-                    {"rich_text":[
-                      {"type":"mention","mention":{"type":"database","database":{"id":"database-1"}},"annotations":{"color":"default"},
-                        "plain_text":"Database","href":"javascript:alert(1)"}
-                    ]}
-                    """.trimIndent(),
-            )
-
-        assertThatThrownBy { mapper.map(block) }
-            .isInstanceOf(NotionBlockMappingException::class.java)
-            .hasMessage("URL must use http or https")
-    }
-
-    @Test
     fun `maps source hosted media expiry and external media type`() {
         val hosted =
             mapper
                 .map(
-                    envelope(
+                    fixture.envelope(
                         type = "image",
                         payload =
                             """
@@ -203,7 +67,7 @@ class NotionBlockMapperTest {
         val external =
             mapper
                 .map(
-                    envelope(
+                    fixture.envelope(
                         type = "audio",
                         payload = """{"type":"external","external":{"url":"https://example.com/audio.mp3"},"caption":[]}""",
                     ),
@@ -235,7 +99,7 @@ class NotionBlockMapperTest {
                     ),
             )
 
-        val mapped = mapper.map(envelope(type = "tab", payload = "{}"), listOf(tabChild))
+        val mapped = mapper.map(fixture.envelope(type = "tab", payload = "{}"), listOf(tabChild))
 
         assertThat(mapped.content).isEqualTo(LayoutBlockContent.TabContainer)
         assertThat(mapped.children.single().content).isEqualTo(
@@ -254,7 +118,7 @@ class NotionBlockMapperTest {
     fun `maps a tab paragraph's title and icon when its caller supplies tab context`() {
         val tabItem =
             mapper.mapTabItem(
-                envelope(
+                fixture.envelope(
                     type = "paragraph",
                     payload =
                         """
@@ -287,7 +151,7 @@ class NotionBlockMapperTest {
             val content =
                 mapper
                     .map(
-                        envelope(
+                        fixture.envelope(
                             type = "numbered_list_item",
                             payload = """{"rich_text":[],"list_start_index":$startNumber,"list_format":"$notionFormat"}""",
                         ),
@@ -299,7 +163,7 @@ class NotionBlockMapperTest {
         }
 
         assertThat(
-            mapper.map(envelope(type = "numbered_list_item", payload = """{"rich_text":[]}""")).content,
+            mapper.map(fixture.envelope(type = "numbered_list_item", payload = """{"rich_text":[]}""")).content,
         ).isEqualTo(ListBlockContent.NumberedItem(emptyList()))
     }
 
@@ -307,7 +171,7 @@ class NotionBlockMapperTest {
     fun `rejects an unknown numbered list format instead of silently changing its meaning`() {
         assertThatThrownBy {
             mapper.map(
-                envelope(
+                fixture.envelope(
                     type = "numbered_list_item",
                     payload = """{"rich_text":[],"list_format":"future_format"}""",
                 ),
@@ -320,7 +184,7 @@ class NotionBlockMapperTest {
         val database =
             mapper
                 .map(
-                    envelope(
+                    fixture.envelope(
                         id = "database-external-id",
                         type = "child_database",
                         payload = """{"title":"Team projects"}""",
@@ -329,7 +193,7 @@ class NotionBlockMapperTest {
         val template =
             mapper
                 .map(
-                    envelope(
+                    fixture.envelope(
                         type = "template",
                         payload = richTextPayload("Weekly review"),
                     ),
@@ -344,7 +208,7 @@ class NotionBlockMapperTest {
         val native =
             mapper
                 .map(
-                    envelope(
+                    fixture.envelope(
                         type = "callout",
                         payload = """{"rich_text":[],"icon":{"type":"icon","icon":{"name":"library","color":"blue"}}}""",
                     ),
@@ -352,7 +216,7 @@ class NotionBlockMapperTest {
         val customEmoji =
             mapper
                 .map(
-                    envelope(
+                    fixture.envelope(
                         type = "callout",
                         payload =
                             """
@@ -374,11 +238,11 @@ class NotionBlockMapperTest {
 
     @Test
     fun `rejects malformed known blocks but keeps an unknown type as a child preserving fallback`() {
-        assertThatThrownBy { mapper.map(envelope(type = "code", payload = "{\"rich_text\":[]}")) }
+        assertThatThrownBy { mapper.map(fixture.envelope(type = "code", payload = "{\"rich_text\":[]}")) }
             .isInstanceOf(NotionBlockMappingException::class.java)
 
         val child = BlockNode(BlockId("child"), TextBlockContent.Paragraph(emptyList()))
-        val fallback = mapper.map(envelope(type = "future_widget", payload = "{}"), listOf(child))
+        val fallback = mapper.map(fixture.envelope(type = "future_widget", payload = "{}"), listOf(child))
 
         assertThat(fallback.content).isEqualTo(UnsupportedBlockContent("future_widget"))
         assertThat(fallback.children).containsExactly(child)
@@ -386,93 +250,9 @@ class NotionBlockMapperTest {
 
     @Test
     fun `requires unsupported payload to retain its open underlying block type`() {
-        assertThatThrownBy { mapper.map(envelope(type = "unsupported", payload = "{}")) }
+        assertThatThrownBy { mapper.map(fixture.envelope(type = "unsupported", payload = "{}")) }
             .isInstanceOf(NotionBlockMappingException::class.java)
     }
-
-    @Test
-    fun `canonicalizes every page source reference to lowercase thirty two hexadecimal characters`() {
-        val childPage =
-            mapper
-                .map(
-                    envelope(
-                        type = "child_page",
-                        id = "A1B2C3D4-E5F6-4A5B-8C9D-0E1F2A3B4C5D",
-                        payload = """{"title":"Child"}""",
-                    ),
-                ).content as xyz.robinjoon.notionblog.blog.domain.post.block.content.ReferenceBlockContent.ChildPost
-        val pageLink =
-            mapper
-                .map(
-                    envelope(
-                        type = "link_to_page",
-                        payload = """{"type":"page_id","page_id":"A1B2C3D4-E5F6-4A5B-8C9D-0E1F2A3B4C5D"}""",
-                    ),
-                ).content as xyz.robinjoon.notionblog.blog.domain.post.block.content.ReferenceBlockContent.DocumentLink
-        val mention =
-            mapper
-                .map(
-                    envelope(
-                        type = "paragraph",
-                        payload =
-                            """
-                            {"rich_text":[
-                              {"type":"mention","mention":{"type":"page","page":{"id":"A1B2C3D4-E5F6-4A5B-8C9D-0E1F2A3B4C5D"}},
-                                "annotations":{"color":"default"},"plain_text":"Page","href":null}
-                            ]}
-                            """.trimIndent(),
-                    ),
-                ).content as TextBlockContent.Paragraph
-
-        assertThat(childPage.reference.externalId).isEqualTo("a1b2c3d4e5f64a5b8c9d0e1f2a3b4c5d")
-        assertThat(pageLink.reference.externalId).isEqualTo("a1b2c3d4e5f64a5b8c9d0e1f2a3b4c5d")
-        val target = checkNotNull((mention.richText.single() as InlineContent.Mention).target) as LinkTarget.SourceDocument
-        assertThat(target.reference.externalId)
-            .isEqualTo("a1b2c3d4e5f64a5b8c9d0e1f2a3b4c5d")
-    }
-
-    @Test
-    fun `rejects malformed page ids at every page reference mapping boundary`() {
-        val malformedChildPage =
-            envelope(
-                type = "child_page",
-                id = "not-a-page-id",
-                payload = """{"title":"Child"}""",
-            )
-        val malformedPageLink =
-            envelope(
-                type = "link_to_page",
-                payload = """{"type":"page_id","page_id":"not-a-page-id"}""",
-            )
-        val malformedMention =
-            envelope(
-                type = "paragraph",
-                payload =
-                    """
-                    {"rich_text":[
-                      {"type":"mention","mention":{"type":"page","page":{"id":"not-a-page-id"}},"annotations":{"color":"default"},
-                        "plain_text":"Page","href":null}
-                    ]}
-                    """.trimIndent(),
-            )
-
-        listOf(malformedChildPage, malformedPageLink, malformedMention).forEach { block ->
-            assertThatThrownBy { mapper.map(block) }.isInstanceOf(SourceMappingException::class.java)
-        }
-    }
-
-    private fun envelope(
-        type: String,
-        payload: String,
-        id: String = "block-$type",
-    ): NotionBlockEnvelope =
-        NotionBlockEnvelope(
-            id = id,
-            type = type,
-            hasChildren = false,
-            inTrash = false,
-            payload = objectMapper.readTree(payload),
-        )
 
     private fun richTextPayload(content: String): String =
         """
