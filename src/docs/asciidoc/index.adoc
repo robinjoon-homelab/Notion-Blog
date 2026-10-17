@@ -141,9 +141,21 @@ include::{snippets}/media-invalid-key/http-response.adoc[]
 
 == 관리 경로
 
-* `/admin/**`은 OIDC로 허용한 관리자만 쓰며 설정이 비어 있으면 `403`으로 닫힙니다. 모든 `POST`는 CSRF 토큰이 필요합니다. 아래 예시는 인증을 통과한 요청에 컨트롤러가 답하는 내용이며 보안 필터는 포함하지 않습니다.
+* `/admin/**`은 `BLOG_ADMIN_USERNAME`·`BLOG_ADMIN_PASSWORD`로 설정한 단일 운영자만 쓰며, 둘 중 하나라도 비어 있으면 로그인 화면을 포함해 `403`으로 닫힙니다. 로그인되지 않은 요청은 `/admin/login`으로 이동합니다. 로그인 제출(`POST /admin/login`)과 로그아웃(`POST /admin/logout`)은 보안 필터가 처리하며 이 문서의 예시에 없습니다. 로그인 성공은 `/admin/posts`로 이동하고, 실패는 이유를 구분하지 않고 `/admin/login?error`로 이동합니다. 모든 `POST`는 로그인·로그아웃을 포함해 CSRF 토큰이 필요합니다. 아래 예시는 인증을 통과한 요청에 컨트롤러가 답하는 내용이며 보안 필터는 포함하지 않습니다.
 * 관리 응답은 `Cache-Control: no-store`입니다.
 * 발행은 미리보기가 준 `revisionId`와 `generation`을 함께 보냅니다. 그 사이 새 변경이 생기면 발행하지 않고 미리보기로 돌아가 안내합니다. 발행 취소·보관·복원은 Notion 없이 처리합니다.
+
+=== 로그인 화면
+
+include::{snippets}/admin-login/http-request.adoc[]
+include::{snippets}/admin-login/http-response.adoc[]
+
+[%collapsible]
+.실패 후 화면
+====
+include::{snippets}/admin-login-failed/http-request.adoc[]
+include::{snippets}/admin-login-failed/http-response.adoc[]
+====
 
 === 글 관리 목록
 

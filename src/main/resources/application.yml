@@ -40,11 +40,8 @@ notion:
 blog:
   public-base-url: ${BLOG_PUBLIC_BASE_URL:https://blog.homelab.robinjoon.xyz}
   admin:
-    oidc:
-      issuer-uri: ${BLOG_ADMIN_OIDC_ISSUER_URI:}
-      client-id: ${BLOG_ADMIN_OIDC_CLIENT_ID:}
-      client-secret: ${BLOG_ADMIN_OIDC_CLIENT_SECRET:}
-      allowed-subject: ${BLOG_ADMIN_OIDC_ALLOWED_SUBJECT:}
+    username: ${BLOG_ADMIN_USERNAME:}
+    password: ${BLOG_ADMIN_PASSWORD:}
   synchronization:
     enabled: ${BLOG_SYNCHRONIZATION_ENABLED:true}
     interval-ms: ${BLOG_SYNCHRONIZATION_INTERVAL_MS:60000}

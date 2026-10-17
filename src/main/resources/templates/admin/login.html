@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{admin/fragments :: head('로그인')}"></head>
+<body class="nb-body-root">
+<main class="nb-login">
+    <h1 class="nb-heading"><span aria-hidden="true">🗂️</span> 블로그 관리</h1>
+    <div class="nb-notice nb-notice-error" th:if="${param.error != null}" role="alert">아이디 또는 비밀번호가 올바르지 않습니다.</div>
+    <form class="nb-login-form" th:action="@{/admin/login}" method="post">
+        <label>아이디<input type="text" name="username" autocomplete="username" autofocus required></label>
+        <label>비밀번호<input type="password" name="password" autocomplete="current-password" required></label>
+        <button class="nb-button nb-primary" type="submit">로그인</button>
+    </form>
+</main>
+</body>
+</html>

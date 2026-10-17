@@ -8,7 +8,8 @@
 - 필수 환경변수는 `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`, `NOTION_TOKEN`, `NOTION_SETTINGS_DATA_SOURCE_ID`다. 선택 값과 기본값은 `src/main/resources/application.yml`의 `notion.*`, `blog.*` 설정을 따른다.
 - `NOTION_API_VERSION`은 `2026-03-11`만 허용한다. `BLOG_PUBLIC_BASE_URL`은 하위 경로·사용자 정보·query·fragment 없는 HTTP(S) 원점이며, 빈 값이면 RSS가 503을 반환한다.
 - 글 데이터베이스는 `NOTION_POSTS_DATA_SOURCE_ID`와 속성 ID(`NOTION_POSTS_SUMMARY_PROPERTY_ID`, `NOTION_POSTS_TAGS_PROPERTY_ID`)로 지정한다. 모두 선택이며 비우면 카탈로그 스캔이 설정 오류로 실패하고 기존 설정 데이터 소스 동작은 유지된다. 설정 데이터 소스의 `rootPage`도 선택이다.
-- 관리 화면은 OIDC로만 열린다. `blog.admin.oidc.{issuer-uri,client-id,client-secret,allowed-subject}`(`BLOG_ADMIN_OIDC_ISSUER_URI`, `BLOG_ADMIN_OIDC_CLIENT_ID`, `BLOG_ADMIN_OIDC_CLIENT_SECRET`, `BLOG_ADMIN_OIDC_ALLOWED_SUBJECT`)가 하나라도 비면 `/admin/**`은 `403`으로 닫히고 공개 읽기만 동작한다. 허용하는 운영자는 `allowed-subject` 하나다. 클라이언트 시크릿은 환경 주입만 쓴다.
+- 관리 화면은 Spring Security 폼 로그인(`/admin/login`)으로만 열린다. `blog.admin.{username,password}`(`BLOG_ADMIN_USERNAME`, `BLOG_ADMIN_PASSWORD`) 중 하나라도 비면 로그인 화면을 포함한 `/admin/**` 전체가 `403`으로 닫히고 공개 읽기만 동작한다. 운영자는 설정한 계정 하나다. 비밀번호는 환경 주입만 쓰고 로그에 출력하지 않으며, 대체 계정을 만들지 않는다.
+- 비밀번호는 bcrypt 제한에 맞춰 UTF-8 **72바이트 이하**로 지정하고 Spring 속성 치환 문법(`${…}`)을 넣지 않는다.
 - 업로드 파일 한도는 `BLOG_MEDIA_MAX_BYTES`(파일당 기본 25MiB), `BLOG_MEDIA_MAX_IMPORT_BYTES`(글 하나 기본 100MiB), `BLOG_MEDIA_REQUEST_TIMEOUT`(기본 10s), `BLOG_MEDIA_MAX_REDIRECTS`(기본 3)다. 글 카탈로그 스캔 간격은 `BLOG_SYNCHRONIZATION_CATALOG_INTERVAL_MS`(기본 5분)다.
 - 로컬 API는 `http://localhost:8080`으로 호출한다. 빈 DB에서는 Flyway seed의 설정 동기화 대상부터 처리하며, 사이트 설정과 표현 프로필이 준비되기 전 `/`와 게시글 경로는 503이다.
 - 운영 PostgreSQL은 [배포 계약](deployment.md#컨테이너와-db-계약)을 따른다. DB 파일·자격 증명을 커밋하지 않는다.

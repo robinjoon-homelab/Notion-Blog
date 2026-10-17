@@ -77,6 +77,9 @@ body.nb-body-root { margin: 0; background: var(--nb-paper); color: var(--nb-ink)
 .nb-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 .nb-actions form { margin: 0; }
 .nb-login { max-width: 360px; margin: 14vh auto 0; padding: 0 16px; }
+.nb-login-form { display: grid; gap: 12px; margin-top: 18px; }
+.nb-login-form label { display: grid; gap: 4px; font-size: 13px; color: var(--nb-secondary); }
+.nb-login-form input { min-width: 0; padding: 6px 8px; border: 1px solid var(--nb-line); border-radius: 4px; background: var(--nb-paper); color: var(--nb-ink); font: inherit; }
 
 @media (max-width: 780px) {
   .nb-main { padding: 27px 24px 35px; }

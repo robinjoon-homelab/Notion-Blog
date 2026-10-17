@@ -1,69 +1,38 @@
 package xyz.robinjoon.notionblog.config
 
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import org.springframework.security.core.authority.SimpleGrantedAuthority
-import org.springframework.security.oauth2.core.oidc.OidcIdToken
-import org.springframework.security.oauth2.core.oidc.user.OidcUserAuthority
-import java.time.Instant
+import org.springframework.security.core.userdetails.UsernameNotFoundException
 
 class AdminSecurityConfigTest {
-    private val issuer = "https://id.example"
-    private val oidc =
-        AdminSecurityProperties.Oidc(
-            issuerUri = issuer,
-            clientId = "client",
-            clientSecret = "secret",
-            allowedSubject = "owner",
-        )
-    private val configured = AdminSecurityProperties(oidc)
+    private val config = AdminSecurityConfig()
+    private val encoder = config.adminPasswordEncoder()
+    private val configured = AdminSecurityProperties(username = "admin", password = "fixture-password")
 
     @Test
-    fun `keeps the admin closed when nothing is configured`() {
-        assertThat(AdminSecurityProperties().enabled).isFalse()
+    fun `the operator holds the admin authority with an encoded password`() {
+        val user = config.adminUserDetailsService(configured, encoder).loadUserByUsername("admin")
+
+        assertThat(user.password).isNotEqualTo("fixture-password")
+        assertThat(encoder.matches("fixture-password", user.password)).isTrue()
+        assertThat(user.authorities).containsExactly(SimpleGrantedAuthority(ADMIN_ROLE))
     }
 
     @Test
-    fun `keeps the admin closed when any value is blank`() {
-        assertThat(AdminSecurityProperties(oidc.copy(clientSecret = " ")).enabled).isFalse()
-        assertThat(AdminSecurityProperties(oidc.copy(allowedSubject = "")).enabled).isFalse()
-    }
+    fun `no account exists while either credential is missing`() {
+        val incomplete =
+            listOf(
+                AdminSecurityProperties(),
+                AdminSecurityProperties(username = "admin", password = " "),
+                AdminSecurityProperties(username = " ", password = "fixture-password"),
+            )
 
-    @Test
-    fun `opens the admin only when every value is configured`() {
-        assertThat(configured.enabled).isTrue()
-    }
+        incomplete.forEach { properties ->
+            val users = config.adminUserDetailsService(properties, encoder)
 
-    @Test
-    fun `grants admin only to the configured issuer and subject pair`() {
-        val mapper = AdminSecurityConfig().adminAuthoritiesMapper(configured)
-
-        assertThat(mapper.mapAuthorities(listOf(oidcAuthority(issuer, "owner")))).containsExactly(SimpleGrantedAuthority(ADMIN_ROLE))
-        assertThat(mapper.mapAuthorities(listOf(oidcAuthority(issuer, "someone")))).isEmpty()
-        assertThat(mapper.mapAuthorities(listOf(oidcAuthority("https://other.example", "owner")))).isEmpty()
-        assertThat(mapper.mapAuthorities(listOf(SimpleGrantedAuthority("ROLE_USER")))).isEmpty()
-    }
-
-    @Test
-    fun `grants nobody admin while unconfigured`() {
-        val mapper = AdminSecurityConfig().adminAuthoritiesMapper(AdminSecurityProperties())
-
-        assertThat(mapper.mapAuthorities(listOf(oidcAuthority(issuer, "owner")))).isEmpty()
-    }
-
-    private fun oidcAuthority(
-        issuer: String,
-        subject: String,
-    ): OidcUserAuthority {
-        val now = Instant.now()
-        val token =
-            OidcIdToken
-                .withTokenValue("token")
-                .issuer(issuer)
-                .subject(subject)
-                .issuedAt(now)
-                .expiresAt(now.plusSeconds(60))
-                .build()
-        return OidcUserAuthority(token)
+            assertThatThrownBy { users.loadUserByUsername("admin") }.isInstanceOf(UsernameNotFoundException::class.java)
+        }
     }
 }

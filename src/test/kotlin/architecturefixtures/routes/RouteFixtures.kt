@@ -27,6 +27,9 @@ class DeclaredRoutes {
     @GetMapping("/media/{mediaKey}")
     fun media() = Unit
 
+    @GetMapping("/admin/login")
+    fun login() = Unit
+
     @GetMapping("/admin/posts")
     fun posts() = Unit
 
