@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{admin/fragments :: head(${view.title})}"></head>
+<body class="nb-body-root">
+<div class="nb-shell">
+    <aside th:replace="~{admin/fragments :: sidebar('posts')}"></aside>
+    <div>
+        <button type="button" class="nb-button nb-menu" data-toggle-menu aria-expanded="false" aria-controls="nb-sidebar">메뉴</button>
+        <main class="nb-main">
+            <a class="nb-muted nb-small" th:href="@{/admin/posts/{id}(id=${view.postId})}">← 글로 돌아가기</a>
+            <div class="nb-section-head">
+                <h1 class="nb-heading" th:text="${view.title}">제목</h1>
+                <p class="nb-muted">이 글에 지정할 카테고리를 고릅니다. 공개 여부와 내용은 바뀌지 않으며, 저장하면 공개 홈에 바로 반영됩니다.</p>
+            </div>
+            <div th:replace="~{admin/fragments :: notice(${view.notice})}"></div>
+            <div class="nb-empty" th:if="${#lists.isEmpty(view.options)}">
+                <h2>지정할 카테고리가 없습니다.</h2>
+                <p><a href="/admin/categories">카테고리 관리</a>에서 먼저 추가하세요.</p>
+            </div>
+            <form th:action="@{/admin/posts/{id}/categories(id=${view.postId})}" method="post" th:if="${!#lists.isEmpty(view.options)}">
+                <fieldset class="nb-fieldset">
+                    <legend>카테고리</legend>
+                    <label class="nb-choice" th:each="option : ${view.options}">
+                        <input type="checkbox" name="categoryId" th:value="${option.id}" th:checked="${option.checked}">
+                        <span><span class="nb-choice-label" th:text="${option.name}">분류</span>
+                            <span class="nb-muted nb-small" th:text="${'글 ' + option.assignedPosts + '개'}">글 0개</span></span>
+                    </label>
+                </fieldset>
+                <p class="nb-muted nb-small">모두 해제하고 저장하면 이 글의 카테고리 지정이 비워집니다.</p>
+                <div class="nb-actions">
+                    <button class="nb-button nb-primary" type="submit">저장</button>
+                    <a class="nb-button" th:href="@{/admin/posts/{id}/categories(id=${view.postId})}">변경 취소</a>
+                </div>
+            </form>
+        </main>
+    </div>
+</div>
+</body>
+</html>

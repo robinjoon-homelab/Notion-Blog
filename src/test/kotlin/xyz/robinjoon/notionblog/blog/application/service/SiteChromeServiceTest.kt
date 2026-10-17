@@ -61,28 +61,25 @@ class SiteChromeServiceTest {
         givenSite()
         every { published.find(headerId) } returns PublishedPost(headerRevision, PostFixtures.capturedAt)
         every { published.find(footerId) } returns null
-        every { published.findPublicPostIds(setOf(rootId)) } returns emptySet()
 
         val chrome = service.load()
 
         assertThat(chrome?.header).isEqualTo(headerRevision)
         assertThat(chrome?.footer).isNull()
-        assertThat(chrome?.rootPostId).isNull()
         assertThat(chrome?.presentationAssets).containsEntry(SiteFixtures.style, SiteFixtures.descriptor)
     }
 
     @Test
-    fun `an undecodable fragment is left out and the public legacy root is linked`() {
+    fun `해석할 수 없는 사이트 조각은 페이지 틀에서 제외한다`() {
         givenSite()
         every { published.find(headerId) } throws SnapshotContentException("broken")
         every { published.find(footerId) } returns null
-        every { published.findPublicPostIds(setOf(rootId)) } returns setOf(rootId)
         every { failures.report(any(), any(), any()) } just Runs
 
         val chrome = service.load()
 
         assertThat(chrome?.header).isNull()
-        assertThat(chrome?.rootPostId).isEqualTo(rootId)
+        assertThat(chrome).isNotNull()
     }
 
     @Test
@@ -127,7 +124,7 @@ class SiteChromeServiceTest {
     }
 
     @Test
-    fun `site documents without a bound post leave the header the footer and the root out of the chrome`() {
+    fun `연결된 글이 없는 사이트 문서는 머리글과 바닥글에서 제외한다`() {
         val site = SiteFixtures.site(SiteFixtures.documents(root, header, footer))
         every { sites.findCurrent() } returns site
         every { profiles.findProfile(SiteFixtures.profile.reference) } returns SiteFixtures.profile
@@ -139,7 +136,6 @@ class SiteChromeServiceTest {
         assertThat(chrome).isNotNull()
         assertThat(chrome?.header).isNull()
         assertThat(chrome?.footer).isNull()
-        assertThat(chrome?.rootPostId).isNull()
     }
 
     @Test

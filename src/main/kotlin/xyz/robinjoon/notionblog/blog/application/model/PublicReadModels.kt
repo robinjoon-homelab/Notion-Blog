@@ -1,5 +1,7 @@
 package xyz.robinjoon.notionblog.blog.application.model
 
+import xyz.robinjoon.notionblog.blog.domain.category.CategoryId
+import xyz.robinjoon.notionblog.blog.domain.home.HomeConfiguration
 import xyz.robinjoon.notionblog.blog.domain.post.PostId
 import xyz.robinjoon.notionblog.blog.domain.post.PostProperties
 import xyz.robinjoon.notionblog.blog.domain.post.PostRevision
@@ -25,6 +27,7 @@ data class PostListEntry(
     val revisionId: PostRevisionId,
     val properties: PostProperties,
     val firstPublishedAt: Instant,
+    val categories: List<ListedCategory> = emptyList(),
 )
 
 data class SiteChrome(
@@ -33,7 +36,6 @@ data class SiteChrome(
     val presentationAssets: Map<PresentationAssetRef, PresentationAssetDescriptor>,
     val header: PostRevision?,
     val footer: PostRevision?,
-    val rootPostId: PostId?,
 )
 
 // 링크는 공개 글일 때만 내부 페이지로 연결한다. media는 페이지에 보이는 리비전들의 저장 사본을 담는다.
@@ -69,6 +71,9 @@ data class PostListPage(
     val chrome: SiteChrome,
     val entries: ResultPage<PostListEntry>,
     val references: ContentReferences,
+    val configuration: HomeConfiguration = HomeConfiguration.defaults(),
+    val categories: List<PublicCategoryCount> = emptyList(),
+    val selectedCategoryId: CategoryId? = null,
 )
 
 data class PublicFeed(
@@ -92,6 +97,8 @@ sealed interface PostListLookupResult {
     ) : PostListLookupResult
 
     data object ContentUnavailable : PostListLookupResult
+
+    data object NotFound : PostListLookupResult
 }
 
 sealed interface PublicFeedLookupResult {

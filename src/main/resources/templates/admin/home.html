@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{admin/fragments :: head('홈 화면')}"></head>
+<body class="nb-body-root">
+<div class="nb-shell">
+    <aside th:replace="~{admin/fragments :: sidebar('home')}"></aside>
+    <div>
+        <button type="button" class="nb-button nb-menu" data-toggle-menu aria-expanded="false" aria-controls="nb-sidebar">메뉴</button>
+        <main class="nb-main nb-main-wide">
+            <div class="nb-section-head">
+                <h1 class="nb-heading">홈 화면</h1>
+                <p class="nb-muted">공개 홈의 글 목록 모양을 정합니다. 저장해야 공개 홈에 반영됩니다.</p>
+            </div>
+            <div th:replace="~{admin/fragments :: notice(${view.notice})}"></div>
+            <form class="nb-editor" th:action="@{/admin/home}" method="post" data-home-editor>
+                <div class="nb-editor-fields">
+                    <fieldset class="nb-fieldset">
+                        <legend>목록 모양</legend>
+                        <label class="nb-choice" th:each="layout : ${view.layouts}">
+                            <input type="radio" name="layout" th:value="${layout.value}" th:checked="${layout.selected}">
+                            <span><span class="nb-choice-label" th:text="${layout.label}">목록</span>
+                                <span class="nb-muted nb-small" th:text="${layout.description}">설명</span></span>
+                        </label>
+                    </fieldset>
+                    <fieldset class="nb-fieldset">
+                        <legend>정렬</legend>
+                        <label class="nb-choice" th:each="order : ${view.orders}">
+                            <input type="radio" name="order" th:value="${order.value}" th:checked="${order.selected}">
+                            <span><span class="nb-choice-label" th:text="${order.label}">최신 글 먼저</span>
+                                <span class="nb-muted nb-small" th:text="${order.description}">설명</span></span>
+                        </label>
+                    </fieldset>
+                    <div class="nb-field">
+                        <label for="home-page-size">한 쪽에 보일 글 수</label>
+                        <input id="home-page-size" type="number" name="pageSize" min="1" max="50" step="1" required
+                               inputmode="numeric" th:value="${view.pageSize}" aria-describedby="home-page-size-help">
+                        <span id="home-page-size-help" class="nb-muted nb-small">1부터 50까지 입력할 수 있습니다.</span>
+                    </div>
+                    <fieldset class="nb-fieldset">
+                        <legend>보여 줄 정보</legend>
+                        <label class="nb-choice"><input type="checkbox" name="showSummary" value="true" th:checked="${view.details.showSummary}"><span class="nb-choice-label">요약</span></label>
+                        <label class="nb-choice"><input type="checkbox" name="showDate" value="true" th:checked="${view.details.showDate}"><span class="nb-choice-label">게시일</span></label>
+                        <label class="nb-choice"><input type="checkbox" name="showCategories" value="true" th:checked="${view.details.showCategories}">
+                            <span><span class="nb-choice-label">카테고리</span>
+                                <span class="nb-muted nb-small">글의 분류 표시와 홈의 카테고리 이동 메뉴에 함께 적용됩니다.</span></span></label>
+                    </fieldset>
+                    <div class="nb-actions">
+                        <button class="nb-button nb-primary" type="submit">저장</button>
+                        <a class="nb-button" href="/admin/home">변경 취소</a>
+                    </div>
+                </div>
+                <section class="nb-preview-box" aria-labelledby="home-preview-title">
+                    <h2 class="nb-panel-title" id="home-preview-title">미리보기 <span class="nb-badge">예시</span></h2>
+                    <p class="nb-muted nb-small">예시 글로 보여 주는 화면입니다. 저장하기 전에는 공개 홈에 반영되지 않습니다.
+                        <span data-preview-size-note>한 쪽에 <output data-preview-size th:text="${view.pageSize}">10</output>개</span></p>
+                    <ul class="nb-post-list nb-home-list nb-home-plain" data-preview-list data-order="newest">
+                        <li class="nb-home-post nb-sample-1" data-sample="1">
+                            <a class="nb-post-thumb" href="#" tabindex="-1" aria-hidden="true"><img src="/ui/default-post-thumbnail.svg" alt=""></a>
+                            <div class="nb-post-body">
+                                <span class="nb-post-title">가장 최근에 게시한 예시 글</span>
+                                <p class="nb-post-summary" data-sample-summary>글의 요약이 이 자리에 보입니다.</p>
+                                <p class="nb-small nb-muted nb-post-meta"><span data-sample-date>2026. 10. 16.</span>
+                                    <span class="nb-badge" data-sample-categories>카테고리</span></p>
+                            </div>
+                        </li>
+                        <li class="nb-home-post nb-sample-2" data-sample="2">
+                            <a class="nb-post-thumb" href="#" tabindex="-1" aria-hidden="true"><img src="/ui/default-post-thumbnail.svg" alt=""></a>
+                            <div class="nb-post-body">
+                                <span class="nb-post-title">두 번째 예시 글</span>
+                                <p class="nb-post-summary" data-sample-summary>요약은 한두 줄로 보여 줍니다.</p>
+                                <p class="nb-small nb-muted nb-post-meta"><span data-sample-date>2026. 10. 9.</span>
+                                    <span class="nb-badge" data-sample-categories>카테고리</span></p>
+                            </div>
+                        </li>
+                        <li class="nb-home-post nb-sample-3" data-sample="3">
+                            <a class="nb-post-thumb" href="#" tabindex="-1" aria-hidden="true"><img src="/ui/default-post-thumbnail.svg" alt=""></a>
+                            <div class="nb-post-body">
+                                <span class="nb-post-title">가장 오래된 예시 글</span>
+                                <p class="nb-post-summary" data-sample-summary>오래된 글 먼저를 고르면 이 글이 위로 옵니다.</p>
+                                <p class="nb-small nb-muted nb-post-meta"><span data-sample-date>2026. 9. 30.</span>
+                                    <span class="nb-badge" data-sample-categories>카테고리</span></p>
+                            </div>
+                        </li>
+                    </ul>
+                </section>
+            </form>
+        </main>
+    </div>
+</div>
+<script src="/ui/home-editor.js" defer></script>
+</body>
+</html>

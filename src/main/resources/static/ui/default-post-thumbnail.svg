@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" role="img" aria-label="기본 글 이미지">
+  <rect width="320" height="180" fill="#787774" fill-opacity=".14"/>
+  <g fill="none" stroke="#787774" stroke-opacity=".6" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="112" y="48" width="96" height="84" rx="8"/>
+    <path d="M132 76h56M132 94h56M132 112h32"/>
+  </g>
+</svg>

@@ -17,6 +17,7 @@
                 <form th:action="@{/admin/posts/{id}/refresh(id=${view.postId})}" method="post">
                     <button class="nb-button nb-primary" type="submit">최신 내용 가져오기</button>
                 </form>
+                <a class="nb-button" th:href="@{/admin/posts/{id}/categories(id=${view.postId})}">카테고리 지정</a>
                 <form th:if="${view.actions.canArchive}" th:action="@{/admin/posts/{id}/archive(id=${view.postId})}" method="post">
                     <button class="nb-link-danger" type="submit">보관</button>
                 </form>

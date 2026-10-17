@@ -11,6 +11,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.view
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.view.HomePageView
 import xyz.robinjoon.notionblog.blog.application.model.ContentReferences
+import xyz.robinjoon.notionblog.blog.application.model.HomePageQuery
 import xyz.robinjoon.notionblog.blog.application.model.PageQuery
 import xyz.robinjoon.notionblog.blog.application.model.PostListEntry
 import xyz.robinjoon.notionblog.blog.application.model.PostListLookupResult
@@ -20,6 +21,7 @@ import xyz.robinjoon.notionblog.blog.application.model.ResultPage
 import xyz.robinjoon.notionblog.blog.application.model.RevisionMedia
 import xyz.robinjoon.notionblog.blog.application.port.input.GetPostListUseCase
 import xyz.robinjoon.notionblog.blog.application.port.input.GetPublicPostUseCase
+import xyz.robinjoon.notionblog.blog.domain.category.CategoryId
 import xyz.robinjoon.notionblog.blog.domain.post.PostId
 import xyz.robinjoon.notionblog.blog.domain.post.PostProperties
 import java.time.Clock
@@ -39,7 +41,7 @@ class BlogControllerTest {
 
     @Test
     fun `home lists published entries ten per page`() {
-        every { lists.get(PageQuery(1, 10)) } returns PostListLookupResult.Found(listPage(entries = 12, page = 1))
+        every { lists.get(HomePageQuery(1)) } returns PostListLookupResult.Found(listPage(entries = 12, page = 1))
 
         val page = home("/")
 
@@ -51,7 +53,7 @@ class BlogControllerTest {
 
     @Test
     fun `second home page holds the remainder and links back`() {
-        every { lists.get(PageQuery(2, 10)) } returns PostListLookupResult.Found(listPage(entries = 12, page = 2))
+        every { lists.get(HomePageQuery(2)) } returns PostListLookupResult.Found(listPage(entries = 12, page = 2))
 
         val page = home("/?page=2")
 
@@ -62,14 +64,34 @@ class BlogControllerTest {
 
     @Test
     fun `a home page number below one is treated as the first page`() {
-        every { lists.get(PageQuery(1, 10)) } returns PostListLookupResult.Found(listPage(entries = 3, page = 1))
+        every { lists.get(HomePageQuery(1)) } returns PostListLookupResult.Found(listPage(entries = 3, page = 1))
 
         assertThat(home("/?page=-4").pagination.page).isEqualTo(1)
     }
 
     @Test
+    fun `category filter is passed on and kept in pagination links`() {
+        val category = CategoryId(UUID.nameUUIDFromBytes("category".toByteArray()))
+        every { lists.get(HomePageQuery(1, category)) } returns
+            PostListLookupResult.Found(listPage(entries = 12, page = 1).copy(selectedCategoryId = category))
+
+        val page = home("/?category=${category.value}")
+
+        assertThat(page.pagination.nextHref).isEqualTo("/?category=${category.value}&page=2")
+    }
+
+    @Test
+    fun `unknown or malformed category is not found`() {
+        val unknown = CategoryId(UUID.nameUUIDFromBytes("unknown".toByteArray()))
+        every { lists.get(HomePageQuery(1, unknown)) } returns PostListLookupResult.NotFound
+
+        mockMvc.perform(get("/?category=${unknown.value}")).andExpect(status().isNotFound).andExpect(view().name("error/blog-not-found"))
+        mockMvc.perform(get("/?category=not-a-uuid")).andExpect(status().isNotFound).andExpect(view().name("error/blog-not-found"))
+    }
+
+    @Test
     fun `unavailable home maps to the unavailable view`() {
-        every { lists.get(PageQuery(1, 10)) } returns PostListLookupResult.ContentUnavailable
+        every { lists.get(HomePageQuery(1)) } returns PostListLookupResult.ContentUnavailable
 
         mockMvc
             .perform(get("/"))

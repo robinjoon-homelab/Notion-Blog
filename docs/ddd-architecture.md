@@ -51,15 +51,30 @@ BC가 정해져도 루트의 소유·생명주기가 미정이면 루트와 테�
 
 | BC | 루트와 소유 상태 | 규칙 |
 | --- | --- | --- |
-| `blog` | Post: `PostId`, 소스 바인딩, `PostPublication`(공개 여부·공개본 revision·보관 여부·generation), 최신 revision 포인터, 최초 게시 시각. revision(`PostRevision`: 제목·요약·태그·표지·`BlockTree`·소스 revision)은 불변이며 수정·삭제하지 않는다. | 공개 여부는 발행·발행 취소·보관·복원 명령과 1회성 레거시 이전만 바꾼다. 동기화·카탈로그 스캔은 쓰지 않는다. 발행·취소·보관·복원은 generation을 올린다. 보관하면 비공개이며 동기화·발행 대상이 아니고, 복원해도 비공개다. 최초 게시 시각은 한 번 정하면 바꾸지 않는다. |
+| `blog` | Post: `PostId`, 소스 바인딩, `PostPublication`(공개 여부·공개본 revision·보관 여부·generation), 최신 revision 포인터, 최초 게시 시각, 카테고리 ID 집합. revision(`PostRevision`: 제목·요약·태그·표지·`BlockTree`·소스 revision)은 불변이며 수정·삭제하지 않는다. | 공개 여부는 발행·발행 취소·보관·복원 명령과 1회성 레거시 이전만 바꾼다. 동기화·카탈로그 스캔은 쓰지 않는다. 발행·취소·보관·복원은 generation을 올린다. 보관하면 비공개이며 동기화·발행 대상이 아니고, 복원해도 비공개다. 최초 게시 시각은 한 번 정하면 바꾸지 않는다. 카테고리는 관리자만 바꾸며 revision·공개 상태·generation과 독립적이다. |
 | `blog` | BlogPublication: 레거시 공개 범위(루트 `PostId`·활성 revision) | 이전 데이터로 보존한다. 새 공개 판정에 쓰지 않는다. 새로 만드는 경우는 사이트 설정의 첫 적용뿐이며 `site_configuration.publication_id`가 참조할 빈 행(루트·활성 revision 없음)이다. |
 | `blog` | SiteConfiguration: 단일 사이트의 `SiteDocuments`(루트는 선택, 헤더·푸터), 메타데이터, 표현 프로필 참조 | 설정 동기화에 실패하면 마지막 정상 설정을 유지한다. |
 | `blog` | PresentationProfile: `PresentationProfileRef`(ID·버전), 키, 토큰, 신뢰된 자산 | 저장한 버전은 바꾸지 않는다. 키마다 명시적으로 활성화한 현재 버전만 선택한다. |
 | `blog` | SyncState: `SyncTarget`별 다음 갱신 시각, 마지막 성공 시각, 연속 실패 기록(`MEDIA` 포함) | 실패 횟수와 마지막 실패 종류는 함께 존재한다. 성공하면 실패 기록을 지우고 실패하면 백오프한다. |
+| `blog` | HomeConfiguration: 단일 홈의 목록 형태·정렬·쪽 크기·표시 항목 | 관리자만 저장한다. 설정이 없으면 목록형·최신순·10개·모든 항목 표시를 사용한다. Notion 설정 동기화는 읽거나 쓰지 않는다. |
+| `blog` | Category: ID·이름·표시 순서 | 앱에서 생성·수정·삭제한다. 이름은 공백 제거 후 1~50자이며 대소문자 구분 없이 유일하다. 글에 배정된 카테고리는 삭제하지 않는다. |
 
-**하나의 BC:** 게시글·사이트 설정·표현 프로필·동기화는 같은 운영자가 같은 Notion 원본의 언어로 결정한다. 공개 판정과 동기화가 같은 사실을 함께 쓰므로 하나의 `blog` BC로 유지한다. 테이블·서비스·어댑터 수는 분리 근거가 아니다.
+**하나의 BC:** 게시글·분류·홈 표현은 같은 블로그의 공개 대상을 다루며, 사이트 설정·표현 프로필·동기화도 이 공개 규칙을 따른다. Notion에서 가져온 내용과 앱이 관리하는 공개·분류·표현을 하나의 `blog` BC로 유지한다. 테이블·서비스·어댑터 수는 분리 근거가 아니다.
 
 **여러 루트:** Post는 문서마다 revision이 쌓이고 관리자 명령으로 공개가 바뀌며, SiteConfiguration은 설정 동기화로, PresentationProfile은 배포 산출물로, SyncState는 대상별 일정으로 바뀐다. 생명주기와 동시 변경이 다르므로 별도 루트로 둔다. `SyncTarget`·`PostId`·`PresentationProfileRef`로 서로 참조한다.
+
+HomeConfiguration은 Notion 설정 동기화 전에도 편집할 수 있고, Category는 글에 배정되기 전에 생성·수정할 수 있어 각각 독립 루트다. 홈 설정을 SiteConfiguration에 합치면 Notion이 전체 설정을 다시 저장할 때 관리자 선택을 덮어쓰므로 별도로 저장한다. 카테고리 배정은 Post의 자식 상태이며 별도 루트를 만들지 않는다.
+
+### 홈과 카테고리
+
+- 홈은 목록형·썸네일 목록형·카드형 중 하나로 표시한다. 최초 게시 시각의 최신순·오래된 순을 선택하며 동률은 글 ID 순서다. 쪽 크기는 1~50개다. 요약·날짜·카테고리는 각각 표시 여부를 저장한다. 홈 설정은 마지막 저장이 우선한다.
+- 표지는 반드시 목록 항목의 공개본 revision에서 읽는다. 사용할 표지가 없으면 앱 내장 `/ui/default-post-thumbnail.svg`를 쓴다. 기본 이미지의 업로드·URL 입력·외부 가져오기 기능은 두지 않는다.
+- 홈은 저장된 설정을 사용한다. 관리자 화면의 저장 전 표시 예시는 공개 홈을 바꾸지 않는다. 기존 루트 문서의 내용·주소·공개 상태는 유지하되 임의의 ‘소개 문서’ 링크를 만들지 않는다.
+- 글에는 카테고리를 여러 개 배정할 수 있고 빈 선택은 배정을 해제한다. 배정 변경은 즉시 목록에 반영하며 본문·Notion 태그·revision·발행 상태·generation을 바꾸지 않는다. 새 글은 미분류이고 기존 글을 자동 분류하지 않는다.
+- 카테고리 이름은 대소문자 구분 없이 중복을 막고 표시 순서는 0 이상의 정수다. 같은 순서는 이름·ID로 정렬한다. 초안·보관 글을 포함해 배정된 글이 하나라도 있으면 삭제를 거절한다.
+- 공개 카테고리 탐색과 개수에는 공개본이 있는 글만 포함하며 사이트 문서는 제외한다. 카테고리 필터 후 페이지를 나누고 다중 배정 때문에 글이 중복되지 않아야 한다. 잘못된·없는 카테고리는 404다. 페이지 이동은 선택한 카테고리를 유지한다.
+- 표시 항목을 끄면 카테고리 탐색·배지를 숨기며 저장된 배정과 유효한 카테고리 링크의 조회는 유지한다. 홈의 카테고리 배지는 앱 분류를 사용하고, 기존 Notion 태그는 revision과 개별 글에 보존한다. RSS의 최신순·GUID·게시 시각은 바꾸지 않는다.
+- 배정은 선택한 카테고리 행을 ID 순서로 잠근 뒤 Post를 잠그고 `PostRepository.saveCategories`로 연결만 저장한다. 카테고리 삭제는 해당 행을 잠근 뒤 배정 여부를 확인하고, FK도 배정된 카테고리 삭제를 막는다. 기존 `PostRepository.save`는 게시 상태만 쓰므로 동기화·발행이 분류를 덮어쓰지 않는다. 새 쓰기 경로는 각각 루트 하나만 변경한다.
 
 ### 공개와 동기화 규칙
 
@@ -126,7 +141,7 @@ BC가 정해져도 루트의 소유·생명주기가 미정이면 루트와 테�
 
 ```text
 blog/domain/                         BC 안에서 의미·제약이 같은 공유 값 (SourceDocumentRef 등)
-blog/domain/<aggregate>/             루트 하나와 소유 ID·값·엔티티 (post, publication, site, presentation, sync)
+blog/domain/<aggregate>/             루트 하나와 소유 ID·값·엔티티 (post, publication, site, presentation, sync, home, category)
 blog/domain/<aggregate>/<helper>/    같은 어그리게이트 내부 (post/block 등)
 blog/application/model/              순수 유스케이스 데이터·저장 projection
 blog/application/port/input/         유스케이스 계약
@@ -169,11 +184,11 @@ config/                             빈 조립·기술 설정
 - 루트에 `@AggregateRoot`를 붙이고 `<bc>.domain.<aggregate>` 바로 아래에 하나만 둔다. BC의 `domain` 바로 아래나 루트의 하위 패키지에 새 루트를 두지 않는다.
 - 생성자·생성된 `copy`는 비공개, 프로퍼티는 `val`로 유지하고 생성·복원·상태 전이를 구분한다. 보관한 컬렉션·요소의 외부 변경도 검토한다.
 - 도메인은 다른 어그리게이트의 루트 객체 대신 의미가 맞는 ID·불변 값을 참조한다. 자기 루트는 내부 하위 패키지에서 참조할 수 있다. 자기 BC 애플리케이션·어댑터와 `config`는 루트를 사용하고 서비스는 여러 저장소를 호출할 수 있다.
-- 루트를 다루는 출력 포트는 이름과 무관하게 저장소다. **포트 하나의 루트는 최대 하나, 루트 하나의 출력 포트도 최대 하나**이며 상속·제네릭에도 적용한다. 루트를 노출하지 않는 조회용 `Store`는 별도 계약이다. 현재 대응은 Post-`PostRepository`, BlogPublication-`PublicationRepository`, SiteConfiguration-`SiteConfigurationRepository`, PresentationProfile-`PresentationProfileRepository`, SyncState-`SyncStateRepository`다.
+- 루트를 다루는 출력 포트는 이름과 무관하게 저장소다. **포트 하나의 루트는 최대 하나, 루트 하나의 출력 포트도 최대 하나**이며 상속·제네릭에도 적용한다. 루트를 노출하지 않는 조회용 `Store`는 별도 계약이다. 현재 대응은 Post-`PostRepository`, BlogPublication-`PublicationRepository`, SiteConfiguration-`SiteConfigurationRepository`, PresentationProfile-`PresentationProfileRepository`, SyncState-`SyncStateRepository`, HomeConfiguration-`HomeConfigurationRepository`, Category-`CategoryRepository`다.
 
 ### BC 경계
 
-- `HexagonalArchitectureTest.contextAggregates`에 `blog → post.Post, publication.BlogPublication, site.SiteConfiguration, presentation.PresentationProfile, sync.SyncState`를 유지하고 새 BC·루트를 같은 변경에서 등록한다.
+- `HexagonalArchitectureTest.contextAggregates`에 `blog → post.Post, publication.BlogPublication, site.SiteConfiguration, presentation.PresentationProfile, sync.SyncState, home.HomeConfiguration, category.Category`를 유지하고 새 BC·루트를 같은 변경에서 등록한다.
 - 미등록 업무 패키지·루트, 코드 없는 등록 항목, 중첩 기능 경로를 만들지 않는다.
 - 루트 공용 도메인에는 `AggregateRoot`만 둔다. BC 안의 공유 값도 의미·제약이 같은 경우에만 올린다.
 - 자기 저장소·테이블을 사용하고 다른 BC 타입을 직접 참조하지 않는다. `config`의 조립만 예외로 둔다.

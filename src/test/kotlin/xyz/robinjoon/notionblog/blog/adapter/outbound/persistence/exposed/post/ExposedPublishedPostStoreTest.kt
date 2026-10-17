@@ -12,13 +12,17 @@ import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.snapshot.JsonBlockTreeSnapshotCodec
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.snapshot.JsonPostPropertiesCodec
 import xyz.robinjoon.notionblog.blog.application.model.PageQuery
+import xyz.robinjoon.notionblog.blog.application.model.PublishedListQuery
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.SnapshotContentException
+import xyz.robinjoon.notionblog.blog.domain.category.CategoryId
+import xyz.robinjoon.notionblog.blog.domain.home.HomePostOrder
 import xyz.robinjoon.notionblog.blog.domain.post.PostId
 import xyz.robinjoon.notionblog.blog.domain.post.PostVisibility
 import xyz.robinjoon.notionblog.support.fixture.PostFixtures
 import xyz.robinjoon.notionblog.support.persistence.ExposedH2Database
 import xyz.robinjoon.notionblog.support.persistence.PostRows
 import java.time.Instant
+import java.util.UUID
 
 class ExposedPublishedPostStoreTest {
     private val database = ExposedH2Database()
@@ -55,8 +59,8 @@ class ExposedPublishedPostStoreTest {
             publicPost(4, Instant.parse("2026-10-04T00:00:00Z"))
             privatePost(5, everPublished = true)
 
-            val first = store.findListPage(setOf(PostFixtures.postId(4)), PageQuery(1, 2))
-            val beyond = store.findListPage(setOf(PostFixtures.postId(4)), PageQuery(9, 2))
+            val first = store.findListPage(setOf(PostFixtures.postId(4)), PublishedListQuery(PageQuery(1, 2)))
+            val beyond = store.findListPage(setOf(PostFixtures.postId(4)), PublishedListQuery(PageQuery(9, 2)))
 
             assertThat(first.items.map { it.postId }).containsExactly(PostFixtures.postId(2), PostFixtures.postId(3))
             assertThat(
@@ -101,10 +105,87 @@ class ExposedPublishedPostStoreTest {
             publicPost(1, Instant.parse("2026-10-03T00:00:00Z"))
 
             val expected = listOf(1, 3, 5, 7).map(PostFixtures::postId)
-            assertThat(store.findListPage(emptySet(), PageQuery(1, 10)).items.map { it.postId }).containsExactlyElementsOf(expected)
+            assertThat(
+                store.findListPage(emptySet(), PublishedListQuery(PageQuery(1, 10))).items.map { it.postId },
+            ).containsExactlyElementsOf(expected)
             assertThat(store.findRecent(emptySet(), 10).map { it.revision.postId }).containsExactlyElementsOf(expected)
         }
     }
+
+    @Test
+    fun `filtering by a category lists each public post once and counts only that category`() {
+        val kotlin = categoryId(1)
+        val essay = categoryId(2)
+
+        database.inTransaction {
+            seedCategorizedPosts(kotlin, essay)
+
+            val first = store.findListPage(emptySet(), PublishedListQuery(PageQuery(1, 1), categoryId = kotlin))
+            val second = store.findListPage(emptySet(), PublishedListQuery(PageQuery(2, 1), categoryId = kotlin))
+            val unknown = store.findListPage(emptySet(), PublishedListQuery(PageQuery(1, 10), categoryId = categoryId(9)))
+
+            assertThat(first.items.map { it.postId }).containsExactly(PostFixtures.postId(2))
+            assertThat(second.items.map { it.postId }).containsExactly(PostFixtures.postId(1))
+            assertThat(first.totalItems).isEqualTo(2)
+            assertThat(unknown.items).isEmpty()
+            assertThat(unknown.totalItems).isZero()
+        }
+    }
+
+    @Test
+    fun `listed entries carry their categories ordered by position and posts can be listed oldest first`() {
+        val kotlin = categoryId(1)
+        val essay = categoryId(2)
+
+        database.inTransaction {
+            seedCategorizedPosts(kotlin, essay)
+
+            val oldest = store.findListPage(emptySet(), PublishedListQuery(PageQuery(1, 10), HomePostOrder.OLDEST_FIRST))
+
+            assertThat(oldest.items.map { it.postId }).containsExactlyElementsOf((1..3).map(PostFixtures::postId))
+            assertThat(
+                oldest.items
+                    .first()
+                    .categories
+                    .map { it.name },
+            ).containsExactly("Essay", "Kotlin")
+            assertThat(oldest.items[1].categories.map { it.id }).containsExactly(kotlin)
+            assertThat(oldest.items.last().categories).isEmpty()
+        }
+    }
+
+    @Test
+    fun `category counts cover only listed public posts in category order`() {
+        val kotlin = categoryId(1)
+        val essay = categoryId(2)
+
+        database.inTransaction {
+            seedCategorizedPosts(kotlin, essay)
+
+            val all = store.findCategoryCounts(emptySet())
+            val withoutSecond = store.findCategoryCounts(setOf(PostFixtures.postId(2)))
+
+            assertThat(all.map { it.category.id to it.count }).containsExactly(essay to 1, kotlin to 2)
+            assertThat(withoutSecond.map { it.category.id to it.count }).containsExactly(essay to 1, kotlin to 1)
+        }
+    }
+
+    private fun seedCategorizedPosts(
+        kotlin: CategoryId,
+        essay: CategoryId,
+    ) {
+        PostRows.category(kotlin, "Kotlin", 1)
+        PostRows.category(essay, "Essay", 0)
+        publicPost(1, Instant.parse("2026-10-01T00:00:00Z"))
+        publicPost(2, Instant.parse("2026-10-02T00:00:00Z"))
+        publicPost(3, Instant.parse("2026-10-03T00:00:00Z"))
+        privatePost(4, everPublished = true)
+        listOf(1 to kotlin, 1 to essay, 2 to kotlin, 4 to essay, 4 to kotlin).forEach { (label, category) ->
+            PostRows.assignment(PostFixtures.postId(label), category)
+        }
+    }
+
+    private fun categoryId(label: Int) = CategoryId(UUID.fromString("00000000-0000-0000-0000-%012d".format(label)))
 
     @Test
     fun `a damaged stored revision is reported as a snapshot content failure with its cause`() {
@@ -128,7 +209,7 @@ class ExposedPublishedPostStoreTest {
             // JSON 컬럼은 객체도 받지만 리비전 태그는 배열이어야 한다.
             PostRevisionTable.update { it[tagsJson] = "{}" }
 
-            assertThatThrownBy { store.findListPage(emptySet(), PageQuery(1, 10)) }
+            assertThatThrownBy { store.findListPage(emptySet(), PublishedListQuery(PageQuery(1, 10))) }
                 .isInstanceOf(SnapshotContentException::class.java)
                 .hasCauseInstanceOf(IllegalArgumentException::class.java)
         }
