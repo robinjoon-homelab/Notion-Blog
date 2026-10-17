@@ -70,6 +70,8 @@ class HexagonalArchitectureTest {
                         "site.SiteConfiguration",
                         "presentation.PresentationProfile",
                         "sync.SyncState",
+                        "home.HomeConfiguration",
+                        "category.Category",
                     ),
             )
         private val aggregateRoots =

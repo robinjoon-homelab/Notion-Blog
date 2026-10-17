@@ -20,6 +20,7 @@ import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.snapshot.JsonP
 import xyz.robinjoon.notionblog.blog.application.model.PostRevisionSummary
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.DuplicateSourceBindingException
 import xyz.robinjoon.notionblog.blog.domain.SourceRevision
+import xyz.robinjoon.notionblog.blog.domain.category.CategoryId
 import xyz.robinjoon.notionblog.blog.domain.post.Post
 import xyz.robinjoon.notionblog.blog.domain.post.PostProperties
 import xyz.robinjoon.notionblog.blog.domain.post.PostPublication
@@ -32,8 +33,10 @@ import xyz.robinjoon.notionblog.blog.domain.post.block.media.MediaSource
 import xyz.robinjoon.notionblog.blog.domain.post.block.media.SourceMediaKey
 import xyz.robinjoon.notionblog.support.fixture.PostFixtures
 import xyz.robinjoon.notionblog.support.persistence.ExposedH2Database
+import xyz.robinjoon.notionblog.support.persistence.PostRows
 import java.time.Instant
 import java.time.ZoneOffset
+import java.util.UUID
 
 class ExposedPostRepositoryTest {
     private val database = ExposedH2Database()
@@ -190,6 +193,53 @@ class ExposedPostRepositoryTest {
     }
 
     @Test
+    fun `saved categories are restored with the post and replaced as one set`() {
+        val (kotlin, essay, notes) = listOf(1, 2, 3).map(::categoryId)
+
+        database.inTransaction {
+            listOf(kotlin to "Kotlin", essay to "Essay", notes to "Notes").forEach { (id, name) -> PostRows.category(id, name, 0) }
+            val post = Post.register(postId, document)
+            repository.register(post, "Untitled", now)
+
+            repository.saveCategories(post.categorize(setOf(kotlin, essay)))
+            assertThat(repository.find(postId)?.categoryIds).containsExactlyInAnyOrder(kotlin, essay)
+            assertThat(repository.findAllManaged().single().categoryIds).containsExactlyInAnyOrder(kotlin, essay)
+
+            repository.saveCategories(post.categorize(setOf(essay, notes)))
+            assertThat(repository.lock(postId)?.categoryIds).containsExactlyInAnyOrder(essay, notes)
+
+            repository.saveCategories(post.categorize(emptySet()))
+            assertThat(repository.find(postId)?.categoryIds).isEmpty()
+        }
+    }
+
+    @Test
+    fun `saving a publication leaves category links alone and saving categories leaves the publication alone`() {
+        val revisionId = PostFixtures.revisionId(1)
+        val category = categoryId(1)
+        val firstPublication = Instant.parse("2026-10-16T03:00:00Z")
+
+        database.inTransaction {
+            PostRows.category(category, "Kotlin", 0)
+            val registered = Post.register(postId, document)
+            repository.register(registered, "Untitled", now)
+            repository.saveRevision(PostFixtures.revision(postId, revisionId), emptyMap())
+            repository.saveCategories(registered.categorize(setOf(category)))
+
+            val published = registered.recordRevision(revisionId).publish(revisionId, firstPublication)
+            repository.save(published, firstPublication)
+            assertThat(repository.find(postId)?.categoryIds).containsExactly(category)
+            assertThat(repository.find(postId)?.publication?.isPublic).isTrue()
+
+            repository.saveCategories(registered.categorize(emptySet()))
+            val reloaded = repository.find(postId)
+            assertThat(reloaded?.categoryIds).isEmpty()
+            assertThat(reloaded?.publication).isEqualTo(published.publication)
+            assertThat(reloaded?.latestRevisionId).isEqualTo(revisionId)
+        }
+    }
+
+    @Test
     fun `a legacy snapshot is copied unchanged and its files start unbound and are bound at most once`() {
         val legacyFile = PostFixtures.hosted("legacy.png", expiresAt = now)
         val snapshotJson = snapshotCodec.encode(BlockTree(listOf(PostFixtures.image("legacy", legacyFile))))
@@ -251,6 +301,8 @@ class ExposedPostRepositoryTest {
             }
         }
     }
+
+    private fun categoryId(label: Int) = CategoryId(UUID.fromString("00000000-0000-0000-0000-%012d".format(label)))
 
     private fun key(digit: Char): MediaKey = MediaKey(digit.toString().repeat(64))
 

@@ -3,8 +3,10 @@ package xyz.robinjoon.notionblog.blog.domain.post
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 import org.junit.jupiter.api.Test
+import xyz.robinjoon.notionblog.blog.domain.category.CategoryId
 import xyz.robinjoon.notionblog.support.fixture.PostFixtures
 import java.time.Instant
+import java.util.UUID
 
 class PostTest {
     private val postId = PostFixtures.postId(1)
@@ -12,6 +14,8 @@ class PostTest {
     private val second = PostFixtures.revisionId(2)
     private val firstPublication = Instant.parse("2026-10-16T01:00:00Z")
     private val laterPublication = Instant.parse("2026-10-17T01:00:00Z")
+    private val kotlin = CategoryId(UUID.fromString("00000000-0000-0000-0000-000000002001"))
+    private val spring = CategoryId(UUID.fromString("00000000-0000-0000-0000-000000002002"))
 
     @Test
     fun `a registered post is private without revisions or publication history`() {
@@ -20,6 +24,7 @@ class PostTest {
         assertThat(post.latestRevisionId).isNull()
         assertThat(post.publication).isEqualTo(PostPublication(PostVisibility.PRIVATE, null, false, 0, null))
         assertThat(post.firstPublishedAt).isNull()
+        assertThat(post.categoryIds).isEmpty()
     }
 
     @Test
@@ -101,5 +106,31 @@ class PostTest {
             .isThrownBy { PostPublication(PostVisibility.PUBLIC, first, true, 0, firstPublication) }
         assertThatIllegalArgumentException()
             .isThrownBy { PostPublication(PostVisibility.PRIVATE, null, false, -1, null) }
+    }
+
+    @Test
+    fun `categorizing replaces the categories without changing publication or revisions`() {
+        val published = PostFixtures.publicPost(postId, published = first, latest = second, generation = 3)
+
+        val categorized = published.categorize(setOf(kotlin, spring))
+        val cleared = categorized.categorize(emptySet())
+
+        assertThat(categorized.categoryIds).containsExactlyInAnyOrder(kotlin, spring)
+        assertThat(categorized.publication).isEqualTo(published.publication)
+        assertThat(categorized.latestRevisionId).isEqualTo(second)
+        assertThat(cleared.categoryIds).isEmpty()
+        assertThat(cleared.publication).isEqualTo(published.publication)
+    }
+
+    @Test
+    fun `categories stay as chosen when the caller changes its set afterwards`() {
+        val chosen = mutableSetOf(kotlin)
+        val categorized = PostFixtures.privatePost(postId).categorize(chosen)
+
+        chosen.add(spring)
+        chosen.remove(kotlin)
+
+        assertThat(categorized.categoryIds).containsExactly(kotlin)
+        assertThat(categorized.unpublish().archive().categoryIds).containsExactly(kotlin)
     }
 }
