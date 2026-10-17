@@ -38,7 +38,7 @@ internal class SecurityProbeConfig {
 
 @RestController
 internal class SecurityProbeController {
-    @GetMapping("/admin/probe", "/probe")
+    @GetMapping("/admin/probe", "/probe", "/admin/login")
     fun read(): ResponseEntity<String> = ResponseEntity.ok("ok")
 
     @PostMapping("/admin/probe")
@@ -76,6 +76,12 @@ class AdminSecurityFilterChainTest(
     @Test
     fun `anonymous admin access is sent to the login form`() {
         mockMvc.perform(get("/admin/probe")).andExpect(status().isFound).andExpect(redirectedUrl("/admin/login"))
+    }
+
+    @Test
+    fun `anonymous requests can reach the login form and its failure page`() {
+        mockMvc.perform(get("/admin/login")).andExpect(status().isOk)
+        mockMvc.perform(get("/admin/login?error")).andExpect(status().isOk)
     }
 
     @Test

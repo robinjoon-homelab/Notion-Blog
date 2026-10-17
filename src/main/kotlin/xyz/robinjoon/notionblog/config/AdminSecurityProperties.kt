@@ -10,7 +10,4 @@ class AdminSecurityProperties(
 ) {
     val enabled: Boolean
         get() = username.isNotBlank() && password.isNotBlank()
-
-    // 비밀번호가 로그나 예외 메시지에 실리지 않도록 값을 출력하지 않는다.
-    override fun toString(): String = "AdminSecurityProperties(enabled=$enabled)"
 }
