@@ -2,8 +2,9 @@ package xyz.robinjoon.notionblog.config
 
 import org.junit.jupiter.api.Test
 import org.springframework.security.core.authority.SimpleGrantedAuthority
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestBuilders.formLogin
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf
-import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oidcLogin
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user
 import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity
 import org.springframework.test.context.junit.jupiter.web.SpringJUnitWebConfig
 import org.springframework.test.web.servlet.MockMvc
@@ -30,8 +31,14 @@ class AdminSecurityClosedChainTest(
     fun `admin is closed to anonymous and even to a signed in user with the admin role`() {
         mockMvc.perform(get("/admin/probe")).andExpect(status().isForbidden)
         mockMvc
-            .perform(get("/admin/probe").with(oidcLogin().authorities(SimpleGrantedAuthority(ADMIN_ROLE))))
+            .perform(get("/admin/probe").with(user("admin").authorities(SimpleGrantedAuthority(ADMIN_ROLE))))
             .andExpect(status().isForbidden)
         mockMvc.perform(post("/admin/probe").with(csrf())).andExpect(status().isForbidden)
+    }
+
+    @Test
+    fun `login page and login submission stay closed`() {
+        mockMvc.perform(get("/admin/login")).andExpect(status().isForbidden)
+        mockMvc.perform(formLogin("/admin/login").user("admin").password("")).andExpect(status().isForbidden)
     }
 }

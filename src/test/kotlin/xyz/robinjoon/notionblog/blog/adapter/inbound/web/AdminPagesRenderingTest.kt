@@ -26,9 +26,24 @@ class AdminPagesRenderingTest {
     private val postId = WebFixtures.postId
     private val mockMvc: MockMvc =
         MockMvcBuilders
-            .standaloneSetup(AdminPostController(queries, AdminViewAssembler(clock, PostPageViewAssembler(clock))))
+            .standaloneSetup(AdminLoginController(), AdminPostController(queries, AdminViewAssembler(clock, PostPageViewAssembler(clock))))
             .setViewResolvers(viewResolver())
             .build()
+
+    @Test
+    fun `login page asks for username and password and hides the failure notice`() {
+        val html = html("/admin/login")
+
+        assertThat(
+            html,
+        ).contains("name=\"username\"", "name=\"password\"", "type=\"password\"", "action=\"/admin/login\"", "method=\"post\"")
+        assertThat(html).doesNotContain("올바르지 않습니다")
+    }
+
+    @Test
+    fun `failed login shows one generic notice`() {
+        assertThat(html("/admin/login?error")).contains("아이디 또는 비밀번호가 올바르지 않습니다.")
+    }
 
     @Test
     fun `empty list tells the user to write in the connected Notion database`() {

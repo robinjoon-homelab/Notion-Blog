@@ -26,6 +26,7 @@ import org.thymeleaf.spring6.view.ThymeleafViewResolver
 import org.thymeleaf.templatemode.TemplateMode
 import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.AdminFixtures
+import xyz.robinjoon.notionblog.blog.adapter.inbound.web.AdminLoginController
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.AdminPostCommandController
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.AdminPostController
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.AdminViewAssembler
@@ -71,6 +72,7 @@ class AdminHttpDocumentationTest {
     private val mvc: MockMvc =
         MockMvcBuilders
             .standaloneSetup(
+                AdminLoginController(),
                 AdminPostController(queries, AdminViewAssembler(clock, PostPageViewAssembler(clock))),
                 AdminPostCommandController(refreshes, publications),
                 MediaController(media),
@@ -93,6 +95,21 @@ class AdminHttpDocumentationTest {
     @AfterEach
     fun finishDocumentation() {
         restDocumentation.afterTest()
+    }
+
+    @Test
+    fun `login page documents the form and the generic failure notice`() {
+        mvc
+            .perform(get("/admin/login"))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString("name=\"password\"")))
+            .andExpect(header().string("Cache-Control", "no-store"))
+            .andDo(document("admin-login"))
+        mvc
+            .perform(get("/admin/login").param("error", ""))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString("아이디 또는 비밀번호가 올바르지 않습니다.")))
+            .andDo(document("admin-login-failed"))
     }
 
     @Test

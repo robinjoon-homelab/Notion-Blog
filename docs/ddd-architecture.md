@@ -65,7 +65,7 @@ BC가 정해져도 루트의 소유·생명주기가 미정이면 루트와 테�
 
 - 글을 제공하려면 **`PostPublication`이 공개이고 공개본 revision을 읽을 수 있어야 한다.** 비공개·보관·없는 ID·UUID가 아닌 ID는 404, 사이트 설정·표현 자산이 없거나 읽을 수 없는 revision은 503이다.
 - 공개 HTML 경로는 `GET /`(글 목록)와 `GET /posts/{postId}`(내부 UUID)이다. RSS는 `GET /feed.xml`, 공개 파일은 `GET /media/{mediaKey}`다. 제목 기반 경로·slug·별칭을 만들지 않는다. 관리 경로는 `/admin/**`이며 조회는 `GET`, 새로고침·발행·발행 취소·보관·복원은 `POST`만 받는다.
-- 경로는 애너테이션 컨트롤러로만 선언한다. 컨트롤러 경로의 HTTP 메서드·경로 정확한 목록은 `TargetArchitectureBoundaryTest`의 허용 목록과 REST Docs가 원본이다. 보안 체인이 소유한 로그인 시작(`/oauth2/authorization/admin`)·로그인 콜백(`/login/oauth2/code/admin`)·로그아웃(`POST /admin/logout`)은 이 목록에 넣지 않고 `AdminSecurityConfig`와 `AdminSecurity*Test`가 원본이다. 정적 자원과 actuator 상태 경로도 컨트롤러 목록 대상이 아니다.
+- 경로는 애너테이션 컨트롤러로만 선언한다. 컨트롤러 경로의 HTTP 메서드·경로 정확한 목록은 `TargetArchitectureBoundaryTest`의 허용 목록과 REST Docs가 원본이다. 보안 체인이 소유한 로그인 제출(`POST /admin/login`)·로그아웃(`POST /admin/logout`)은 이 목록에 넣지 않고 `AdminSecurityConfig`와 `AdminSecurity*Test`가 원본이다. 정적 자원과 actuator 상태 경로도 컨트롤러 목록 대상이 아니다.
 - **발행:** 미리보기가 준 `revisionId`와 `generation`을 함께 보낸다. 잠금 안에서 없음·보관됨·같은 revision으로 이미 공개(`AlreadyPublished`)·generation 또는 최신 revision 불일치(`StaleRevision`)·파일 미보관(`MediaNotReady`) 순으로 판정한다. 같은 revision이 이미 공개이면 generation 비교보다 먼저 `AlreadyPublished`일 수 있다. 검토하지 않은 revision은 공개되지 않는다.
 - **발행 취소·보관:** 기대 버전 없이 항상 성공하며 Notion 없이 DB만 쓴다. 이미 비공개여도 generation을 올려 진행 중인 발행 요청을 무효로 만든다. 복원은 비공개로 되돌린다.
 - **동기화는 초안만 만든다.** 최신 revision을 추가하고 포인터를 옮기며 공개 여부와 공개본 revision을 건드리지 않는다. 새 revision은 모든 업로드 파일의 보관이 끝난 뒤에만 만든다. 파일은 revision마다 새로 내려받고 SHA-256이 같으면 한 번만 저장하며, 이미 저장된 파일의 바이트·형식·저장 시각은 이후 가져오기가 바꾸지 않는다.
@@ -78,7 +78,7 @@ BC가 정해져도 루트의 소유·생명주기가 미정이면 루트와 테�
 - 본문의 `SourceDocument` 링크는 이 앱에서 공개 상태인 글만 내부 링크로 만든다. 비공개·알 수 없는 대상은 링크 없이 저장된 원래 표시(URL)를 유지하고, 명시적 외부 URL은 그대로 외부 링크다. 인라인 데이터베이스의 읽을 수 있는 행은 Notion `public_url`과 무관하게 가져오며 선택한 열·필터는 원본 설정을 따른다.
 - 스냅샷 JSON에는 논리적 `kind`와 `schemaVersion`만 저장한다. 구현 클래스 이름·Jackson default typing·Notion 원본 응답을 저장하지 않는다.
 - 블록 스타일은 의미 값만 저장한다. CSS·JavaScript·`<head>` 조각을 Notion에서 받거나 저장하지 않고, 표현은 등록된 프로필과 신뢰된 자산만 사용한다.
-- 관리 화면은 OIDC 설정이 하나라도 비면 닫힌다(`403`). 인증 설정은 `config`의 보안 설정 안에 두고 포트·유스케이스·모델은 인증 방식을 알지 못한다.
+- 관리 화면은 관리자 아이디·비밀번호 설정이 하나라도 비면 닫힌다(`403`). 인증 설정은 `config`의 보안 설정 안에 두고 포트·유스케이스·모델은 인증 방식을 알지 못한다.
 
 ### 레거시 글 이전
 

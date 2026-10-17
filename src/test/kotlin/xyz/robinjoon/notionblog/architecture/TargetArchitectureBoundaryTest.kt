@@ -307,6 +307,7 @@ internal class TargetArchitectureChecks(
                 "GET /posts/{postId}",
                 "GET /feed.xml",
                 "GET /media/{mediaKey}",
+                "GET /admin/login",
                 "GET /admin/posts",
                 "GET /admin/posts/{postId}",
                 "POST /admin/posts/{postId}/refresh",
