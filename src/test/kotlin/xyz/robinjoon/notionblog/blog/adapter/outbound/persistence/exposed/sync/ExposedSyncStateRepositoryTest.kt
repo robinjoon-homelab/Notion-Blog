@@ -54,7 +54,7 @@ class ExposedSyncStateRepositoryTest {
             val first = SyncState.restore(SyncTarget.SiteConfiguration, null, now.minusSeconds(30), null)
             val second =
                 SyncState.restore(
-                    SyncTarget.Publication(PublicationId(UUID.randomUUID())),
+                    SyncTarget.Post(PostId(UUID.randomUUID())),
                     null,
                     now.minusSeconds(20),
                     SyncFailure(1, SyncFailureKind.RETRYABLE_SOURCE),
@@ -91,7 +91,19 @@ class ExposedSyncStateRepositoryTest {
             repository.delete(removed.target)
 
             assertThat(repository.find(removed.target)).isNull()
-            assertThat(repository.findDue(now, 10)).containsExactlyInAnyOrderElementsOf(retained)
+            retained.forEach { state -> assertThat(repository.find(state.target)).isEqualTo(state) }
+        }
+
+    @Test
+    fun `a kept legacy publication schedule is never due and never takes a batch slot`() =
+        inTransaction {
+            val now = Instant.parse("2026-10-16T00:00:00Z")
+            val legacy = SyncState.restore(SyncTarget.Publication(PublicationId(UUID.randomUUID())), null, now.minusSeconds(60), null)
+            val post = SyncState.restore(SyncTarget.Post(PostId(UUID.randomUUID())), null, now.minusSeconds(10), null)
+            listOf(legacy, post).forEach(repository::save)
+
+            assertThat(repository.findDue(now, 1)).containsExactly(post)
+            assertThat(repository.find(legacy.target)).isEqualTo(legacy)
         }
 
     @Test
@@ -111,6 +123,21 @@ class ExposedSyncStateRepositoryTest {
             repository.save(replacement)
 
             assertThat(repository.find(target)).isEqualTo(replacement)
+        }
+
+    @Test
+    fun `finds the states of several targets at once including a media failure`() =
+        inTransaction {
+            val now = Instant.parse("2026-10-16T00:00:00Z")
+            val first = SyncState.restore(SyncTarget.Post(PostId(UUID.randomUUID())), null, now, SyncFailure(1, SyncFailureKind.MEDIA))
+            val second = SyncState.restore(SyncTarget.Post(PostId(UUID.randomUUID())), now, now.plusSeconds(5), null)
+            val missing = SyncTarget.Post(PostId(UUID.randomUUID()))
+            repository.save(first)
+            repository.save(second)
+
+            assertThat(repository.findAll(setOf(first.target, second.target, missing)))
+                .containsExactlyInAnyOrderEntriesOf(mapOf(first.target to first, second.target to second))
+            assertThat(repository.findAll(emptySet())).isEmpty()
         }
 
     private fun inTransaction(block: () -> Unit) {

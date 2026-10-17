@@ -27,8 +27,8 @@ class NotionSiteConfigurationSourceTest {
 
         val configuration = source.fetch()
 
-        assertThat(configuration.rootDocument.sourceId).isEqualTo(SourceId("notion-main"))
-        assertThat(configuration.rootDocument.externalId).isEqualTo("0123456789abcdef0123456789abcdef")
+        assertThat(configuration.rootDocument?.sourceId).isEqualTo(SourceId("notion-main"))
+        assertThat(configuration.rootDocument?.externalId).isEqualTo("0123456789abcdef0123456789abcdef")
     }
 
     private fun row(

@@ -249,7 +249,7 @@ internal class NotionDatabaseViewReader(
         val requestedProperties = selection.requestedProperties()
         val page = accessiblePage(rowId, requestedProperties, collection) ?: return null
         collection.requireMatchingId(page.id, rowId)
-        if (page.inTrash || page.publicUrl == null) return null
+        if (page.inTrash) return null
         val sourceId = page.parent.dataSourceId
         if (page.parent.type != "data_source_id" || sourceId == null) {
             throw SourceMappingException("Notion view row must belong to its data source")

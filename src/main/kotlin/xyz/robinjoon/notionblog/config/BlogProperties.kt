@@ -26,24 +26,29 @@ data class BlogProperties(
             uri.resolve("/")
         }
 
-    data class Synchronization(
-        val enabled: Boolean = true,
-        val intervalMs: Long = 60_000,
-        val dueBatchSize: Int = 100,
-        val successInterval: Duration = Duration.ofMinutes(5),
-        val initialFailureDelay: Duration = Duration.ofSeconds(5),
-        val maximumFailureDelay: Duration = Duration.ofMinutes(5),
-    ) {
-        init {
-            require(intervalMs > 0) { "blog.synchronization.interval-ms must be positive" }
-            require(dueBatchSize > 0) { "blog.synchronization.due-batch-size must be positive" }
-            require(successInterval.isPositive) { "blog.synchronization.success-interval must be positive" }
-            require(initialFailureDelay.isPositive) { "blog.synchronization.initial-failure-delay must be positive" }
-            require(maximumFailureDelay >= initialFailureDelay) {
-                "blog.synchronization.maximum-failure-delay must not be shorter than the initial failure delay"
+    data class Synchronization
+        // quality-exception: blog.synchronization.* 설정 7개를 기존 환경변수와 같은 평탄한 바인딩 계약으로 유지한다.
+        @Suppress("LongParameterList")
+        constructor(
+            val enabled: Boolean = true,
+            val intervalMs: Long = 60_000,
+            val dueBatchSize: Int = 100,
+            val successInterval: Duration = Duration.ofMinutes(5),
+            val initialFailureDelay: Duration = Duration.ofSeconds(5),
+            val maximumFailureDelay: Duration = Duration.ofMinutes(5),
+            val catalogIntervalMs: Long = 300_000,
+        ) {
+            init {
+                require(intervalMs > 0) { "blog.synchronization.interval-ms must be positive" }
+                require(dueBatchSize > 0) { "blog.synchronization.due-batch-size must be positive" }
+                require(catalogIntervalMs > 0) { "blog.synchronization.catalog-interval-ms must be positive" }
+                require(successInterval.isPositive) { "blog.synchronization.success-interval must be positive" }
+                require(initialFailureDelay.isPositive) { "blog.synchronization.initial-failure-delay must be positive" }
+                require(maximumFailureDelay >= initialFailureDelay) {
+                    "blog.synchronization.maximum-failure-delay must not be shorter than the initial failure delay"
+                }
             }
         }
-    }
 
     data class Presentation(
         val defaultProfileKey: String = "notion-default",

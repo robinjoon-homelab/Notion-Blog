@@ -8,12 +8,9 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
-import org.junit.jupiter.params.provider.NullSource
 import org.junit.jupiter.params.provider.ValueSource
 import xyz.robinjoon.notionblog.blog.adapter.outbound.notion.client.NotionApiClient
 import xyz.robinjoon.notionblog.blog.adapter.outbound.notion.source.NotionPostSource
-import xyz.robinjoon.notionblog.blog.application.model.ImportedPublicationStatus
-import xyz.robinjoon.notionblog.blog.application.port.output.source.SourceConfigurationException
 import xyz.robinjoon.notionblog.blog.application.port.output.source.SourceMappingException
 import xyz.robinjoon.notionblog.blog.domain.SourceDocumentRef
 import xyz.robinjoon.notionblog.blog.domain.SourceId
@@ -34,14 +31,12 @@ class NotionFailurePreservationTest {
     }
 
     @ParameterizedTest
-    @NullSource
     @ValueSource(strings = ["42", "false", "{}", "[]", "\"\"", "\" \""])
-    fun `malformed publication metadata raises a configuration failure`(publicUrl: String?) {
+    fun `a malformed public_url hint is ignored and the page still imports`(publicUrl: String) {
         enqueuePage(publicUrl)
         enqueueChildren()
 
-        assertThatThrownBy { source().fetch(reference) }
-            .isInstanceOf(SourceConfigurationException::class.java)
+        assertThat(source().fetch(reference).title).isEqualTo("Incoming title")
     }
 
     @ParameterizedTest
@@ -63,13 +58,23 @@ class NotionFailurePreservationTest {
     }
 
     @Test
-    fun `explicit null publication URL produces an unpublished import`() {
+    fun `missing publication URL still imports the page`() {
+        enqueuePage(null)
+        enqueueChildren()
+
+        val imported = source().fetch(reference)
+
+        assertThat(imported.title).isEqualTo("Incoming title")
+    }
+
+    @Test
+    fun `explicit null publication URL still imports the page`() {
         enqueuePage("null")
         enqueueChildren()
 
         val imported = source().fetch(reference)
 
-        assertThat(imported.publicationStatus).isEqualTo(ImportedPublicationStatus.UNPUBLISHED)
+        assertThat(imported.title).isEqualTo("Incoming title")
     }
 
     private fun source() =

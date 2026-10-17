@@ -9,28 +9,28 @@ import org.springframework.test.web.servlet.MvcResult
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.springframework.test.web.servlet.setup.StandaloneMockMvcBuilder
-import xyz.robinjoon.notionblog.blog.adapter.inbound.web.view.PostPageView
-import xyz.robinjoon.notionblog.blog.application.model.BlogPage
-import xyz.robinjoon.notionblog.blog.application.model.BlogPageLookupResult
-import xyz.robinjoon.notionblog.blog.application.port.input.GetBlogPageUseCase
+import xyz.robinjoon.notionblog.blog.application.model.PostListLookupResult
+import xyz.robinjoon.notionblog.blog.application.port.input.GetPostListUseCase
+import xyz.robinjoon.notionblog.blog.application.port.input.GetPublicPostUseCase
+import java.time.Clock
+import java.time.Instant
+import java.time.ZoneOffset
 
 class WebSecurityHeadersFilterTest {
-    private val blogPages = mockk<GetBlogPageUseCase>()
-    private val assembler = mockk<PostPageViewAssembler>()
+    private val postLists = mockk<GetPostListUseCase>()
+    private val posts = mockk<GetPublicPostUseCase>()
+    private val assembler = PostPageViewAssembler(Clock.fixed(Instant.parse("2026-10-16T00:00:00Z"), ZoneOffset.UTC))
     private val mockMvc: MockMvc = createMockMvc()
 
     private fun createMockMvc(): MockMvc {
-        val builder = MockMvcBuilders.standaloneSetup(BlogController(blogPages, assembler))
+        val builder = MockMvcBuilders.standaloneSetup(BlogController(postLists, posts, assembler))
         builder.addFilter<StandaloneMockMvcBuilder>(WebSecurityHeadersFilter())
         return builder.build()
     }
 
     @Test
     fun `normal MVC response has a strict content security policy and protective headers`() {
-        val page = mockk<BlogPage>()
-        val view = mockk<PostPageView>()
-        every { blogPages.getRoot() } returns BlogPageLookupResult.Found(page)
-        every { assembler.assemble(page) } returns view
+        every { postLists.get(any()) } returns PostListLookupResult.Found(WebFixtures.listPage())
 
         val result = mockMvc.perform(get("/")).andReturn()
 
@@ -40,12 +40,47 @@ class WebSecurityHeadersFilterTest {
 
     @Test
     fun `MVC error response has the same protective headers`() {
-        every { blogPages.getRoot() } returns BlogPageLookupResult.ContentUnavailable
+        every { postLists.get(any()) } returns PostListLookupResult.ContentUnavailable
 
         val result = mockMvc.perform(get("/")).andReturn()
 
         assertThat(result.response.status).isEqualTo(503)
         assertProtectiveHeaders(result)
+    }
+
+    @Test
+    fun `admin response allows same-origin forms and is never cached`() {
+        val result = mockMvc.perform(get("/admin/posts")).andReturn()
+
+        assertThat(result.response.getHeader("Cache-Control")).isEqualTo("no-store")
+        assertThat(result.response.getHeader("Pragma")).isEqualTo("no-cache")
+        assertThat(result.response.getHeader("Content-Security-Policy")).contains("form-action 'self'")
+    }
+
+    @Test
+    fun `admin response under a context path allows same-origin forms and is never cached`() {
+        val result = mockMvc.perform(get("/blog/admin/posts").contextPath("/blog")).andReturn()
+
+        assertThat(result.response.getHeader("Cache-Control")).isEqualTo("no-store")
+        assertThat(result.response.getHeader("Content-Security-Policy")).contains("form-action 'self'")
+    }
+
+    @Test
+    fun `public response disables forms and stays cacheable`() {
+        every { postLists.get(any()) } returns PostListLookupResult.ContentUnavailable
+
+        val result = mockMvc.perform(get("/")).andReturn()
+
+        assertThat(result.response.getHeader("Content-Security-Policy")).contains("form-action 'none'")
+        assertThat(result.response.getHeader("Cache-Control")).isNull()
+    }
+
+    @Test
+    fun `public path under a context path disables forms and stays cacheable`() {
+        val result = mockMvc.perform(get("/admin/posts").contextPath("/admin")).andReturn()
+
+        assertThat(result.response.getHeader("Content-Security-Policy")).contains("form-action 'none'")
+        assertThat(result.response.getHeader("Cache-Control")).isNull()
     }
 
     private fun assertProtectiveHeaders(result: MvcResult) {

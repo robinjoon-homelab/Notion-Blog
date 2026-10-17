@@ -1,0 +1,30 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${page.chrome.language}">
+<head th:replace="~{blog/page-fragments :: head(${page.chrome}, ${page.chrome.siteName})}"></head>
+<body>
+<main class="notion-page" th:classappend="${#strings.listJoin(page.chrome.profile.classes, ' ')}">
+    <header th:replace="~{blog/page-fragments :: header(${page.chrome})}"></header>
+    <section class="notion-content">
+        <h1 class="notion-title" th:text="${page.chrome.siteName}">Blog</h1>
+        <p class="nb-muted" th:if="${page.chrome.description != null}" th:text="${page.chrome.description}">설명</p>
+        <p class="nb-small" th:if="${page.chrome.legacyRootHref != null}"><a th:href="${page.chrome.legacyRootHref}">소개 문서</a></p>
+        <ul class="nb-post-list" th:if="${!#lists.isEmpty(page.entries)}">
+            <li th:each="entry : ${page.entries}" class="nb-home-post">
+                <a class="nb-post-title" th:href="${entry.href}" th:text="${entry.title}">제목</a>
+                <p class="nb-post-summary" th:if="${entry.summary != null}" th:text="${entry.summary}">요약</p>
+                <p class="nb-small nb-muted"><span th:text="${entry.publishedOn}">2026. 10. 16.</span>
+                    <span th:each="tag : ${entry.tags}" class="nb-badge" th:text="${tag}">태그</span></p>
+            </li>
+        </ul>
+        <div class="nb-empty" th:if="${#lists.isEmpty(page.entries)}"><h2>아직 공개된 글이 없습니다.</h2></div>
+        <nav class="nb-pager" aria-label="쪽 이동" th:if="${page.pagination.totalPages > 1}">
+            <a th:if="${page.pagination.previousHref != null}" th:href="${page.pagination.previousHref}">← 이전</a>
+            <span th:text="${page.pagination.page + ' / ' + page.pagination.totalPages}">1 / 2</span>
+            <a th:if="${page.pagination.nextHref != null}" th:href="${page.pagination.nextHref}">다음 →</a>
+        </nav>
+    </section>
+    <footer th:replace="~{blog/page-fragments :: footer(${page.chrome})}"></footer>
+    <div class="notion-content" th:if="${page.chrome.feedUrl != null}"><p><a th:href="${page.chrome.feedUrl}">RSS 구독</a></p></div>
+</main>
+</body>
+</html>

@@ -1,0 +1,324 @@
+<div id="nb-publication-prototype">
+  <style>
+    #nb-publication-prototype {
+      --nb-paper: light-dark(#ffffff, #191919);
+      --nb-sidebar: light-dark(#f7f7f5, #202020);
+      --nb-soft: light-dark(#f1f1ef, #2f2f2f);
+      --nb-hover: light-dark(#eaeae8, #383838);
+      --nb-ink: light-dark(#37352f, #e3e3e1);
+      --nb-secondary: light-dark(#787774, #a8a8a5);
+      --nb-line: light-dark(#e9e9e7, #353535);
+      --nb-solid: light-dark(#37352f, #dededb);
+      --nb-on-solid: light-dark(#ffffff, #202020);
+      --nb-warm: light-dark(#f5e9d6, #443a2a);
+      --nb-warm-ink: light-dark(#886233, #d6b184);
+      --nb-good: light-dark(#e6efdf, #2e3e30);
+      --nb-good-ink: light-dark(#4b6d4c, #b0c7ad);
+      --nb-danger: light-dark(#a14d46, #ddaaa4);
+      width: 100%;
+      color: var(--nb-ink);
+      font: 400 14px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    }
+    #nb-publication-prototype * { box-sizing: border-box; }
+    #nb-publication-prototype [hidden] { display: none !important; }
+    #nb-publication-prototype h1, #nb-publication-prototype h2, #nb-publication-prototype h3, #nb-publication-prototype p { margin: 0; }
+    #nb-publication-prototype button { font: inherit; color: inherit; }
+    #nb-publication-prototype .nb-demo { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 22px; padding: 0 100px 14px 0; color: var(--nb-secondary); font-size: 12px; }
+    #nb-publication-prototype .nb-nav { display: flex; gap: 4px; flex-wrap: wrap; }
+    #nb-publication-prototype .nb-tab { background: transparent; border: 1px solid transparent; border-radius: 5px; padding: 5px 10px; color: var(--nb-secondary); }
+    #nb-publication-prototype .nb-tab[aria-selected="true"] { color: var(--nb-ink); background: var(--nb-soft); border-color: var(--nb-line); }
+    #nb-publication-prototype .nb-window { display: grid; grid-template-columns: 180px minmax(0, 1fr); grid-template-areas: "side top" "side main"; background: var(--nb-paper); border: 1px solid var(--nb-line); border-radius: 5px; overflow: clip; }
+    #nb-publication-prototype .nb-sidebar { grid-area: side; background: var(--nb-sidebar); padding: 16px 9px; border-right: 1px solid var(--nb-line); }
+    #nb-publication-prototype .nb-workspace-name { display: flex; align-items: center; gap: 8px; padding: 2px 6px 20px; font-weight: 500; font-size: 13px; }
+    #nb-publication-prototype .nb-avatar { display: inline-grid; place-items: center; width: 22px; height: 22px; background: var(--nb-hover); border-radius: 4px; }
+    #nb-publication-prototype .nb-side-heading { color: var(--nb-secondary); font-size: 11px; padding: 13px 8px 6px; }
+    #nb-publication-prototype .nb-side-link { display: flex; width: 100%; align-items: center; gap: 8px; background: transparent; border: 0; padding: 6px 8px; text-align: left; border-radius: 4px; font-size: 13px; }
+    #nb-publication-prototype .nb-side-link[aria-current="page"], #nb-publication-prototype .nb-side-link:hover { background: var(--nb-hover); }
+    #nb-publication-prototype .nb-topbar { grid-area: top; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 13px 20px; font-size: 12px; }
+    #nb-publication-prototype .nb-breadcrumb { min-width: 0; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    #nb-publication-prototype .nb-breadcrumb > span:nth-child(2) { color: var(--nb-secondary); }
+    #nb-publication-prototype .nb-topbar .nb-menu { display: none; }
+    #nb-publication-prototype .nb-workspace { grid-area: main; min-width: 0; }
+    #nb-publication-prototype .nb-body { padding: 32px 42px 44px; min-width: 0; }
+    #nb-publication-prototype .nb-page-icon { font-size: 38px; line-height: 1.3; margin-bottom: 13px; }
+    #nb-publication-prototype .nb-heading { font-size: 32px; font-weight: 500; letter-spacing: -.045em; line-height: 1.35; }
+    #nb-publication-prototype .nb-muted { color: var(--nb-secondary); }
+    #nb-publication-prototype .nb-small { font-size: 12px; }
+    #nb-publication-prototype .nb-section-head { margin-bottom: 30px; }
+    #nb-publication-prototype .nb-section-head p { margin-top: 8px; }
+    #nb-publication-prototype .nb-button { display: inline-flex; align-items: center; justify-content: center; padding: 5px 10px; border: 1px solid var(--nb-line); border-radius: 4px; background: var(--nb-paper); text-align: center; }
+    #nb-publication-prototype .nb-button:hover { background: var(--nb-soft); }
+    #nb-publication-prototype .nb-primary { background: var(--nb-solid); border-color: var(--nb-solid); color: var(--nb-on-solid); }
+    #nb-publication-prototype .nb-primary:hover { background: var(--nb-solid); opacity: .9; }
+    #nb-publication-prototype .nb-button:disabled { opacity: .45; cursor: not-allowed; }
+    #nb-publication-prototype .nb-link { display: inline-flex; align-items: center; gap: 7px; background: transparent; border: 0; padding: 4px 0; text-align: left; }
+    #nb-publication-prototype .nb-link:hover { text-decoration: underline; text-underline-offset: 4px; }
+    #nb-publication-prototype .nb-danger { color: var(--nb-danger); }
+    #nb-publication-prototype .nb-database-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin: 26px 0 10px; }
+    #nb-publication-prototype .nb-view-label { padding: 5px 1px; font-size: 13px; font-weight: 500; border-bottom: 2px solid var(--nb-ink); }
+    #nb-publication-prototype .nb-database { width: 100%; table-layout: fixed; border-collapse: collapse; text-align: left; }
+    #nb-publication-prototype .nb-database th { font-weight: 400; font-size: 12px; color: var(--nb-secondary); padding: 7px 9px; border-top: 1px solid var(--nb-line); border-bottom: 1px solid var(--nb-line); }
+    #nb-publication-prototype .nb-database td { padding: 11px 9px; border-bottom: 1px solid var(--nb-line); vertical-align: top; }
+    #nb-publication-prototype .nb-database th:not(:last-child), #nb-publication-prototype .nb-database td:not(:last-child) { border-right: 1px solid var(--nb-line); }
+    #nb-publication-prototype .nb-database th:first-child { width: 53%; }
+    #nb-publication-prototype .nb-database th:nth-child(2) { width: 25%; }
+    #nb-publication-prototype .nb-database .nb-post-title { font-weight: 500; font-size: 14px; line-height: 1.65; }
+    #nb-publication-prototype .nb-post-summary { color: var(--nb-secondary); font-size: 12px; margin-top: 4px; }
+    #nb-publication-prototype .nb-status-stack { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+    #nb-publication-prototype .nb-badge { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 11px; white-space: normal; }
+    #nb-publication-prototype .nb-badge-live { background: var(--nb-good); color: var(--nb-good-ink); }
+    #nb-publication-prototype .nb-badge-change { background: var(--nb-warm); color: var(--nb-warm-ink); }
+    #nb-publication-prototype .nb-badge-draft { background: var(--nb-soft); color: var(--nb-secondary); }
+    #nb-publication-prototype .nb-list-note { margin-top: 17px; font-size: 12px; color: var(--nb-secondary); }
+    #nb-publication-prototype .nb-preview-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 29px; }
+    #nb-publication-prototype .nb-preview-controls { display: flex; gap: 5px; flex-wrap: wrap; }
+    #nb-publication-prototype .nb-version { border: 0; border-bottom: 2px solid transparent; padding: 5px 7px; background: transparent; color: var(--nb-secondary); font-size: 12px; }
+    #nb-publication-prototype .nb-version[aria-pressed="true"] { color: var(--nb-ink); border-bottom-color: var(--nb-ink); }
+    #nb-publication-prototype .nb-version:disabled { opacity: .45; }
+    #nb-publication-prototype .nb-article { min-width: 0; }
+    #nb-publication-prototype .nb-article h1 { font-size: 30px; line-height: 1.4; letter-spacing: -.05em; font-weight: 500; margin-bottom: 16px; overflow-wrap: anywhere; }
+    #nb-publication-prototype .nb-property { display: grid; grid-template-columns: 82px minmax(0, 1fr); gap: 13px; padding: 6px 0; font-size: 12px; }
+    #nb-publication-prototype .nb-property-label { color: var(--nb-secondary); }
+    #nb-publication-prototype .nb-tag { display: inline-block; background: var(--nb-soft); padding: 0 6px; border-radius: 3px; margin-right: 4px; }
+    #nb-publication-prototype .nb-article-body { border-top: 1px solid var(--nb-line); margin-top: 21px; padding-top: 22px; }
+    #nb-publication-prototype .nb-article-body p { margin-bottom: 14px; line-height: 1.9; }
+    #nb-publication-prototype .nb-article-body h2 { font-size: 20px; line-height: 1.5; font-weight: 500; margin: 25px 0 10px; }
+    #nb-publication-prototype .nb-article-body blockquote { margin: 20px 0; padding: 0 0 0 14px; border-left: 3px solid var(--nb-ink); }
+    #nb-publication-prototype .nb-publish-panel { margin-top: 34px; border-top: 1px solid var(--nb-line); padding-top: 20px; }
+    #nb-publication-prototype .nb-publish-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; }
+    #nb-publication-prototype .nb-panel-title { font-size: 14px; font-weight: 500; }
+    #nb-publication-prototype .nb-publish-panel p { font-size: 12px; color: var(--nb-secondary); margin-top: 5px; }
+    #nb-publication-prototype .nb-fact { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; font-size: 12px; margin: 9px 0 16px; }
+    #nb-publication-prototype .nb-fact > span:first-child { color: var(--nb-secondary); }
+    #nb-publication-prototype .nb-panel-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 17px; }
+    #nb-publication-prototype .nb-cancel { font-size: 12px; margin-left: auto; }
+    #nb-publication-prototype .nb-home-post { border-top: 1px solid var(--nb-line); border-bottom: 1px solid var(--nb-line); padding: 15px 0; }
+    #nb-publication-prototype .nb-home-post .nb-post-title { font-size: 16px; font-weight: 500; }
+    #nb-publication-prototype .nb-home-post .nb-post-summary { margin: 5px 0 9px; }
+    #nb-publication-prototype .nb-empty { padding: 23px 0; color: var(--nb-secondary); }
+    #nb-publication-prototype .nb-empty h2 { font-size: 18px; font-weight: 500; margin-bottom: 8px; color: var(--nb-ink); }
+    #nb-publication-prototype .nb-reading-back { margin-bottom: 24px; }
+    #nb-publication-prototype .nb-toast { margin: 0 20px; padding: 12px 0; border-top: 1px solid var(--nb-line); color: var(--nb-secondary); font-size: 12px; }
+    @media (max-width: 780px) {
+      #nb-publication-prototype .nb-window { grid-template-columns: 150px minmax(0, 1fr); }
+      #nb-publication-prototype .nb-body { padding: 27px 24px 35px; }
+      #nb-publication-prototype .nb-database th:first-child { width: 58%; }
+      #nb-publication-prototype .nb-database th:nth-child(2) { width: 42%; }
+      #nb-publication-prototype .nb-date-col { display: none; }
+    }
+    @media (max-width: 600px) {
+      #nb-publication-prototype .nb-window { grid-template-columns: minmax(0, 1fr); grid-template-areas: "top" "side" "main"; }
+      #nb-publication-prototype .nb-sidebar { display: none; border-right: 0; border-bottom: 1px solid var(--nb-line); }
+      #nb-publication-prototype.nb-menu-open .nb-sidebar { display: block; }
+      #nb-publication-prototype .nb-topbar .nb-menu { display: inline-flex; font-size: 12px; }
+      #nb-publication-prototype .nb-topbar { padding: 10px 16px; }
+      #nb-publication-prototype .nb-workspace-name { padding-bottom: 7px; }
+      #nb-publication-prototype .nb-body { padding: 28px 21px 32px; }
+      #nb-publication-prototype .nb-heading { font-size: 29px; }
+      #nb-publication-prototype .nb-article h1 { font-size: 27px; }
+      #nb-publication-prototype .nb-demo { gap: 7px; padding-right: 90px; }
+      #nb-publication-prototype .nb-nav { gap: 1px; }
+      #nb-publication-prototype .nb-tab { padding: 5px 6px; }
+      #nb-publication-prototype .nb-database th:first-child { width: 65%; }
+      #nb-publication-prototype .nb-database th:nth-child(2) { width: 35%; }
+      #nb-publication-prototype .nb-database td, #nb-publication-prototype .nb-database th { padding-left: 7px; padding-right: 7px; }
+      #nb-publication-prototype .nb-property { grid-template-columns: 65px minmax(0, 1fr); gap: 10px; }
+      #nb-publication-prototype .nb-panel-actions { align-items: stretch; }
+      #nb-publication-prototype .nb-panel-actions .nb-button { flex: 1 1 120px; }
+      #nb-publication-prototype .nb-cancel { margin: 2px 0 0; width: 100%; justify-content: flex-start; }
+    }
+    @media (pointer: coarse) {
+      #nb-publication-prototype button { min-height: 44px; }
+    }
+  </style>
+
+  <div class="nb-demo">
+    <span>화면 설계 예시 · 실제 저장 없음</span>
+    <nav class="nb-nav" aria-label="화면 예시 선택" role="tablist">
+      <button type="button" class="nb-tab cursor-interaction" id="nb-tab-home" role="tab" aria-controls="nb-panel-home" aria-selected="false" data-view="home">공개 홈</button>
+      <button type="button" class="nb-tab cursor-interaction" id="nb-tab-admin" role="tab" aria-controls="nb-panel-admin" aria-selected="true" data-view="admin">게시글 관리</button>
+      <button type="button" class="nb-tab cursor-interaction" id="nb-tab-preview" role="tab" aria-controls="nb-panel-preview" aria-selected="false" data-view="preview">미리보기</button>
+    </nav>
+  </div>
+  <div class="nb-window">
+    <aside class="nb-sidebar" id="nb-sidebar" aria-label="블로그 메뉴">
+      <div class="nb-workspace-name"><span class="nb-avatar" aria-hidden="true">S</span>수빈의 블로그</div>
+      <div class="nb-side-heading">블로그</div>
+      <button type="button" class="nb-side-link cursor-interaction" data-action="go-home" id="nb-side-home"><span aria-hidden="true">🏠</span>공개 홈</button>
+      <button type="button" class="nb-side-link cursor-interaction" data-action="go-admin" id="nb-side-admin" aria-current="page"><span aria-hidden="true">🗂️</span>게시글</button>
+      <button type="button" class="nb-side-link cursor-interaction" data-action="read" id="nb-side-post" hidden><span aria-hidden="true">📄</span>문서를 넘어, 블로그로</button>
+      <div class="nb-side-heading" id="nb-connected-heading">연결된 Notion</div>
+      <button type="button" class="nb-side-link cursor-interaction" data-action="notion-database" id="nb-connected-link"><span aria-hidden="true">▦</span>블로그 게시글 ↗</button>
+    </aside>
+    <header class="nb-topbar">
+      <button type="button" class="nb-button nb-menu cursor-interaction" id="nb-menu" data-action="menu" aria-expanded="false" aria-controls="nb-sidebar">메뉴</button>
+      <div class="nb-breadcrumb"><span>수빈의 블로그</span><span aria-hidden="true">/</span><span id="nb-breadcrumb-current">게시글</span></div>
+    </header>
+    <main class="nb-workspace">
+      <section class="nb-body" id="nb-panel-admin" role="tabpanel" aria-labelledby="nb-tab-admin">
+        <div class="nb-section-head"><div class="nb-page-icon" aria-hidden="true">🗂️</div><h1 class="nb-heading">게시글</h1><p class="nb-muted">본문은 Notion에서, 발행은 여기에서.</p></div>
+        <div class="nb-database-toolbar"><span class="nb-view-label">▦ 모든 게시글</span><span class="nb-muted nb-small">Notion에서 작성·수정</span></div>
+        <table class="nb-database" aria-label="게시글 목록">
+          <thead><tr><th scope="col">Aa 이름</th><th scope="col">발행 상태</th><th class="nb-date-col" scope="col">최근 가져옴</th></tr></thead>
+          <tbody>
+            <tr><td><button type="button" class="nb-link nb-post-title cursor-interaction" data-action="preview"><span aria-hidden="true">📄</span>문서를 넘어, 블로그로</button><p class="nb-post-summary" id="nb-admin-summary">쓰기는 익숙한 곳에서, 공개는 신중하게.</p></td><td><div class="nb-status-stack" id="nb-admin-status"><span class="nb-badge nb-badge-live">발행 중</span><span class="nb-badge nb-badge-change">수정사항 있음</span></div></td><td class="nb-date-col nb-muted nb-small">10. 16.<br>14:20</td></tr>
+            <tr><td><button type="button" class="nb-link nb-post-title cursor-interaction" data-action="notion-draft"><span aria-hidden="true">📄</span>Notion에서 새로 쓴 글</button><p class="nb-post-summary">Notion에서 이어 쓰기 ↗</p></td><td><span class="nb-badge nb-badge-draft">초안</span></td><td class="nb-date-col nb-muted nb-small">10. 15.<br>09:42</td></tr>
+          </tbody>
+        </table>
+        <p class="nb-list-note">수정한 글은 미리보기에서 확인한 뒤 게시합니다.</p>
+      </section>
+
+      <section class="nb-body" id="nb-panel-preview" role="tabpanel" aria-labelledby="nb-tab-preview" hidden>
+        <div class="nb-preview-toolbar">
+          <div class="nb-preview-controls" aria-label="미리보기 내용 선택"><button type="button" class="nb-version cursor-interaction" aria-pressed="false" data-version="live">공개 중인 글</button><button type="button" class="nb-version cursor-interaction" aria-pressed="true" data-version="draft">가져온 초안</button></div>
+          <button type="button" class="nb-button cursor-interaction" data-action="notion">Notion에서 수정 ↗</button>
+        </div>
+        <article class="nb-article" id="nb-preview-article"></article>
+        <section class="nb-publish-panel" aria-label="발행 관리">
+          <div class="nb-publish-heading"><h2 class="nb-panel-title">발행</h2><div id="nb-preview-status" class="nb-status-stack"></div></div>
+          <div class="nb-fact"><span>공개 주소</span><span data-tooltip="/posts/4f9e53a1-0e84-4a86-b8bd-b0e0929da631" aria-label="공개 주소 /posts/4f9e53a1-0e84-4a86-b8bd-b0e0929da631">/posts/…a631</span></div>
+          <div class="nb-panel-title" id="nb-change-title">요약 · 본문 변경</div><p id="nb-change-description">가져온 초안을 게시하면 공개된 글이 교체됩니다.</p>
+          <div class="nb-panel-actions"><button type="button" class="nb-button cursor-interaction" data-action="refresh">최신 내용 가져오기</button><button type="button" class="nb-button nb-primary cursor-interaction" id="nb-publish" data-action="publish">변경사항 게시</button><button type="button" class="nb-link nb-danger nb-cancel cursor-interaction" id="nb-unpublish" data-action="unpublish">발행 취소</button></div>
+        </section>
+      </section>
+
+      <section class="nb-body" id="nb-panel-home" role="tabpanel" aria-labelledby="nb-tab-home" hidden>
+        <div id="nb-home-list"><div class="nb-section-head"><div class="nb-page-icon" aria-hidden="true">📝</div><h1 class="nb-heading">수빈의 블로그</h1><p class="nb-muted">배우고 발견한 것들을 기록합니다.</p></div><div class="nb-database-toolbar"><span class="nb-view-label">☰ 게시글</span></div><div id="nb-home-posts"></div></div>
+        <div id="nb-home-reading" hidden><button type="button" class="nb-link nb-reading-back cursor-interaction" data-action="back-home">← 모든 글</button><article class="nb-article" id="nb-public-article"></article></div>
+      </section>
+      <div class="nb-toast" id="nb-message" role="status" aria-live="polite">예시: 공개본과 가져온 초안을 비교할 수 있습니다.</div>
+    </main>
+  </div>
+  <script>
+    (() => {
+      const root = document.getElementById('nb-publication-prototype');
+      if (!root) return;
+      const q = (selector) => root.querySelector(selector);
+      const versions = {
+        1: {
+          summary: '생각을 정리하는 공간, 첫 번째 공개 기록.',
+          paragraphs: '<p>처음에는 문서 하나면 충분했어요. 생각을 적고, 고치고, 다시 찾아보는 공간이 필요했으니까요.</p><p>기록이 쌓이자 나누고 싶은 이야기도 생겼습니다. 그래서 이 작은 블로그를 열었어요.</p><h2>기록을 남긴다는 것</h2><p>완벽한 문장을 기다리기보다, 오늘의 생각을 하나씩 남겨보려 합니다.</p>'
+        },
+        2: {
+          summary: '쓰기는 익숙한 곳에서, 공개는 신중하게.',
+          paragraphs: '<p>처음에는 문서 하나면 충분했어요. 생각을 적고, 고치고, 다시 찾아보는 공간이 필요했으니까요.</p><p>이제 글은 익숙한 Notion에서 다듬고, 준비가 되었을 때 블로그에 게시합니다.</p><h2>고치는 중에도, 공개된 글은 그대로</h2><p>독자는 마지막으로 게시한 글을 읽습니다. 수정한 문장은 미리보기에서 확인한 뒤에 전달해요.</p><blockquote>작성과 발행에, 각자의 자리를.</blockquote>'
+        }
+      };
+      const defaults = { view: 'admin', live: 1, draft: 2, version: 'draft', reading: false, menu: false };
+      let state = { ...defaults };
+      const restored = (snapshot) => {
+        const saved = snapshot && snapshot.privateContent;
+        if (!saved || saved.prototype !== 'notion-blog-v2') return null;
+        return {
+          view: ['admin', 'preview', 'home'].includes(saved.view) ? saved.view : 'admin',
+          live: [null, 1, 2].includes(saved.live) ? saved.live : 1,
+          draft: [1, 2].includes(saved.draft) ? saved.draft : 2,
+          version: saved.version === 'live' ? 'live' : 'draft',
+          reading: saved.reading === true,
+          menu: saved.menu === true
+        };
+      };
+      state = restored(window.openai && window.openai.widgetState) || state;
+      const persist = () => {
+        const host = window.openai;
+        if (!host || typeof host.setWidgetState !== 'function') return;
+        try {
+          Promise.resolve(host.setWidgetState({
+            modelContent: { prototype: 'Notion 기반 블로그 화면 예시', screen: state.view, publication: state.live ? '발행 중' : '발행 취소', pendingChanges: state.live !== state.draft },
+            privateContent: { prototype: 'notion-blog-v2', ...state }
+          })).catch(() => {});
+        } catch (_) {}
+      };
+      const article = (version) => {
+        const copy = versions[version];
+        return '<div class="nb-page-icon" aria-hidden="true">📄</div><h1>문서를 넘어, 블로그로</h1><div class="nb-property"><span class="nb-property-label">요약</span><span>' + copy.summary + '</span></div><div class="nb-property"><span class="nb-property-label">태그</span><span><span class="nb-tag">기록</span><span class="nb-tag">블로그</span></span></div><div class="nb-property"><span class="nb-property-label">작성자</span><span>수빈</span></div><div class="nb-property"><span class="nb-property-label">발행일</span><span>2026. 10. 16.</span></div><div class="nb-article-body">' + copy.paragraphs + '</div>';
+      };
+      const badge = (label, kind) => '<span class="nb-badge nb-badge-' + kind + '">' + label + '</span>';
+      const announce = (text) => { q('#nb-message').textContent = text; };
+      const render = () => {
+        const pending = state.live !== state.draft;
+        root.querySelectorAll('[data-view]').forEach((button) => {
+          const selected = button.dataset.view === state.view;
+          button.setAttribute('aria-selected', String(selected));
+          q('#nb-panel-' + button.dataset.view).hidden = !selected;
+        });
+        q('#nb-breadcrumb-current').textContent = { home: state.reading ? '문서를 넘어, 블로그로' : '공개 홈', admin: '게시글', preview: '미리보기' }[state.view];
+        q('#nb-side-home').setAttribute('aria-current', state.view === 'home' ? 'page' : 'false');
+        q('#nb-side-admin').setAttribute('aria-current', state.view !== 'home' ? 'page' : 'false');
+        q('#nb-side-admin').hidden = state.view === 'home';
+        q('#nb-side-post').hidden = state.view !== 'home' || !state.live;
+        q('#nb-connected-heading').hidden = state.view === 'home';
+        q('#nb-connected-link').hidden = state.view === 'home';
+        root.classList.toggle('nb-menu-open', state.menu);
+        q('#nb-menu').setAttribute('aria-expanded', String(state.menu));
+        if (!state.live && state.version === 'live') state.version = 'draft';
+        root.querySelectorAll('[data-version]').forEach((button) => {
+          button.setAttribute('aria-pressed', String(button.dataset.version === state.version));
+          button.disabled = button.dataset.version === 'live' && !state.live;
+        });
+        const status = state.live ? badge('발행 중', 'live') + (pending ? badge('수정사항 있음', 'change') : '') : badge('비공개', 'draft');
+        q('#nb-admin-status').innerHTML = status;
+        q('#nb-preview-status').innerHTML = status;
+        q('#nb-admin-summary').textContent = versions[state.draft].summary;
+        q('#nb-preview-article').innerHTML = article(state.version === 'live' ? state.live : state.draft);
+        q('#nb-change-title').textContent = !state.live ? '발행 준비 완료' : pending ? '요약 · 본문 변경' : '최신 내용이 공개 중입니다';
+        q('#nb-change-description').textContent = !state.live ? '초안을 발행하면 공개 홈에 표시됩니다.' : pending ? '가져온 초안을 게시하면 공개된 글이 교체됩니다.' : 'Notion에서 수정한 뒤 최신 내용을 가져오세요.';
+        q('#nb-publish').textContent = !state.live ? '게시글 발행' : !pending ? '게시 완료' : state.version === 'live' ? '초안을 확인하세요' : '변경사항 게시';
+        q('#nb-publish').disabled = !pending || state.version === 'live';
+        q('#nb-unpublish').hidden = !state.live;
+        q('#nb-home-posts').innerHTML = state.live
+          ? '<article class="nb-home-post"><button type="button" class="nb-link nb-post-title cursor-interaction" data-action="read"><span aria-hidden="true">📄</span>문서를 넘어, 블로그로</button><p class="nb-post-summary">' + versions[state.live].summary + '</p><div class="nb-small nb-muted">2026. 10. 16. · 기록 · 블로그</div></article>'
+          : '<div class="nb-empty"><h2>아직 공개된 글이 없습니다.</h2><p>다음 이야기를 준비하고 있습니다.</p></div>';
+        if (!state.live) state.reading = false;
+        q('#nb-home-list').hidden = state.reading;
+        q('#nb-home-reading').hidden = !state.reading;
+        q('#nb-public-article').innerHTML = state.live ? article(state.live) : '';
+      };
+      root.addEventListener('click', (event) => {
+        const button = event.target.closest('button');
+        if (!button || !root.contains(button) || button.disabled) return;
+        if (button.dataset.view) {
+          state.view = button.dataset.view;
+          state.reading = false;
+          state.menu = false;
+        } else if (button.dataset.version) {
+          state.version = button.dataset.version;
+          announce(state.version === 'live' ? '독자가 현재 읽는 공개본입니다.' : '가져온 초안입니다. 게시 전까지 공개본은 유지됩니다.');
+        } else {
+          switch (button.dataset.action) {
+            case 'menu': state.menu = !state.menu; break;
+            case 'go-home': state.view = 'home'; state.reading = false; state.menu = false; break;
+            case 'go-admin': state.view = 'admin'; state.menu = false; break;
+            case 'preview': state.view = 'preview'; state.version = 'draft'; break;
+            case 'notion': announce('예시: 실제 앱에서는 Notion에서 이 글을 엽니다. 지금은 열거나 저장하지 않습니다.'); break;
+            case 'notion-draft': announce('예시: Notion에서 이 글을 수정합니다. 지금은 열거나 저장하지 않습니다.'); break;
+            case 'refresh': state.draft = 2; state.version = 'draft'; announce('예시 초안을 가져왔습니다. 공개본은 그대로입니다. 실제 Notion 요청은 없습니다.'); break;
+            case 'publish': state.live = state.draft; state.version = 'draft'; announce('예시 게시 완료. 공개 홈에 최신 내용이 반영됐습니다. 실제 저장은 없습니다.'); break;
+            case 'unpublish': state.live = null; state.version = 'draft'; state.reading = false; announce('예시 발행 취소. 공개 홈에서 숨겼습니다. 초안과 Notion 원문은 유지됩니다. 실제 저장은 없습니다.'); break;
+            case 'read': state.reading = true; state.menu = false; break;
+            case 'back-home': state.reading = false; break;
+            default: return;
+          }
+        }
+        render();
+        persist();
+      });
+      root.querySelector('.nb-nav').addEventListener('keydown', (event) => {
+        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+        const tabs = Array.from(root.querySelectorAll('[data-view]'));
+        const index = tabs.indexOf(event.target);
+        if (index < 0) return;
+        event.preventDefault();
+        const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+        tabs[next].focus();
+        tabs[next].click();
+      });
+      window.addEventListener('openai:set_globals', (event) => {
+        const globals = event.detail && event.detail.globals;
+        const incoming = globals && restored(globals.widgetState);
+        if (incoming) { state = incoming; render(); }
+      });
+      render();
+    })();
+  </script>
+</div>

@@ -4,8 +4,8 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
-import xyz.robinjoon.notionblog.blog.domain.post.Post
 import xyz.robinjoon.notionblog.blog.domain.post.PostId
+import xyz.robinjoon.notionblog.blog.domain.post.PostProperties
 import xyz.robinjoon.notionblog.blog.domain.post.block.BlockId
 import xyz.robinjoon.notionblog.blog.domain.post.block.BlockNode
 import xyz.robinjoon.notionblog.blog.domain.post.block.BlockTree
@@ -112,14 +112,20 @@ class RssSummaryExtractorTest {
         assertThat(extractor.extract(post(title = "\u0000\uD800\uFFFF"))).isEqualTo("제목 없는 글")
     }
 
+    @Test
+    fun `prefers the revision summary over the body text`() {
+        val revision =
+            post(node("text", TextBlockContent.Paragraph(text("Body")))).let {
+                it.copy(properties = PostProperties(it.title, " Written\nsummary ", it.properties.tags, it.properties.cover))
+            }
+
+        assertThat(extractor.extract(revision)).isEqualTo("Written summary")
+    }
+
     private fun post(
         vararg roots: BlockNode,
         title: String = "Fallback title",
-    ) = Post.restore(
-        PostId(UUID.fromString("00000000-0000-0000-0000-000000000001")),
-        title,
-        BlockTree(roots.toList()),
-    )
+    ) = WebFixtures.revision(title = title, nodes = roots.toList())
 
     private fun node(
         id: String,

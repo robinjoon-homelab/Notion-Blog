@@ -23,7 +23,7 @@ import xyz.robinjoon.notionblog.blog.adapter.inbound.web.view.TableOfContentsEnt
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.view.TableOfContentsView
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.view.TemplateView
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.view.UnsupportedView
-import xyz.robinjoon.notionblog.blog.domain.post.Post
+import xyz.robinjoon.notionblog.blog.domain.post.PostRevision
 import xyz.robinjoon.notionblog.blog.domain.post.block.BlockNode
 import xyz.robinjoon.notionblog.blog.domain.post.block.content.DataViewContent
 import xyz.robinjoon.notionblog.blog.domain.post.block.content.LayoutBlockContent
@@ -37,7 +37,7 @@ import xyz.robinjoon.notionblog.blog.domain.post.block.content.UnsupportedBlockC
 import xyz.robinjoon.notionblog.blog.domain.post.block.inline.LinkTarget
 
 internal class PostDocumentViewAssembler(
-    private val post: Post,
+    private val post: PostRevision,
     private val contentMapper: PostContentViewMapper,
     private val idPrefix: String,
 ) {

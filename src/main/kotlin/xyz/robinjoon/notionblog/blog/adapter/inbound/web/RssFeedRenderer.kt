@@ -1,8 +1,8 @@
 package xyz.robinjoon.notionblog.blog.adapter.inbound.web
 
 import org.springframework.web.util.HtmlUtils
-import xyz.robinjoon.notionblog.blog.application.model.PostFeed
-import xyz.robinjoon.notionblog.blog.application.model.PostFeedEntry
+import xyz.robinjoon.notionblog.blog.application.model.PublicFeed
+import xyz.robinjoon.notionblog.blog.application.model.PublishedPost
 import xyz.robinjoon.notionblog.blog.domain.site.SiteMetadata
 import java.io.ByteArrayOutputStream
 import java.time.ZoneOffset
@@ -14,7 +14,7 @@ class RssFeedRenderer(
     private val summaryExtractor: RssSummaryExtractor,
 ) {
     fun render(
-        feed: PostFeed,
+        feed: PublicFeed,
         urls: PublicBlogUrls,
     ): ByteArray {
         val rootUrl = requireNotNull(urls.rootUrl) { "A public blog origin is required" }
@@ -60,17 +60,17 @@ class RssFeedRenderer(
     }
 
     private fun XMLStreamWriter.item(
-        entry: PostFeedEntry,
+        entry: PublishedPost,
         urls: PublicBlogUrls,
     ) {
         writeStartElement("item")
-        element("title", RssXmlText.postTitle(entry.post.title))
-        element("link", urls.postUrl(entry.post.id))
+        element("title", RssXmlText.postTitle(entry.revision.title))
+        element("link", urls.postUrl(entry.revision.postId))
         // RSS readers interpret description as HTML after decoding the XML layer.
-        element("description", HtmlUtils.htmlEscape(summaryExtractor.extract(entry.post), Charsets.UTF_8.name()))
+        element("description", HtmlUtils.htmlEscape(summaryExtractor.extract(entry.revision), Charsets.UTF_8.name()))
         writeStartElement("guid")
         writeAttribute("isPermaLink", "false")
-        writeCharacters("urn:uuid:${entry.post.id.value}")
+        writeCharacters("urn:uuid:${entry.revision.postId.value}")
         writeEndElement()
         element("pubDate", DateTimeFormatter.RFC_1123_DATE_TIME.format(entry.firstPublishedAt.atOffset(ZoneOffset.UTC)))
         writeEndElement()

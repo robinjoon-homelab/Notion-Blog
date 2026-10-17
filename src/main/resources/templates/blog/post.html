@@ -1,30 +1,13 @@
 <!doctype html>
-<html xmlns:th="http://www.thymeleaf.org" th:lang="${page.language}">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title th:text="${page.title + ' · ' + page.siteName}">Post · Site</title>
-    <meta th:if="${page.description != null}" name="description" th:content="${page.description}">
-    <link th:if="${page.faviconHref != null}" rel="icon" th:href="${page.faviconHref}">
-    <link th:if="${page.feedUrl != null}" rel="alternate" type="application/rss+xml" th:href="${page.feedUrl}">
-    <link th:each="asset : ${page.styleSheets}" rel="stylesheet" th:href="${asset.publicPath}"
-          th:type="${asset.mediaType}" th:integrity="${asset.integrity}" crossorigin="anonymous">
-    <script th:each="asset : ${page.scripts}" th:src="${asset.publicPath}" th:type="${asset.mediaType}"
-            th:integrity="${asset.integrity}" crossorigin="anonymous" defer></script>
-</head>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${page.chrome.language}">
+<head th:replace="~{blog/page-fragments :: head(${page.chrome}, ${page.title})}"></head>
 <body>
-<main class="notion-page" th:classappend="${#strings.listJoin(page.profile.classes, ' ')}">
-    <header th:if="${page.header != null}" class="notion-page-header">
-        <th:block th:replace="~{blog/fragments :: document(${page.header})}"></th:block>
-    </header>
-    <article class="notion-content">
-        <h1 class="notion-title" th:text="${page.post.title}">Post title</h1>
-        <th:block th:replace="~{blog/fragments :: blocks(${page.post.blocks})}"></th:block>
-    </article>
-    <footer th:if="${page.footer != null}" class="notion-page-footer">
-        <th:block th:replace="~{blog/fragments :: document(${page.footer})}"></th:block>
-    </footer>
-    <p th:if="${page.feedUrl != null}"><a th:href="${page.feedUrl}">RSS 구독</a></p>
+<main class="notion-page" th:classappend="${#strings.listJoin(page.chrome.profile.classes, ' ')}">
+    <header th:replace="~{blog/page-fragments :: header(${page.chrome})}"></header>
+    <div class="notion-content"><p><a href="/">← 모든 글</a></p></div>
+    <article th:replace="~{blog/page-fragments :: article(${page})}"></article>
+    <footer th:replace="~{blog/page-fragments :: footer(${page.chrome})}"></footer>
+    <div class="notion-content" th:if="${page.chrome.feedUrl != null}"><p><a th:href="${page.chrome.feedUrl}">RSS 구독</a></p></div>
 </main>
 </body>
 </html>

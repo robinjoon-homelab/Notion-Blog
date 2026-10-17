@@ -15,4 +15,5 @@ enum class SnapshotFailureOperation {
     POST_LOOKUP,
     FEED_LOOKUP,
     SNAPSHOT_REPAIR,
+    ADMIN_PREVIEW,
 }

@@ -3,176 +3,78 @@ package xyz.robinjoon.notionblog.blog.application.service
 import io.mockk.every
 import io.mockk.mockk
 import org.assertj.core.api.Assertions.assertThat
-import org.assertj.core.api.Assertions.assertThatThrownBy
+import org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 import org.junit.jupiter.api.Test
+import xyz.robinjoon.notionblog.blog.application.model.MediaRepairTarget
+import xyz.robinjoon.notionblog.blog.application.model.PostRevisionSummary
 import xyz.robinjoon.notionblog.blog.application.model.PostSynchronizationContext
-import xyz.robinjoon.notionblog.blog.application.model.PublicationSynchronizationContext
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.PostRepository
-import xyz.robinjoon.notionblog.blog.application.port.output.persistence.PublicationRepository
-import xyz.robinjoon.notionblog.blog.application.port.output.persistence.SiteConfigurationRepository
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.SyncStateRepository
-import xyz.robinjoon.notionblog.blog.domain.SourceDocumentRef
-import xyz.robinjoon.notionblog.blog.domain.SourceId
-import xyz.robinjoon.notionblog.blog.domain.post.PostId
-import xyz.robinjoon.notionblog.blog.domain.post.PostSourceBinding
-import xyz.robinjoon.notionblog.blog.domain.presentation.PresentationProfileId
-import xyz.robinjoon.notionblog.blog.domain.presentation.PresentationProfileRef
-import xyz.robinjoon.notionblog.blog.domain.publication.BlogPublication
-import xyz.robinjoon.notionblog.blog.domain.publication.PublicationId
-import xyz.robinjoon.notionblog.blog.domain.publication.PublicationMember
-import xyz.robinjoon.notionblog.blog.domain.publication.PublicationRevisionId
-import xyz.robinjoon.notionblog.blog.domain.site.SiteConfiguration
-import xyz.robinjoon.notionblog.blog.domain.site.SiteDocuments
-import xyz.robinjoon.notionblog.blog.domain.site.SiteMetadata
+import xyz.robinjoon.notionblog.blog.domain.SourceRevision
 import xyz.robinjoon.notionblog.blog.domain.sync.SyncState
 import xyz.robinjoon.notionblog.blog.domain.sync.SyncTarget
+import xyz.robinjoon.notionblog.support.fixture.PostFixtures
 import java.time.Instant
-import java.util.UUID
 
 class SynchronizationQueryServiceTest {
-    private val siteConfigurations = mockk<SiteConfigurationRepository>()
-    private val publications = mockk<PublicationRepository>()
     private val posts = mockk<PostRepository>()
     private val syncStates = mockk<SyncStateRepository>()
-    private val service = SynchronizationQueryService(siteConfigurations, publications, posts, syncStates)
+    private val service = SynchronizationQueryService(posts, syncStates)
+    private val postId = PostFixtures.postId(1)
 
     @Test
-    fun `returns no publication context when current site configuration or publication is absent`() {
-        every { siteConfigurations.findCurrent() } returns null
-        assertThat(service.loadPublication()).isNull()
-
-        val site = siteConfiguration(PublicationId(UUID.randomUUID()))
-        every { siteConfigurations.findCurrent() } returns site
-        every { publications.findCurrent() } returns null
-
-        assertThat(service.loadPublication()).isNull()
-    }
-
-    @Test
-    fun `rejects inconsistent site and publication ids`() {
-        val sitePublicationId = PublicationId(UUID.randomUUID())
-        val site = siteConfiguration(sitePublicationId)
-        every { siteConfigurations.findCurrent() } returns site
-        every { publications.findCurrent() } returns BlogPublication.restore(PublicationId(UUID.randomUUID()), null, null)
-
-        assertThatThrownBy { service.loadPublication() }
-            .isInstanceOf(IllegalArgumentException::class.java)
-    }
-
-    @Test
-    fun `loads root source reference even before an active revision exists`() {
-        val publicationId = PublicationId(UUID.randomUUID())
-        val site = siteConfiguration(publicationId)
-        every { siteConfigurations.findCurrent() } returns site
-        every { publications.findCurrent() } returns activePublication(publicationId)
-
-        assertThat(service.loadPublication())
-            .isEqualTo(PublicationSynchronizationContext(publicationId, site.documents.root))
-    }
-
-    @Test
-    fun `loads a post only when it is an active member with a source binding`() {
-        val publicationId = PublicationId(UUID.randomUUID())
-        val postId = postId()
-        val sourceDocument = sourceDocument("post")
-        every { publications.findCurrent() } returns activePublication(publicationId)
-        every { publications.findActiveMemberPostIds(publicationId, setOf(postId)) } returns emptySet()
+    fun `unmanaged and archived posts are not synchronized`() {
+        every { posts.find(postId) } returns null
 
         assertThat(service.loadPost(postId)).isNull()
 
-        every { publications.findActiveMemberPostIds(publicationId, setOf(postId)) } returns setOf(postId)
-        every { posts.findBinding(postId) } returns null
+        every { posts.find(postId) } returns PostFixtures.privatePost(postId).archive()
 
         assertThat(service.loadPost(postId)).isNull()
     }
 
     @Test
-    fun `resolves all active direct child bindings`() {
-        val publicationId = PublicationId(UUID.randomUUID())
-        val postId = postId()
-        val childOne = postId()
-        val childTwo = postId()
-        val sourceDocument = sourceDocument("post")
-        val childOneSource = sourceDocument("child-one")
-        val childTwoSource = sourceDocument("child-two")
-        every { publications.findCurrent() } returns activePublication(publicationId)
-        every { publications.findActiveMemberPostIds(publicationId, setOf(postId)) } returns setOf(postId)
-        every { posts.findBinding(postId) } returns PostSourceBinding(postId, sourceDocument)
-        every { publications.findActiveDirectChildren(publicationId, postId) } returns
-            listOf(
-                PublicationMember(PublicationRevisionId(UUID.randomUUID()), childOne, postId, 1),
-                PublicationMember(PublicationRevisionId(UUID.randomUUID()), childTwo, postId, 1),
-            )
-        every { posts.findBindingsByPostIds(setOf(childOne, childTwo)) } returns
+    fun `the context carries the latest source revision and missing legacy copies of shown revisions`() {
+        val published = PostFixtures.revisionId(1)
+        val latest = PostFixtures.revisionId(2)
+        val post = PostFixtures.publicPost(postId, published = published, latest = latest)
+        val legacyFile = PostFixtures.hosted("legacy.png")
+        every { posts.find(postId) } returns post
+        every { posts.findUnboundMedia(setOf(latest, published)) } returns mapOf(published to setOf(legacyFile))
+
+        every { posts.findRevisionSummaries(setOf(latest, published)) } returns
             mapOf(
-                childOne to PostSourceBinding(childOne, childOneSource),
-                childTwo to PostSourceBinding(childTwo, childTwoSource),
+                latest to PostRevisionSummary(latest, "Title", SourceRevision("rev-2"), PostFixtures.capturedAt),
+                published to PostRevisionSummary(published, "Title", SourceRevision("legacy"), PostFixtures.capturedAt),
             )
 
         assertThat(service.loadPost(postId)).isEqualTo(
             PostSynchronizationContext(
-                publicationId = publicationId,
-                postId = postId,
-                sourceDocument = sourceDocument,
-                activeDirectChildren = setOf(childOneSource, childTwoSource),
+                postId,
+                post.source,
+                SourceRevision("rev-2"),
+                listOf(MediaRepairTarget(published, SourceRevision("legacy"), setOf(legacyFile))),
             ),
         )
     }
 
     @Test
-    fun `fails when an active direct child has no source binding`() {
-        val publicationId = PublicationId(UUID.randomUUID())
-        val postId = postId()
-        val child = postId()
-        every { publications.findCurrent() } returns activePublication(publicationId)
-        every { publications.findActiveMemberPostIds(publicationId, setOf(postId)) } returns setOf(postId)
-        every { posts.findBinding(postId) } returns PostSourceBinding(postId, sourceDocument("post"))
-        every { publications.findActiveDirectChildren(publicationId, postId) } returns
-            listOf(
-                PublicationMember(PublicationRevisionId(UUID.randomUUID()), child, postId, 1),
-            )
-        every { posts.findBindingsByPostIds(setOf(child)) } returns emptyMap()
-
-        assertThatThrownBy { service.loadPost(postId) }
-            .isInstanceOf(IllegalStateException::class.java)
-    }
-
-    @Test
-    fun `returns due targets in repository order`() {
-        val now = Instant.parse("2026-08-25T00:00:00Z")
-        val first = SyncTarget.Post(postId())
+    fun `due targets keep the order of the stored schedules`() {
+        val now = Instant.parse("2026-10-16T01:00:00Z")
+        val first = SyncTarget.Post(PostFixtures.postId(2))
         val second = SyncTarget.SiteConfiguration
-        val states = listOf(syncState(first, now), syncState(second, now))
-        every { syncStates.findDue(now, 2) } returns states
+        val third = SyncTarget.Post(PostFixtures.postId(1))
+        every { syncStates.findDue(now, 3) } returns
+            listOf(first, second, third).map { SyncState.schedule(it, now.minusSeconds(60)) }
 
-        assertThat(service.findDueTargets(now, 2)).containsExactly(first, second)
+        assertThat(service.findDueTargets(now, 3)).containsExactly(first, second, third)
     }
 
     @Test
-    fun `rejects non positive due target limits`() {
-        assertThatThrownBy { service.findDueTargets(Instant.EPOCH, 0) }
-            .isInstanceOf(IllegalArgumentException::class.java)
-        assertThatThrownBy { service.findDueTargets(Instant.EPOCH, -1) }
-            .isInstanceOf(IllegalArgumentException::class.java)
+    fun `due targets reject limits that are not positive`() {
+        val now = Instant.parse("2026-10-16T01:00:00Z")
+
+        assertThatIllegalArgumentException().isThrownBy { service.findDueTargets(now, 0) }
+        assertThatIllegalArgumentException().isThrownBy { service.findDueTargets(now, -1) }
     }
-
-    private fun siteConfiguration(publicationId: PublicationId): SiteConfiguration =
-        SiteConfiguration.restore(
-            publicationId = publicationId,
-            documents = SiteDocuments(root = sourceDocument("root"), header = null, footer = null),
-            metadata = SiteMetadata("Blog", null, "ko-KR", null),
-            presentationProfile = PresentationProfileRef(PresentationProfileId(UUID.randomUUID()), 1),
-        )
-
-    private fun syncState(
-        target: SyncTarget,
-        refreshAfter: Instant,
-    ): SyncState = SyncState.restore(target, null, refreshAfter, null)
-
-    private fun activePublication(publicationId: PublicationId): BlogPublication =
-        BlogPublication.restore(publicationId, postId(), PublicationRevisionId(UUID.randomUUID()))
-
-    private fun postId(): PostId = PostId(UUID.randomUUID())
-
-    private fun sourceDocument(externalId: String): SourceDocumentRef = SourceDocumentRef(SourceId("notion-main"), externalId)
 }

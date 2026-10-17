@@ -54,7 +54,7 @@ class NotionInlineDatabaseSourceTest {
     private val sourceId = SourceId("notion-main")
 
     @Test
-    fun `imports ordered visible columns and published rows through the saved view without widening publication`() {
+    fun `imports ordered visible columns and every readable non-trashed row through the saved view`() {
         fixture()
         every { client.createViewQuery(VIEW) } returns query(listOf(ROW), "next")
         every { client.fetchViewQueryResults(VIEW, QUERY, "next") } returns pageOf(listOf(PRIVATE_ROW, TRASH_ROW, SECOND_ROW))
@@ -78,9 +78,10 @@ class NotionInlineDatabaseSourceTest {
         assertThat(
             table.rows.first().link,
         ).isEqualTo(LinkTarget.SourceDocument(SourceDocumentRef(sourceId, ROW), URI("https://site.notion.site/$ROW")))
-        assertThat(table.rows.map { text(it.cells[0]) }).containsExactly("First", "Second")
-        assertThat(table.rows.map { text(it.cells[1]) }).containsExactly("Done", "Done")
-        assertThat(table.toString()).doesNotContain("Hidden secret", PRIVATE_ROW, TRASH_ROW)
+        assertThat(table.rows.map { text(it.cells[0]) }).containsExactly("First", "First", "Second")
+        assertThat(table.rows.map { text(it.cells[1]) }).containsExactly("Done", "Done", "Done")
+        assertThat(table.rows[1].link).isEqualTo(LinkTarget.SourceDocument(SourceDocumentRef(sourceId, PRIVATE_ROW), null))
+        assertThat(table.toString()).doesNotContain("Hidden secret", TRASH_ROW)
         assertThat(imported.containedChildren).isEmpty()
     }
 
@@ -245,6 +246,7 @@ class NotionInlineDatabaseSourceTest {
         every { client.createViewQuery(VIEW) } returns query(listOf(PRIVATE_ROW, TRASH_ROW, ROW))
         every { client.fetchPage(PRIVATE_ROW, listOf("title", "status")) } returns row(PRIVATE_ROW).copy(publicUrl = null)
         every { client.fetchPage(TRASH_ROW, listOf("title", "status")) } returns row(TRASH_ROW).copy(inTrash = true)
+        every { client.fetchBlockChildrenPage(PRIVATE_ROW, null) } returns NotionPaginationResponse(emptyList(), false, null)
         every { client.fetchPage(ROW, listOf("title", "status")) } returns
             row(ROW).copy(parent = NotionPageParentResponse("data_source_id", null, DATABASE))
 
@@ -495,9 +497,9 @@ class NotionInlineDatabaseSourceTest {
         assertThat(changed.sourceRevision).isNotEqualTo(first.sourceRevision)
         assertThat(changed.sourceRevision.value).doesNotContain("Changed", "Hidden secret")
         every { client.fetchPage(ROW, listOf("title", "status")) } returns row(ROW).copy(publicUrl = null)
-        val unpublished = source().fetch(reference())
-        assertThat(unpublished.sourceRevision).isNotEqualTo(changed.sourceRevision)
-        assertThat(dataSets(unpublished.content.roots.single()).single().rows).isEmpty()
+        val withoutPublicUrl = source().fetch(reference())
+        assertThat(withoutPublicUrl.sourceRevision).isNotEqualTo(changed.sourceRevision)
+        assertThat(dataSets(withoutPublicUrl.content.roots.single()).single().rows.map { text(it.cells[0]) }).containsExactly("First")
     }
 
     @Test

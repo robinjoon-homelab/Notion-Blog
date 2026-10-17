@@ -35,8 +35,11 @@ class ExposedSiteConfigurationRepository : SiteConfigurationRepository {
         SiteConfigurationTable.upsert(SiteConfigurationTable.siteId) {
             it[siteId] = SITE_ID
             it[publicationId] = configuration.publicationId.value
-            it[rootSourceId] = configuration.documents.root.sourceId.value
-            it[rootExternalId] = configuration.documents.root.externalId
+            it[rootSourceId] =
+                configuration.documents.root
+                    ?.sourceId
+                    ?.value
+            it[rootExternalId] = configuration.documents.root?.externalId
             it[headerSourceId] =
                 configuration.documents.header
                     ?.sourceId
@@ -126,7 +129,7 @@ class ExposedSiteConfigurationRepository : SiteConfigurationRepository {
 
     private fun ResultRow.toSiteDocuments(): SiteDocuments =
         SiteDocuments(
-            root = SourceDocumentRef(SourceId(this[SiteConfigurationTable.rootSourceId]), this[SiteConfigurationTable.rootExternalId]),
+            root = sourceDocumentOrNull(this[SiteConfigurationTable.rootSourceId], this[SiteConfigurationTable.rootExternalId]),
             header = sourceDocumentOrNull(this[SiteConfigurationTable.headerSourceId], this[SiteConfigurationTable.headerExternalId]),
             footer = sourceDocumentOrNull(this[SiteConfigurationTable.footerSourceId], this[SiteConfigurationTable.footerExternalId]),
         )

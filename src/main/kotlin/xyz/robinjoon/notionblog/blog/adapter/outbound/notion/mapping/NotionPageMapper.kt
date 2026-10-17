@@ -2,7 +2,6 @@ package xyz.robinjoon.notionblog.blog.adapter.outbound.notion.mapping
 
 import tools.jackson.databind.JsonNode
 import xyz.robinjoon.notionblog.blog.adapter.outbound.notion.dto.NotionPageResponse
-import xyz.robinjoon.notionblog.blog.application.model.ImportedPublicationStatus
 import xyz.robinjoon.notionblog.blog.application.port.output.source.SourceMappingException
 import xyz.robinjoon.notionblog.blog.domain.SourceDocumentRef
 import xyz.robinjoon.notionblog.blog.domain.SourceRevision
@@ -22,12 +21,6 @@ internal class NotionPageMapper {
             NotionPageMetadata(
                 sourceDocument = sourceDocument,
                 title = title(page.properties),
-                publicationStatus =
-                    if (page.inTrash || page.publicUrl == null) {
-                        ImportedPublicationStatus.UNPUBLISHED
-                    } else {
-                        ImportedPublicationStatus.PUBLISHED
-                    },
                 sourceRevision = SourceRevision(Instant.parse(page.lastEditedTime.trim()).toString()),
             )
         } catch (exception: SourceMappingException) {
@@ -75,6 +68,5 @@ internal class NotionPageMapper {
 internal data class NotionPageMetadata(
     val sourceDocument: SourceDocumentRef,
     val title: String,
-    val publicationStatus: ImportedPublicationStatus,
     val sourceRevision: SourceRevision,
 )

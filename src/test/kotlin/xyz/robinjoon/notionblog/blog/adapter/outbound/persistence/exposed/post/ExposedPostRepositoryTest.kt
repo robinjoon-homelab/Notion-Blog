@@ -1,261 +1,258 @@
 package xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.post
 
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.exceptions.ExposedSQLException
+import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.selectAll
-import org.jetbrains.exposed.v1.jdbc.update
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
-import tools.jackson.databind.json.JsonMapper
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.ExposedPostRepository
+import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.ExposedRevisionMapper
+import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.OwnedMediaTable
+import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.PostRevisionTable
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.PostSnapshotTable
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.PostTable
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.snapshot.JsonBlockTreeSnapshotCodec
-import xyz.robinjoon.notionblog.blog.application.port.output.persistence.SnapshotContentException
-import xyz.robinjoon.notionblog.blog.domain.SourceDocumentRef
-import xyz.robinjoon.notionblog.blog.domain.SourceId
+import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.snapshot.JsonPostPropertiesCodec
+import xyz.robinjoon.notionblog.blog.application.model.PostRevisionSummary
+import xyz.robinjoon.notionblog.blog.application.port.output.persistence.DuplicateSourceBindingException
 import xyz.robinjoon.notionblog.blog.domain.SourceRevision
 import xyz.robinjoon.notionblog.blog.domain.post.Post
-import xyz.robinjoon.notionblog.blog.domain.post.PostAvailability
-import xyz.robinjoon.notionblog.blog.domain.post.PostAvailabilityStatus
-import xyz.robinjoon.notionblog.blog.domain.post.PostId
+import xyz.robinjoon.notionblog.blog.domain.post.PostProperties
+import xyz.robinjoon.notionblog.blog.domain.post.PostPublication
+import xyz.robinjoon.notionblog.blog.domain.post.PostRevision
 import xyz.robinjoon.notionblog.blog.domain.post.PostSourceBinding
-import xyz.robinjoon.notionblog.blog.domain.post.block.BlockId
-import xyz.robinjoon.notionblog.blog.domain.post.block.BlockNode
+import xyz.robinjoon.notionblog.blog.domain.post.PostVisibility
 import xyz.robinjoon.notionblog.blog.domain.post.block.BlockTree
-import xyz.robinjoon.notionblog.blog.domain.post.block.content.TextBlockContent
-import xyz.robinjoon.notionblog.blog.domain.post.block.inline.InlineContent
+import xyz.robinjoon.notionblog.blog.domain.post.block.media.MediaKey
+import xyz.robinjoon.notionblog.blog.domain.post.block.media.MediaSource
+import xyz.robinjoon.notionblog.blog.domain.post.block.media.SourceMediaKey
+import xyz.robinjoon.notionblog.support.fixture.PostFixtures
 import xyz.robinjoon.notionblog.support.persistence.ExposedH2Database
 import java.time.Instant
-import java.util.UUID
+import java.time.ZoneOffset
 
 class ExposedPostRepositoryTest {
     private val database = ExposedH2Database()
-    private val repository = ExposedPostRepository(JsonBlockTreeSnapshotCodec())
+    private val snapshotCodec = JsonBlockTreeSnapshotCodec()
+    private val repository = ExposedPostRepository(ExposedRevisionMapper(snapshotCodec, JsonPostPropertiesCodec()))
+    private val postId = PostFixtures.postId(1)
+    private val document = PostFixtures.document("doc-1")
+    private val now = Instant.parse("2026-10-16T02:00:00Z")
 
     @AfterEach
     fun closeDatabase() = database.close()
 
     @Test
-    fun `round trips identity binding logical snapshot JSON and availability`() {
-        val binding = binding("post-1", "external-1")
-        val post = post(binding.postId, "A title", "Persisted content")
-        val capturedAt = Instant.parse("2026-08-25T01:02:03Z")
-        val availability = PostAvailability(binding.postId, PostAvailabilityStatus.PUBLISHED, capturedAt)
-
+    fun `registration creates a private managed post once and keeps it on repeat`() {
         database.inTransaction {
-            repository.saveIdentity(binding, post.title, capturedAt)
-            repository.saveSnapshot(post, SourceRevision("revision-1"), capturedAt)
-            repository.saveAvailability(availability)
+            repository.register(Post.register(postId, document), "Untitled", now)
+            repository.register(Post.register(postId, document), "Other title", now)
 
-            assertThat(repository.find(binding.postId)).isEqualTo(
-                xyz.robinjoon.notionblog.blog.application.model
-                    .StoredPost(post, SourceRevision("revision-1"), capturedAt),
-            )
-            assertThat(repository.findBinding(binding.postId)).isEqualTo(binding)
-            assertThat(repository.findBinding(binding.sourceDocument)).isEqualTo(binding)
-            assertThat(repository.findAvailability(binding.postId)).isEqualTo(availability)
-            val storedSnapshot =
-                PostSnapshotTable
-                    .selectAll()
-                    .where { PostSnapshotTable.postId eq binding.postId.value }
-                    .single()[PostSnapshotTable.snapshotJson]
-            val storedDocument = JsonMapper.builder().build().readTree(storedSnapshot)
-            assertThat(storedDocument.required("kind").stringValue()).isEqualTo("block_tree_snapshot")
+            assertThat(repository.find(postId)).isEqualTo(Post.register(postId, document))
+            assertThat(repository.findAllManaged()).hasSize(1)
+            assertThat(repository.findTitles(setOf(postId))).containsEntry(postId, "Untitled")
+            assertThat(repository.findBinding(document)?.postId).isEqualTo(postId)
+            assertThat(repository.lock(postId)).isEqualTo(Post.register(postId, document))
         }
     }
 
     @Test
-    fun `retains an existing snapshot when availability becomes unpublished`() {
-        val binding = binding("post-1", "external-1")
-        val capturedAt = Instant.parse("2026-08-25T01:02:03Z")
-        val post = post(binding.postId, "Retained title", "Retained content")
-
+    fun `a source document bound to another post is never rebound`() {
         database.inTransaction {
-            repository.saveIdentity(binding, post.title, capturedAt)
-            repository.saveSnapshot(post, SourceRevision("revision-1"), capturedAt)
-            repository.saveAvailability(
-                PostAvailability(binding.postId, PostAvailabilityStatus.UNPUBLISHED, capturedAt.plusSeconds(1)),
-            )
-        }
+            repository.register(Post.register(postId, document), "Untitled", now)
 
-        database.inTransaction {
-            assertThat(repository.find(binding.postId)?.post).isEqualTo(post)
-            assertThat(repository.findAvailability(binding.postId)?.status)
-                .isEqualTo(PostAvailabilityStatus.UNPUBLISHED)
+            assertThatThrownBy { repository.register(Post.register(PostFixtures.postId(2), document), "Untitled", now) }
+                .isInstanceOf(DuplicateSourceBindingException::class.java)
+            assertThatThrownBy { repository.register(Post.register(postId, PostFixtures.document("doc-2")), "Untitled", now) }
+                .isInstanceOf(DuplicateSourceBindingException::class.java)
+            assertThat(repository.findBinding(document)?.postId).isEqualTo(postId)
+            assertThat(repository.findBinding(PostFixtures.document("doc-2"))).isNull()
+            assertThat(repository.find(PostFixtures.postId(2))).isNull()
+            assertThat(repository.find(postId)).isEqualTo(Post.register(postId, document))
+            assertThat(repository.findAllManaged()).hasSize(1)
         }
     }
 
     @Test
-    fun `updates an existing post identity without changing its source binding`() {
-        val binding = binding("post-1", "external-1")
-        val initialAt = Instant.parse("2026-08-25T01:02:03Z")
-        val updatedAt = initialAt.plusSeconds(1)
+    fun `bindings are found for the requested source documents only`() {
+        val second = PostFixtures.document("doc-2")
+        val unknown = PostFixtures.document("unknown")
 
         database.inTransaction {
-            repository.saveIdentity(binding, "Initial title", initialAt)
-            repository.saveIdentity(binding, "Updated title", updatedAt)
-        }
+            repository.register(Post.register(postId, document), "First", now)
+            repository.register(Post.register(PostFixtures.postId(2), second), "Second", now)
+            repository.register(Post.register(PostFixtures.postId(3), PostFixtures.document("doc-3")), "Third", now)
 
-        database.inTransaction {
-            assertThat(repository.findBinding(binding.postId)).isEqualTo(binding)
-            assertThat(
-                PostTable
-                    .selectAll()
-                    .where { PostTable.postId eq binding.postId.value }
-                    .single()[PostTable.title],
-            ).isEqualTo("Updated title")
-        }
-    }
-
-    @Test
-    fun `does not silently rebind a source document or leave a conflicting candidate post behind`() {
-        val original = binding("post-1", "external-1")
-        val conflicting = binding("post-2", "external-1")
-        val changedAt = Instant.parse("2026-08-25T01:02:03Z")
-
-        database.inTransaction {
-            repository.saveIdentity(original, "Original", changedAt)
-        }
-
-        assertThatThrownBy {
-            database.inTransaction {
-                repository.saveIdentity(conflicting, "Conflicting", changedAt)
-            }
-        }.isInstanceOf(IllegalStateException::class.java)
-
-        database.inTransaction {
-            assertThat(repository.findBinding(original.sourceDocument)).isEqualTo(original)
-            assertThat(repository.findBinding(conflicting.postId)).isNull()
-        }
-    }
-
-    @Test
-    fun `classifies corrupted logical snapshots instead of treating them as absent`() {
-        val binding = binding("post-1", "external-1")
-        val capturedAt = Instant.parse("2026-08-25T01:02:03Z")
-
-        database.inTransaction {
-            repository.saveIdentity(binding, "Corrupted", capturedAt)
-            repository.saveSnapshot(
-                post(binding.postId, "Corrupted", "Original"),
-                SourceRevision("revision-1"),
-                capturedAt,
-            )
-        }
-        database.inTransaction { replaceSnapshotJson(binding.postId, UNSUPPORTED_SNAPSHOT) }
-
-        database.inTransaction {
-            assertThatThrownBy { repository.find(binding.postId) }
-                .isInstanceOf(SnapshotContentException::class.java)
-                .hasCauseInstanceOf(IllegalArgumentException::class.java)
-        }
-    }
-
-    @Test
-    fun `returns only decodable snapshots as renderable post ids`() {
-        val renderable = binding("post-1", "external-1")
-        val corrupted = binding("post-2", "external-2")
-        val capturedAt = Instant.parse("2026-08-25T01:02:03Z")
-
-        database.inTransaction {
-            listOf(renderable, corrupted).forEach { binding ->
-                repository.saveIdentity(binding, binding.sourceDocument.externalId, capturedAt)
-                repository.saveSnapshot(
-                    post(binding.postId, binding.sourceDocument.externalId, "Content"),
-                    SourceRevision("revision-1"),
-                    capturedAt,
-                )
-            }
-        }
-        database.inTransaction { replaceSnapshotJson(corrupted.postId, UNSUPPORTED_SNAPSHOT) }
-
-        database.inTransaction {
-            assertThat(repository.findRenderablePostIds(setOf(renderable.postId, corrupted.postId)))
-                .containsExactly(renderable.postId)
-        }
-    }
-
-    @Test
-    fun `loads bindings availabilities and renderable ids for multiple posts`() {
-        val first = binding("post-1", "external-1")
-        val second = binding("post-2", "external-2")
-        val third = binding("post-3", "external-3")
-        val capturedAt = Instant.parse("2026-08-25T01:02:03Z")
-
-        database.inTransaction {
-            listOf(first, second, third).forEach { binding ->
-                repository.saveIdentity(binding, binding.sourceDocument.externalId, capturedAt)
-            }
-            repository.saveSnapshot(post(first.postId, "First", "First content"), SourceRevision("r1"), capturedAt)
-            repository.saveSnapshot(post(second.postId, "Second", "Second content"), SourceRevision("r2"), capturedAt)
-            repository.saveAvailabilities(
-                listOf(
-                    PostAvailability(first.postId, PostAvailabilityStatus.PUBLISHED, capturedAt),
-                    PostAvailability(second.postId, PostAvailabilityStatus.UNPUBLISHED, capturedAt),
+            assertThat(repository.findBindingsBySourceDocuments(setOf(document, second, unknown))).containsExactlyInAnyOrderEntriesOf(
+                mapOf(
+                    document to PostSourceBinding(postId, document),
+                    second to PostSourceBinding(PostFixtures.postId(2), second),
                 ),
             )
+            assertThat(repository.findBindingsBySourceDocuments(emptySet())).isEmpty()
         }
+    }
+
+    @Test
+    fun `a stored revision round trips properties content and files and renames the post`() {
+        val cover = PostFixtures.hosted("cover.png")
+        val body = PostFixtures.hosted("body.png")
+        val revision =
+            PostRevision(
+                id = PostFixtures.revisionId(1),
+                postId = postId,
+                properties = PostProperties("Stored title", "Summary", listOf("kotlin", "notion"), cover),
+                content = BlockTree(listOf(PostFixtures.image("image", body))),
+                sourceRevision = SourceRevision("rev-1"),
+                capturedAt = now,
+            )
 
         database.inTransaction {
-            assertThat(repository.findBindingsBySourceDocuments(setOf(first.sourceDocument, third.sourceDocument)))
-                .containsExactlyInAnyOrderEntriesOf(mapOf(first.sourceDocument to first, third.sourceDocument to third))
-            assertThat(repository.findBindingsByPostIds(setOf(first.postId, second.postId)))
-                .containsExactlyInAnyOrderEntriesOf(mapOf(first.postId to first, second.postId to second))
-            assertThat(repository.findAvailabilities(setOf(first.postId, second.postId, third.postId)))
-                .containsExactlyInAnyOrderEntriesOf(
-                    mapOf(
-                        first.postId to PostAvailability(first.postId, PostAvailabilityStatus.PUBLISHED, capturedAt),
-                        second.postId to
-                            PostAvailability(
-                                second.postId,
-                                PostAvailabilityStatus.UNPUBLISHED,
-                                capturedAt,
-                            ),
-                    ),
-                )
-            assertThat(repository.findRenderablePostIds(setOf(first.postId, second.postId, third.postId)))
-                .containsExactlyInAnyOrder(first.postId, second.postId)
+            repository.register(Post.register(postId, document), "Untitled", now)
+            storeMedia(listOf(key('a'), key('b')))
+            repository.saveRevision(revision, mapOf(sourceKey(cover) to key('a'), sourceKey(body) to key('b')))
+
+            assertThat(repository.findRevision(postId, revision.id)).isEqualTo(revision)
+            assertThat(repository.findRevisionSummaries(setOf(revision.id)))
+                .containsEntry(revision.id, PostRevisionSummary(revision.id, "Stored title", SourceRevision("rev-1"), now))
+            assertThat(repository.findMediaBindings(setOf(revision.id)))
+                .containsExactlyEntriesOf(mapOf(revision.id to mapOf(sourceKey(cover) to key('a'), sourceKey(body) to key('b'))))
+            assertThat(repository.findUnboundMedia(setOf(revision.id))).isEmpty()
+            assertThat(repository.findTitles(setOf(postId))).containsEntry(postId, "Stored title")
         }
     }
 
-    private fun binding(
-        postToken: String,
-        externalId: String,
-    ): PostSourceBinding =
-        PostSourceBinding(
-            PostId(UUID.nameUUIDFromBytes(postToken.toByteArray())),
-            SourceDocumentRef(SourceId("notion-main"), externalId),
-        )
+    @Test
+    fun `two revisions keep their own bytes for the same source file name`() {
+        val older = PostFixtures.hosted("same.png", signature = "1")
+        val newer = PostFixtures.hosted("same.png", signature = "2")
+        val first = PostFixtures.revision(postId, PostFixtures.revisionId(1), BlockTree(listOf(PostFixtures.image("i", older))), "rev-1")
+        val second = PostFixtures.revision(postId, PostFixtures.revisionId(2), BlockTree(listOf(PostFixtures.image("i", newer))), "rev-2")
 
-    private fun post(
-        postId: PostId,
-        title: String,
-        content: String,
-    ): Post =
-        Post.restore(
-            postId,
-            title,
-            BlockTree(
-                listOf(
-                    BlockNode(
-                        BlockId("paragraph"),
-                        TextBlockContent.Paragraph(listOf(InlineContent.Text(content))),
-                    ),
-                ),
-            ),
-        )
+        database.inTransaction {
+            repository.register(Post.register(postId, document), "Untitled", now)
+            storeMedia(listOf(key('a'), key('b')))
+            repository.saveRevision(first, mapOf(sourceKey(older) to key('a')))
+            repository.saveRevision(second, mapOf(sourceKey(newer) to key('b')))
 
-    // Stores a snapshot JSON document whose schema version the codec does not support.
-    private fun replaceSnapshotJson(
-        postId: PostId,
-        json: String,
-    ) {
-        PostSnapshotTable.update({ PostSnapshotTable.postId eq postId.value }) { it[snapshotJson] = json }
+            assertThat(repository.findMediaBindings(setOf(first.id, second.id))).containsExactlyInAnyOrderEntriesOf(
+                mapOf(first.id to mapOf(sourceKey(older) to key('a')), second.id to mapOf(sourceKey(newer) to key('b'))),
+            )
+        }
     }
 
-    private companion object {
-        const val UNSUPPORTED_SNAPSHOT = "{\"schemaVersion\":2,\"kind\":\"block_tree_snapshot\",\"blocks\":[]}"
+    @Test
+    fun `a new revision must have a stored copy of every source-hosted file`() {
+        val content = BlockTree(listOf(PostFixtures.image("i", PostFixtures.hosted("x.png"))))
+        val revision = PostFixtures.revision(postId, PostFixtures.revisionId(1), content)
+
+        database.inTransaction {
+            repository.register(Post.register(postId, document), "Untitled", now)
+
+            assertThatIllegalArgumentException().isThrownBy { repository.saveRevision(revision, emptyMap()) }
+        }
     }
+
+    @Test
+    fun `one source revision is stored at most once per post`() {
+        database.inTransaction {
+            repository.register(Post.register(postId, document), "Untitled", now)
+            repository.saveRevision(PostFixtures.revision(postId, PostFixtures.revisionId(1), sourceRevision = "same"), emptyMap())
+
+            assertThatThrownBy {
+                repository.saveRevision(PostFixtures.revision(postId, PostFixtures.revisionId(2), sourceRevision = "same"), emptyMap())
+            }.isInstanceOf(ExposedSQLException::class.java)
+                .hasMessageContaining("POST_REVISION_POST_SOURCE_REVISION_UNIQUE")
+        }
+    }
+
+    @Test
+    fun `saving a publication writes the first publication time only once`() {
+        val revisionId = PostFixtures.revisionId(1)
+        val firstPublication = Instant.parse("2026-10-16T03:00:00Z")
+
+        database.inTransaction {
+            repository.register(Post.register(postId, document), "Untitled", now)
+            repository.saveRevision(PostFixtures.revision(postId, revisionId), emptyMap())
+            val published = Post.register(postId, document).recordRevision(revisionId).publish(revisionId, firstPublication)
+            repository.save(published, firstPublication)
+            val generation = published.publication.generation
+            val laterRecord = PostPublication(PostVisibility.PUBLIC, revisionId, false, generation, now.plusSeconds(60))
+            repository.save(Post.restore(postId, document, revisionId, laterRecord), now)
+
+            assertThat(repository.find(postId)?.firstPublishedAt).isEqualTo(firstPublication)
+            assertThat(repository.find(postId)?.publication?.isPublic).isTrue()
+        }
+    }
+
+    @Test
+    fun `a legacy snapshot is copied unchanged and its files start unbound and are bound at most once`() {
+        val legacyFile = PostFixtures.hosted("legacy.png", expiresAt = now)
+        val snapshotJson = snapshotCodec.encode(BlockTree(listOf(PostFixtures.image("legacy", legacyFile))))
+        val revisionId = PostFixtures.revisionId(9)
+
+        database.inTransaction {
+            seedLegacySnapshot(snapshotJson)
+            repository.copyLegacySnapshot(postId, revisionId, setOf(legacyFile))
+            storeMedia(listOf(key('c'), key('d')))
+            repository.bindMissingMedia(revisionId, mapOf(sourceKey(legacyFile) to key('c')))
+            repository.bindMissingMedia(revisionId, mapOf(sourceKey(legacyFile) to key('d')))
+
+            val stored = PostRevisionTable.selectAll().where { PostRevisionTable.revisionId eq revisionId.value }.single()
+            assertThat(stored[PostRevisionTable.contentJson]).isEqualTo(snapshotJson)
+            assertThat(stored[PostRevisionTable.title]).isEqualTo("Legacy title")
+            assertThat(repository.findMediaBindings(setOf(revisionId))).containsEntry(revisionId, mapOf(sourceKey(legacyFile) to key('c')))
+        }
+    }
+
+    @Test
+    fun `unbound legacy files are reported with their stored URL and expiry`() {
+        val legacyFile = PostFixtures.hosted("legacy.png", expiresAt = now)
+        val revisionId = PostFixtures.revisionId(9)
+
+        database.inTransaction {
+            seedLegacySnapshot(snapshotCodec.encode(BlockTree(listOf(PostFixtures.image("legacy", legacyFile)))))
+            repository.copyLegacySnapshot(postId, revisionId, setOf(legacyFile))
+
+            assertThat(repository.findUnboundMedia(setOf(revisionId))).containsEntry(revisionId, setOf(legacyFile))
+            assertThat(repository.findMediaBindings(setOf(revisionId))).isEmpty()
+        }
+    }
+
+    // id의 지역 사본이다. insert 블록 안에서는 테이블 자체의 postId 컬럼이 이 프로퍼티를 가린다.
+    private fun seedLegacySnapshot(snapshotJson: String) {
+        val legacyPostId = postId.value
+        PostTable.insert {
+            it[PostTable.postId] = legacyPostId
+            it[title] = "Legacy title"
+            it[createdAt] = now.atOffset(ZoneOffset.UTC)
+            it[updatedAt] = now.atOffset(ZoneOffset.UTC)
+        }
+        PostSnapshotTable.insert {
+            it[PostSnapshotTable.postId] = legacyPostId
+            it[PostSnapshotTable.snapshotJson] = snapshotJson
+            it[sourceRevision] = "legacy-rev"
+            it[capturedAt] = now.atOffset(ZoneOffset.UTC)
+        }
+    }
+
+    private fun storeMedia(keys: List<MediaKey>) {
+        keys.forEach { mediaKey ->
+            OwnedMediaTable.insert {
+                it[OwnedMediaTable.mediaKey] = mediaKey.value
+                it[contentType] = "image/png"
+                it[byteSize] = 1
+                it[bytes] = byteArrayOf(1)
+                it[storedAt] = now.atOffset(ZoneOffset.UTC)
+            }
+        }
+    }
+
+    private fun key(digit: Char): MediaKey = MediaKey(digit.toString().repeat(64))
+
+    private fun sourceKey(source: MediaSource.SourceHosted) = SourceMediaKey.of(source.url)
 }

@@ -21,13 +21,17 @@ import xyz.robinjoon.notionblog.blog.adapter.inbound.web.view.TabContainerView
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.view.TableView
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.view.TextInlineView
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.view.UnsupportedView
-import xyz.robinjoon.notionblog.blog.application.model.BlogPage
+import xyz.robinjoon.notionblog.blog.application.model.AdminPostStatus
+import xyz.robinjoon.notionblog.blog.application.model.ContentReferences
 import xyz.robinjoon.notionblog.blog.application.model.LinkResolution
 import xyz.robinjoon.notionblog.blog.application.model.PresentationAssetDescriptor
+import xyz.robinjoon.notionblog.blog.application.model.PublicPostPage
+import xyz.robinjoon.notionblog.blog.application.model.RevisionMedia
 import xyz.robinjoon.notionblog.blog.domain.SourceDocumentRef
 import xyz.robinjoon.notionblog.blog.domain.SourceId
-import xyz.robinjoon.notionblog.blog.domain.post.Post
 import xyz.robinjoon.notionblog.blog.domain.post.PostId
+import xyz.robinjoon.notionblog.blog.domain.post.PostProperties
+import xyz.robinjoon.notionblog.blog.domain.post.PostRevisionId
 import xyz.robinjoon.notionblog.blog.domain.post.block.BlockId
 import xyz.robinjoon.notionblog.blog.domain.post.block.BlockNode
 import xyz.robinjoon.notionblog.blog.domain.post.block.BlockTree
@@ -59,7 +63,9 @@ import xyz.robinjoon.notionblog.blog.domain.post.block.inline.InlineContent
 import xyz.robinjoon.notionblog.blog.domain.post.block.inline.LinkTarget
 import xyz.robinjoon.notionblog.blog.domain.post.block.inline.MentionKind
 import xyz.robinjoon.notionblog.blog.domain.post.block.inline.TextAnnotations
+import xyz.robinjoon.notionblog.blog.domain.post.block.media.MediaKey
 import xyz.robinjoon.notionblog.blog.domain.post.block.media.MediaSource
+import xyz.robinjoon.notionblog.blog.domain.post.block.media.SourceMediaKey
 import xyz.robinjoon.notionblog.blog.domain.post.block.style.BlockStyle
 import xyz.robinjoon.notionblog.blog.domain.post.block.style.ColorToken
 import xyz.robinjoon.notionblog.blog.domain.post.block.style.StyleVariant
@@ -97,13 +103,14 @@ class PostPageViewAssemblerTest {
     ) {
         val feedUrl = "https://blog.example:8443/feed.xml".takeIf { configuredFeed }
         val footer =
-            Post
-                .restore(
-                    PostId(UUID.fromString("00000000-0000-0000-0000-000000000004")),
-                    "Site footer",
-                    BlockTree(listOf(node("footer-content", TextBlockContent.Paragraph(listOf(InlineContent.Text("Footer text")))))),
+            WebFixtures
+                .revision(
+                    title = "Site footer",
+                    nodes = listOf(node("footer-content", TextBlockContent.Paragraph(listOf(InlineContent.Text("Footer text"))))),
+                    postId = PostId(UUID.fromString("00000000-0000-0000-0000-000000000004")),
                 ).takeIf { footerDocument }
-        val page = page(emptyList()).copy(footer = footer)
+        val base = page(emptyList())
+        val page = base.copy(chrome = base.chrome.copy(footer = footer))
         val view = PostPageViewAssembler(clock, feedUrl).assemble(page)
 
         val html = templateEngine().process("blog/post", Context().apply { setVariable("page", view) })
@@ -112,7 +119,7 @@ class PostPageViewAssemblerTest {
         val alternateLinks = Regex("<link\\b[^>]*rel=\"alternate\"[^>]*>").findAll(head).map { it.value }.toList()
         val subscriptionLinks = Regex("<a\\b[^>]*>\\s*RSS 구독\\s*</a>").findAll(body).map { it.value }.toList()
 
-        assertThat(view.feedUrl).isEqualTo(feedUrl)
+        assertThat(view.chrome.feedUrl).isEqualTo(feedUrl)
         if (configuredFeed) {
             assertThat(alternateLinks).hasSize(1)
             assertThat(alternateLinks.single()).contains("type=\"application/rss+xml\"", "href=\"$feedUrl\"")
@@ -218,12 +225,95 @@ class PostPageViewAssemblerTest {
         val column = BlockNode(BlockId("column"), LayoutBlockContent.Column(null), children = listOf(tabs))
         val columns = BlockNode(BlockId("columns"), LayoutBlockContent.ColumnList, children = listOf(column))
 
-        val view = assembler.assemble(page(listOf(columns)))
+        val storedKey = MediaKey("d".repeat(64))
+        val references =
+            ContentReferences(
+                emptyMap(),
+                RevisionMedia(mapOf(WebFixtures.revisionId to mapOf(SourceMediaKey.of(source.url) to storedKey))),
+            )
+
+        val view = assembler.assemble(WebFixtures.publicPage(WebFixtures.revision(nodes = listOf(columns)), references))
         val columnView = (view.post.blocks.single() as ColumnListView).columns.single()
         val tabView = (columnView.children.single() as TabContainerView).tabs.single()
         val rowView = (tabView.children.single() as TableView).rows.single()
 
-        assertThat((rowView.children.single() as MediaView).url).isEqualTo(source.url.toASCIIString())
+        assertThat((rowView.children.single() as MediaView).url).isEqualTo("/media/${storedKey.value}")
+    }
+
+    @Test
+    fun `renders each revision's own stored file when article header and preview share one source file`() {
+        val source = MediaSource.SourceHosted(URI("https://files.notion.so/shared.png"), null)
+        val sourceKey = SourceMediaKey.of(source.url)
+        val articleRevisionId = PostRevisionId(UUID.fromString("00000000-0000-0000-0000-0000000000b1"))
+        val headerRevisionId = PostRevisionId(UUID.fromString("00000000-0000-0000-0000-0000000000b2"))
+        val articleKey = MediaKey("a".repeat(64))
+        val headerKey = MediaKey("b".repeat(64))
+        val image = node("image", MediaBlockContent.Media(MediaType.IMAGE, source, "shared.png"))
+        val article =
+            WebFixtures
+                .revision(
+                    nodes = listOf(image),
+                    properties = PostProperties("Post", null, emptyList(), source),
+                ).copy(id = articleRevisionId)
+        val header = WebFixtures.revision(title = "Header", nodes = listOf(image)).copy(id = headerRevisionId)
+        val references =
+            ContentReferences(
+                emptyMap(),
+                RevisionMedia(
+                    mapOf(
+                        articleRevisionId to mapOf(sourceKey to articleKey),
+                        headerRevisionId to mapOf(sourceKey to headerKey),
+                    ),
+                ),
+            )
+
+        val view = assembler.assemble(WebFixtures.publicPage(article, references, WebFixtures.chrome(header = header)))
+
+        assertThat((view.post.blocks.single() as MediaView).url).isEqualTo("/media/${articleKey.value}")
+        assertThat(view.properties.coverHref).isEqualTo("/media/${articleKey.value}")
+        val headerImage = checkNotNull(view.chrome.header).blocks.single() as MediaView
+        assertThat(headerImage.url).isEqualTo("/media/${headerKey.value}")
+    }
+
+    @Test
+    fun `does not borrow another revision's stored file for a file it has no copy of`() {
+        val source = MediaSource.SourceHosted(URI("https://files.notion.so/other.png"), clock.instant().minusSeconds(1))
+        val otherRevisionId = PostRevisionId(UUID.fromString("00000000-0000-0000-0000-0000000000b3"))
+        val references =
+            ContentReferences(
+                emptyMap(),
+                RevisionMedia(mapOf(otherRevisionId to mapOf(SourceMediaKey.of(source.url) to MediaKey("c".repeat(64))))),
+            )
+        val revision = WebFixtures.revision(nodes = listOf(node("image", MediaBlockContent.Media(MediaType.IMAGE, source, "other.png"))))
+
+        val view = assembler.assemble(WebFixtures.publicPage(revision, references))
+
+        assertThat((view.post.blocks.single() as MediaView).url).isNull()
+    }
+
+    @Test
+    fun `never exposes the signed source URL of a file without a stored copy in public or preview pages`() {
+        val source =
+            MediaSource.SourceHosted(
+                URI("https://files.notion.so/signed.png?X-Amz-Signature=secret"),
+                clock.instant().plusSeconds(3600),
+            )
+        val revision =
+            WebFixtures.revision(
+                nodes = listOf(node("image", MediaBlockContent.Media(MediaType.IMAGE, source, "signed.png"))),
+                properties = PostProperties("Post", null, emptyList(), source),
+            )
+
+        val publicView = assembler.assemble(WebFixtures.publicPage(revision))
+        val previewView =
+            assembler.assemble(
+                AdminFixtures.preview(AdminPostStatus.DRAFT, AdminFixtures.actions()).copy(revision = revision),
+            )
+
+        listOf(publicView, previewView).forEach { view ->
+            assertThat((view.post.blocks.single() as MediaView).url).isNull()
+            assertThat(view.properties.coverHref).isNull()
+        }
     }
 
     @Test
@@ -248,7 +338,7 @@ class PostPageViewAssemblerTest {
                     ),
                 ),
             )
-        val html = render(base.copy(header = base.post, footer = base.post))
+        val html = render(base.copy(chrome = base.chrome.copy(header = base.post.revision, footer = base.post.revision)))
         val idPattern = Regex("""\bid="([^"]+)"""")
         val fragmentPattern = Regex("""href="#([^"]+)"""")
         val ariaReferencePattern = Regex("""aria-(?:controls|labelledby)="([^"]+)"""")
@@ -268,7 +358,7 @@ class PostPageViewAssemblerTest {
             assertThat(regionIds).containsAll(fragments).containsAll(ariaReferences)
         }
         assertThat(
-            base.post.content.roots
+            base.post.revision.content.roots
                 .first()
                 .id.value,
         ).isEqualTo("heading")
@@ -1055,8 +1145,11 @@ class PostPageViewAssemblerTest {
             }
         val preview =
             base.copy(
-                presentation = base.presentation.withAssets(PresentationAssets(assets.keys.toList(), scripts.keys.toList())),
-                presentationAssets = assets + scripts,
+                chrome =
+                    base.chrome.copy(
+                        presentation = base.chrome.presentation.withAssets(PresentationAssets(assets.keys.toList(), scripts.keys.toList())),
+                        presentationAssets = assets + scripts,
+                    ),
             )
 
         val html = render(preview)
@@ -1417,31 +1510,7 @@ class PostPageViewAssemblerTest {
     private fun page(
         nodes: List<BlockNode>,
         links: Map<LinkTarget.SourceDocument, LinkResolution> = emptyMap(),
-    ): BlogPage {
-        val style = PresentationAssetRef("style", 1, "sha256-style")
-        val profile =
-            PresentationProfile.restore(
-                reference = PresentationProfileRef(PresentationProfileId(UUID.fromString("00000000-0000-0000-0000-000000000001")), 1),
-                key = PresentationProfileKey("default"),
-                tokens = PresentationTokens(),
-                assets = PresentationAssets(styleSheets = listOf(style), scripts = emptyList()),
-            )
-        val root = SourceDocumentRef(SourceId("notion"), "root")
-        return BlogPage(
-            SiteConfiguration.restore(
-                publicationId = PublicationId(UUID.fromString("00000000-0000-0000-0000-000000000002")),
-                documents = SiteDocuments(root = root, header = null, footer = null),
-                metadata = SiteMetadata("Blog", "Description", "en", null),
-                presentationProfile = profile.reference,
-            ),
-            profile,
-            mapOf(style to PresentationAssetDescriptor("/presentation/notion.css", "text/css", style.integrity)),
-            Post.restore(PostId(UUID.fromString("00000000-0000-0000-0000-000000000003")), "Post", BlockTree(nodes)),
-            null,
-            null,
-            links,
-        )
-    }
+    ): PublicPostPage = WebFixtures.publicPage(WebFixtures.revision(nodes = nodes), ContentReferences(links, RevisionMedia.empty))
 
     private fun dataTable(
         title: String,
@@ -1463,7 +1532,7 @@ class PostPageViewAssemblerTest {
         content: BlockContent,
     ): BlockNode = BlockNode(BlockId(id), content)
 
-    private fun render(page: BlogPage): String =
+    private fun render(page: PublicPostPage): String =
         templateEngine().process(
             "blog/post",
             Context().apply { setVariable("page", assembler.assemble(page)) },

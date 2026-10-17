@@ -4,62 +4,47 @@ import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Controller
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.servlet.ModelAndView
-import xyz.robinjoon.notionblog.blog.application.model.BlogPageLookupResult
-import xyz.robinjoon.notionblog.blog.application.port.input.GetBlogPageUseCase
-import xyz.robinjoon.notionblog.blog.domain.post.PostId
-import java.util.UUID
+import xyz.robinjoon.notionblog.blog.application.model.PageQuery
+import xyz.robinjoon.notionblog.blog.application.model.PostListLookupResult
+import xyz.robinjoon.notionblog.blog.application.model.PublicPostLookupResult
+import xyz.robinjoon.notionblog.blog.application.port.input.GetPostListUseCase
+import xyz.robinjoon.notionblog.blog.application.port.input.GetPublicPostUseCase
 
 @Controller
 class BlogController(
-    private val blogPages: GetBlogPageUseCase,
+    private val postLists: GetPostListUseCase,
+    private val posts: GetPublicPostUseCase,
     private val assembler: PostPageViewAssembler,
 ) {
     @GetMapping("/")
-    fun root(): ModelAndView = render(blogPages.getRoot())
+    fun home(
+        @RequestParam(defaultValue = "1") page: Int,
+    ): ModelAndView =
+        when (val result = postLists.get(PageQuery(page.coerceAtLeast(1), HOME_PAGE_SIZE))) {
+            is PostListLookupResult.Found -> {
+                ModelAndView("blog/home").addObject("page", assembler.assemble(result.page))
+            }
+
+            PostListLookupResult.ContentUnavailable -> {
+                errorView("error/blog-unavailable", HttpStatus.SERVICE_UNAVAILABLE)
+            }
+        }
 
     @GetMapping("/posts/{postId}")
     fun post(
         @PathVariable postId: String,
     ): ModelAndView {
-        val parsedPostId = parsePostId(postId) ?: return errorView("error/blog-not-found", HttpStatus.NOT_FOUND)
-        return render(blogPages.get(parsedPostId))
+        val parsedPostId = WebIds.postId(postId) ?: return errorView("error/blog-not-found", HttpStatus.NOT_FOUND)
+        return when (val result = posts.get(parsedPostId)) {
+            is PublicPostLookupResult.Found -> ModelAndView("blog/post").addObject("page", assembler.assemble(result.page))
+            PublicPostLookupResult.NotFound -> errorView("error/blog-not-found", HttpStatus.NOT_FOUND)
+            PublicPostLookupResult.ContentUnavailable -> errorView("error/blog-unavailable", HttpStatus.SERVICE_UNAVAILABLE)
+        }
     }
-
-    private fun render(result: BlogPageLookupResult): ModelAndView =
-        when (result) {
-            is BlogPageLookupResult.Found -> {
-                ModelAndView("blog/post").apply {
-                    addObject("page", assembler.assemble(result.page))
-                    status = HttpStatus.OK
-                }
-            }
-
-            BlogPageLookupResult.NotFound -> {
-                errorView("error/blog-not-found", HttpStatus.NOT_FOUND)
-            }
-
-            BlogPageLookupResult.ContentUnavailable -> {
-                errorView("error/blog-unavailable", HttpStatus.SERVICE_UNAVAILABLE)
-            }
-        }
-
-    private fun parsePostId(value: String): PostId? {
-        if (!value.matches(uuidPattern)) {
-            return null
-        }
-        return runCatching { PostId(UUID.fromString(value)) }.getOrNull()
-    }
-
-    private fun errorView(
-        viewName: String,
-        status: HttpStatus,
-    ): ModelAndView =
-        ModelAndView(viewName).apply {
-            this.status = status
-        }
 
     private companion object {
-        val uuidPattern = Regex("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
+        const val HOME_PAGE_SIZE = 10
     }
 }

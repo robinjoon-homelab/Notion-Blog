@@ -2,63 +2,56 @@ package xyz.robinjoon.notionblog.config
 
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import xyz.robinjoon.notionblog.blog.application.port.output.diagnostics.SnapshotFailureReporter
+import xyz.robinjoon.notionblog.blog.application.port.input.MigrateLegacyPostsUseCase
+import xyz.robinjoon.notionblog.blog.application.port.input.PostPublicationUseCase
+import xyz.robinjoon.notionblog.blog.application.port.output.persistence.LegacyPostStore
+import xyz.robinjoon.notionblog.blog.application.port.output.persistence.MediaStoragePort
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.PostRepository
-import xyz.robinjoon.notionblog.blog.application.port.output.persistence.PresentationProfileRepository
-import xyz.robinjoon.notionblog.blog.application.port.output.persistence.PublicationRepository
-import xyz.robinjoon.notionblog.blog.application.port.output.persistence.SiteConfigurationRepository
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.SyncStateRepository
-import xyz.robinjoon.notionblog.blog.application.port.output.presentation.PresentationAssetCatalog
-import xyz.robinjoon.notionblog.blog.application.service.ActivatePublicationService
 import xyz.robinjoon.notionblog.blog.application.service.ApplyImportedPostService
-import xyz.robinjoon.notionblog.blog.application.service.ApplyImportedSiteConfigurationService
-import xyz.robinjoon.notionblog.blog.application.service.CancelInactivePostSynchronizationService
-import xyz.robinjoon.notionblog.blog.application.service.ImportedSiteConfigurationResolver
-import xyz.robinjoon.notionblog.blog.application.service.StagePublicationMemberService
-import xyz.robinjoon.notionblog.blog.domain.SourceDocumentRef
+import xyz.robinjoon.notionblog.blog.application.service.CancelSynchronizationService
+import xyz.robinjoon.notionblog.blog.application.service.MigrateLegacyPostsService
+import xyz.robinjoon.notionblog.blog.application.service.PublishPostService
+import xyz.robinjoon.notionblog.blog.application.service.RegisterPostService
+import xyz.robinjoon.notionblog.blog.application.service.SyncStateRecorder
 import xyz.robinjoon.notionblog.blog.domain.post.PostId
-import xyz.robinjoon.notionblog.blog.domain.presentation.PresentationProfileKey
-import xyz.robinjoon.notionblog.blog.domain.publication.PublicationId
-import xyz.robinjoon.notionblog.blog.domain.publication.PublicationRevisionId
+import xyz.robinjoon.notionblog.blog.domain.post.PostRevisionId
 import xyz.robinjoon.notionblog.blog.domain.sync.RefreshPolicy
 import java.time.Clock
 
+// 짧은 쓰기 트랜잭션이다. 각 서비스가 자신의 트랜잭션을 소유하며, 어느 서비스도 원본을 호출하거나 파일을 내려받지 않는다.
 @Configuration(proxyBeanMethods = false)
 internal class SynchronizationStateConfig(
     private val posts: PostRepository,
-    private val publications: PublicationRepository,
-    private val siteConfigurations: SiteConfigurationRepository,
-    private val states: SyncStateRepository,
     private val clock: Clock,
-    private val refreshPolicy: RefreshPolicy,
+    private val postIdFactory: () -> PostId,
+    private val revisionIdFactory: () -> PostRevisionId,
 ) {
     @Bean
+    fun syncStateRecorder(
+        states: SyncStateRepository,
+        refreshPolicy: RefreshPolicy,
+    ): SyncStateRecorder = SyncStateRecorder(states, refreshPolicy)
+
+    @Bean
     fun applyImportedPostService(
-        postIdFactory: (SourceDocumentRef) -> PostId,
-        snapshotFailures: SnapshotFailureReporter,
-    ): ApplyImportedPostService = ApplyImportedPostService(posts, states, clock, refreshPolicy, snapshotFailures, postIdFactory)
+        mediaStorage: MediaStoragePort,
+        recorder: SyncStateRecorder,
+    ): ApplyImportedPostService = ApplyImportedPostService(posts, mediaStorage, recorder, clock, revisionIdFactory)
 
     @Bean
-    fun stagePublicationMemberService(revisionIdFactory: () -> PublicationRevisionId): StagePublicationMemberService =
-        StagePublicationMemberService(publications, states, clock, refreshPolicy, revisionIdFactory)
+    fun registerPostService(recorder: SyncStateRecorder): RegisterPostService = RegisterPostService(posts, recorder, clock, postIdFactory)
 
     @Bean
-    fun activatePublicationService(): ActivatePublicationService =
-        ActivatePublicationService(publications, posts, states, clock, refreshPolicy)
+    fun postPublicationUseCase(recorder: SyncStateRecorder): PostPublicationUseCase = PublishPostService(posts, recorder, clock)
 
     @Bean
-    fun cancelInactivePostSynchronizationService(): CancelInactivePostSynchronizationService =
-        CancelInactivePostSynchronizationService(publications, states)
+    fun cancelSynchronizationService(states: SyncStateRepository): CancelSynchronizationService =
+        CancelSynchronizationService(posts, states)
 
     @Bean
-    fun importedSiteConfigurationResolver(
-        profiles: PresentationProfileRepository,
-        assets: PresentationAssetCatalog,
-        defaultProfileKey: PresentationProfileKey,
-        publicationIdFactory: () -> PublicationId,
-    ): ImportedSiteConfigurationResolver = ImportedSiteConfigurationResolver(profiles, assets, defaultProfileKey, publicationIdFactory)
-
-    @Bean
-    fun applyImportedSiteConfigurationService(resolver: ImportedSiteConfigurationResolver): ApplyImportedSiteConfigurationService =
-        ApplyImportedSiteConfigurationService(siteConfigurations, publications, resolver, states, clock, refreshPolicy)
+    fun migrateLegacyPostsUseCase(
+        legacy: LegacyPostStore,
+        recorder: SyncStateRecorder,
+    ): MigrateLegacyPostsUseCase = MigrateLegacyPostsService(legacy, posts, recorder, clock, revisionIdFactory)
 }

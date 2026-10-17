@@ -36,18 +36,30 @@ import xyz.robinjoon.notionblog.blog.adapter.inbound.web.RssFeedRenderer
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.RssSummaryExtractor
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.WebExceptionHandler
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.WebSecurityHeadersFilter
-import xyz.robinjoon.notionblog.blog.application.model.BlogPage
-import xyz.robinjoon.notionblog.blog.application.model.BlogPageLookupResult
-import xyz.robinjoon.notionblog.blog.application.model.PostFeed
-import xyz.robinjoon.notionblog.blog.application.model.PostFeedEntry
-import xyz.robinjoon.notionblog.blog.application.model.PostFeedLookupResult
+import xyz.robinjoon.notionblog.blog.application.model.ContentReferences
+import xyz.robinjoon.notionblog.blog.application.model.PageQuery
+import xyz.robinjoon.notionblog.blog.application.model.PostListEntry
+import xyz.robinjoon.notionblog.blog.application.model.PostListLookupResult
+import xyz.robinjoon.notionblog.blog.application.model.PostListPage
 import xyz.robinjoon.notionblog.blog.application.model.PresentationAssetDescriptor
-import xyz.robinjoon.notionblog.blog.application.port.input.GetBlogPageUseCase
-import xyz.robinjoon.notionblog.blog.application.port.input.GetPostFeedUseCase
+import xyz.robinjoon.notionblog.blog.application.model.PublicFeed
+import xyz.robinjoon.notionblog.blog.application.model.PublicFeedLookupResult
+import xyz.robinjoon.notionblog.blog.application.model.PublicPostLookupResult
+import xyz.robinjoon.notionblog.blog.application.model.PublicPostPage
+import xyz.robinjoon.notionblog.blog.application.model.PublishedPost
+import xyz.robinjoon.notionblog.blog.application.model.ResultPage
+import xyz.robinjoon.notionblog.blog.application.model.RevisionMedia
+import xyz.robinjoon.notionblog.blog.application.model.SiteChrome
+import xyz.robinjoon.notionblog.blog.application.port.input.GetPostListUseCase
+import xyz.robinjoon.notionblog.blog.application.port.input.GetPublicFeedUseCase
+import xyz.robinjoon.notionblog.blog.application.port.input.GetPublicPostUseCase
 import xyz.robinjoon.notionblog.blog.domain.SourceDocumentRef
 import xyz.robinjoon.notionblog.blog.domain.SourceId
-import xyz.robinjoon.notionblog.blog.domain.post.Post
+import xyz.robinjoon.notionblog.blog.domain.SourceRevision
 import xyz.robinjoon.notionblog.blog.domain.post.PostId
+import xyz.robinjoon.notionblog.blog.domain.post.PostProperties
+import xyz.robinjoon.notionblog.blog.domain.post.PostRevision
+import xyz.robinjoon.notionblog.blog.domain.post.PostRevisionId
 import xyz.robinjoon.notionblog.blog.domain.post.block.BlockId
 import xyz.robinjoon.notionblog.blog.domain.post.block.BlockNode
 import xyz.robinjoon.notionblog.blog.domain.post.block.BlockTree
@@ -74,15 +86,17 @@ import java.util.UUID
 // renderer on the Spring MVC defaults. The use cases are strict mocks, so publication, scope, and snapshot rules
 // stay in the service tests; this test checks how lookup results become documented HTML and RSS responses.
 class BlogHttpDocumentationTest {
-    private val restDocumentation = ManualRestDocumentation()
-    private val blogPages = mockk<GetBlogPageUseCase>()
-    private val feeds = mockk<GetPostFeedUseCase>()
+    private val restDocumentation =
+        ManualRestDocumentation(System.getProperty("org.springframework.restdocs.outputDir", "build/generated-snippets"))
+    private val postLists = mockk<GetPostListUseCase>()
+    private val publicPosts = mockk<GetPublicPostUseCase>()
+    private val feeds = mockk<GetPublicFeedUseCase>()
     private val urls = PublicBlogUrls(URI("https://blog.example"))
     private val articleId = PostId(UUID.fromString("5b0f8e2a-3c41-4d6b-9a57-2f1d7c9e8b14"))
     private val mvc: MockMvc =
         MockMvcBuilders
             .standaloneSetup(
-                BlogController(blogPages, PostPageViewAssembler(Clock.fixed(now, ZoneOffset.UTC), urls.feedUrl)),
+                BlogController(postLists, publicPosts, PostPageViewAssembler(Clock.fixed(now, ZoneOffset.UTC), urls.feedUrl)),
                 RssFeedController(feeds, RssFeedRenderer(RssSummaryExtractor()), urls),
             ).setControllerAdvice(WebExceptionHandler())
             .setViewResolvers(thymeleafViewResolver())
@@ -106,21 +120,21 @@ class BlogHttpDocumentationTest {
     }
 
     @Test
-    fun `published root returns documented HTML`() {
-        every { blogPages.getRoot() } returns BlogPageLookupResult.Found(page(post(rootId, "Documentation blog")))
+    fun `home returns the documented paginated post list`() {
+        every { postLists.get(any()) } returns PostListLookupResult.Found(listPage())
 
         mvc
             .perform(get("/"))
             .andExpect(status().isOk)
             .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_HTML))
-            .andExpect(content().string(containsString("Documentation blog")))
+            .andExpect(content().string(containsString("A published article")))
             .andExpect(header().string("Content-Security-Policy", containsString("style-src 'self'")))
             .andDo(document("root-found", htmlHeaders()))
     }
 
     @Test
     fun `published article returns documented HTML at its internal UUID`() {
-        every { blogPages.get(articleId) } returns BlogPageLookupResult.Found(page(post(articleId, "A published article")))
+        every { publicPosts.get(articleId) } returns PublicPostLookupResult.Found(page(revision(articleId, "A published article")))
 
         mvc
             .perform(get("/posts/{postId}", articleId.value))
@@ -131,19 +145,8 @@ class BlogHttpDocumentationTest {
     }
 
     @Test
-    fun `unpublished root returns documented not found HTML`() {
-        every { blogPages.getRoot() } returns BlogPageLookupResult.NotFound
-
-        mvc
-            .perform(get("/"))
-            .andExpect(status().isNotFound)
-            .andExpect(content().string(containsString("Page not found")))
-            .andDo(document("root-not-found", htmlHeaders()))
-    }
-
-    @Test
     fun `unpublished article returns documented not found HTML`() {
-        every { blogPages.get(articleId) } returns BlogPageLookupResult.NotFound
+        every { publicPosts.get(articleId) } returns PublicPostLookupResult.NotFound
 
         mvc
             .perform(get("/posts/{postId}", articleId.value))
@@ -155,7 +158,7 @@ class BlogHttpDocumentationTest {
     @Test
     fun `missing or malformed post identifiers return not found`() {
         val missingId = PostId(UUID.fromString("00000000-0000-0000-0000-000000000000"))
-        every { blogPages.get(missingId) } returns BlogPageLookupResult.NotFound
+        every { publicPosts.get(missingId) } returns PublicPostLookupResult.NotFound
 
         mvc
             .perform(get("/posts/{postId}", missingId.value))
@@ -170,8 +173,8 @@ class BlogHttpDocumentationTest {
     @Test
     fun `uninitialized blog documents unavailable HTML for root and article`() {
         val missingId = PostId(UUID.fromString("00000000-0000-0000-0000-000000000000"))
-        every { blogPages.getRoot() } returns BlogPageLookupResult.ContentUnavailable
-        every { blogPages.get(missingId) } returns BlogPageLookupResult.ContentUnavailable
+        every { postLists.get(any()) } returns PostListLookupResult.ContentUnavailable
+        every { publicPosts.get(missingId) } returns PublicPostLookupResult.ContentUnavailable
 
         mvc
             .perform(get("/"))
@@ -187,7 +190,7 @@ class BlogHttpDocumentationTest {
 
     @Test
     fun `published descendants produce documented RSS with cache validators`() {
-        every { feeds.get() } returns PostFeedLookupResult.Found(feed())
+        every { feeds.get() } returns PublicFeedLookupResult.Found(feed())
 
         mvc
             .perform(get("/feed.xml"))
@@ -203,7 +206,7 @@ class BlogHttpDocumentationTest {
 
     @Test
     fun `unchanged RSS returns documented not modified without a response body`() {
-        every { feeds.get() } returns PostFeedLookupResult.Found(feed())
+        every { feeds.get() } returns PublicFeedLookupResult.Found(feed())
         val response =
             mvc
                 .perform(get("/feed.xml"))
@@ -229,7 +232,7 @@ class BlogHttpDocumentationTest {
 
     @Test
     fun `uninitialized RSS remains unavailable even with a wildcard validator`() {
-        every { feeds.get() } returns PostFeedLookupResult.ContentUnavailable
+        every { feeds.get() } returns PublicFeedLookupResult.ContentUnavailable
 
         mvc
             .perform(get("/feed.xml").header("If-None-Match", "*"))
@@ -260,7 +263,7 @@ class BlogHttpDocumentationTest {
             headerWithName("ETag").description("피드 본문이 같으면 유지되는 캐시 검증값"),
         )
 
-    private fun page(post: Post): BlogPage {
+    private fun chrome(): SiteChrome {
         val profile =
             PresentationProfile.restore(
                 reference = PresentationProfileRef(PresentationProfileId(UUID.fromString("0f3c3a52-6c55-4f4c-8f43-6f0b3c8e2d11")), 1),
@@ -268,7 +271,7 @@ class BlogHttpDocumentationTest {
                 tokens = PresentationTokens(),
                 assets = PresentationAssets(styleSheets = listOf(style), scripts = emptyList()),
             )
-        return BlogPage(
+        return SiteChrome(
             site =
                 SiteConfiguration.restore(
                     publicationId = PublicationId(UUID.fromString("7d2c9b40-1e8f-4a35-b6d7-0c5e4f3a2b19")),
@@ -279,22 +282,44 @@ class BlogHttpDocumentationTest {
             presentation = profile,
             presentationAssets =
                 mapOf(style to PresentationAssetDescriptor("/presentation/notion/v1/notion.css", "text/css", style.integrity)),
-            post = post,
             header = null,
             footer = null,
-            links = emptyMap(),
+            rootPostId = null,
         )
     }
 
-    private fun feed() = PostFeed(metadata, listOf(PostFeedEntry(post(articleId, "A published article"), now)))
+    private fun page(revision: PostRevision) =
+        PublicPostPage(chrome(), PublishedPost(revision, now), ContentReferences(emptyMap(), RevisionMedia.empty))
 
-    private fun post(
+    private fun listPage() =
+        PostListPage(
+            chrome(),
+            ResultPage.of(
+                listOf(
+                    PostListEntry(
+                        articleId,
+                        revisionId,
+                        PostProperties("A published article", "Published notes", listOf("notes"), null),
+                        now,
+                    ),
+                ),
+                PageQuery(1, 10),
+            ),
+            ContentReferences(emptyMap(), RevisionMedia.empty),
+        )
+
+    private fun feed() = PublicFeed(metadata, listOf(PublishedPost(revision(articleId, "A published article"), now)))
+
+    private fun revision(
         id: PostId,
         title: String,
-    ) = Post.restore(
-        id,
-        title,
-        BlockTree(listOf(BlockNode(BlockId("paragraph"), TextBlockContent.Paragraph(listOf(InlineContent.Text(title)))))),
+    ) = PostRevision(
+        id = revisionId,
+        postId = id,
+        properties = PostProperties(title, null, emptyList(), null),
+        content = BlockTree(listOf(BlockNode(BlockId("paragraph"), TextBlockContent.Paragraph(listOf(InlineContent.Text(title)))))),
+        sourceRevision = SourceRevision("revision-1"),
+        capturedAt = now,
     )
 
     // Mirrors the Spring Boot Thymeleaf defaults so the documented responses use the production templates.
@@ -316,8 +341,8 @@ class BlogHttpDocumentationTest {
     }
 
     private companion object {
+        val revisionId = PostRevisionId(UUID.fromString("00000000-0000-0000-0000-0000000000a1"))
         val now: Instant = Instant.parse("2026-10-08T00:00:00Z")
-        val rootId = PostId(UUID.fromString("c4a1e9d2-8b37-4f60-a215-9e3d7b6c4f08"))
         val style = PresentationAssetRef("notion-core", 1, "sha384-V763UM2y9iSN6rUXr+H4a3GeowrAJqJ53QPBQoJQ9/W3UVee9kfeg7pO3tJJ7V/T")
         val metadata = SiteMetadata("Documentation blog", "Published notes", "en", null)
     }

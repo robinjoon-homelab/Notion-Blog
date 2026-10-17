@@ -2,6 +2,7 @@ package xyz.robinjoon.notionblog.config
 
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import xyz.robinjoon.notionblog.blog.adapter.inbound.web.AdminViewAssembler
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.PostPageViewAssembler
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.PublicBlogUrls
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.RssFeedRenderer
@@ -25,6 +26,12 @@ internal class WebConfig {
         clock: Clock,
         urls: PublicBlogUrls,
     ): PostPageViewAssembler = PostPageViewAssembler(clock, urls.feedUrl)
+
+    @Bean
+    fun adminViewAssembler(
+        clock: Clock,
+        pages: PostPageViewAssembler,
+    ): AdminViewAssembler = AdminViewAssembler(clock, pages)
 
     @Bean
     fun webSecurityHeadersFilter(): WebSecurityHeadersFilter = WebSecurityHeadersFilter()

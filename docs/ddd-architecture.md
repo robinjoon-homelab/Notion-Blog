@@ -40,41 +40,55 @@ BC가 정해져도 루트의 소유·생명주기가 미정이면 루트와 테�
 ### 분류 사례
 
 - **기존 루트:** 새 Notion 블록 종류 지원은 Post가 소유한 BlockTree의 콘텐츠 값과 스냅샷 형식을 바꾸는 일이다. 블록 저장소나 블록 루트를 만들지 않는다.
-- **자식 값:** 게시 상태(`PostAvailability`)와 소스 바인딩은 게시글마다 하나이고 스냅샷과 함께 바뀌므로 Post 어그리게이트의 값으로 둔다.
+- **자식 값:** 공개 결정(`PostPublication`)과 소스 바인딩은 게시글마다 하나이므로 Post 어그리게이트의 값으로 둔다. 가져온 내용은 Post가 소유한 불변 `PostRevision`이다.
 - **같은 BC의 새 루트:** 표현 프로필은 사이트 설정 없이 등록·버전 관리되고 여러 설정에서 선택될 수 있으므로 SiteConfiguration과 다른 루트이며 `PresentationProfileRef`로 참조한다.
-- **조회:** RSS 피드는 저장된 공개 범위·게시 상태·최초 게시 시각을 읽는 조회 모델이다. 피드용 루트나 저장 테이블을 만들지 않는다.
+- **조회:** RSS 피드는 저장된 공개 결정·공개본 revision·최초 게시 시각을 읽는 조회 모델이다. 피드용 루트나 저장 테이블을 만들지 않는다.
 - **판단 보류:** 백링크·관련 글은 본문 링크를 영속 관계로 저장해야 하는 요구가 확인될 때 별도 조회 모델을 검토한다. 링크를 Post 간 관계로 저장하지 않는다.
 
 ## 현재 업무 규칙
 
-블로그 운영자는 Notion 설정 데이터 소스와 Notion 페이지의 게시 여부로 공개할 글을 결정한다. 이 앱은 그 결정을 주기적으로 가져와 정규화한 스냅샷으로 저장하고, 웹 요청은 저장된 스냅샷만 제공한다. 웹 요청 중에 Notion을 호출하지 않는다.
+**공개 여부는 이 앱의 관리자 명령과 DB 상태만 결정한다.** Notion의 `public_url`·휴지통·이동·접근 오류는 진단 정보일 뿐 공개 여부를 바꾸지 않는다. 글은 Notion에서만 만들고 고친다. 앱은 Notion 글 데이터베이스의 글을 찾아 revision으로 가져오고, 관리자가 미리보기를 확인한 뒤 발행한다. 공개 읽기는 저장된 공개본 revision만 제공하며 Notion을 호출하지 않는다. Notion·파일 서버 호출은 관리자의 새로고침과 스케줄러만 DB 트랜잭션 밖에서 한다.
 
 | BC | 루트와 소유 상태 | 규칙 |
 | --- | --- | --- |
-| `blog` | Post: `PostId`, 제목·`BlockTree` 스냅샷. 소스 바인딩·게시 상태·최초 게시 시각을 함께 저장 | 제목은 공백만일 수 없다. `PUBLISHED`는 렌더링 가능한 스냅샷 저장과 같은 트랜잭션에서 기록한다. 최초 게시 시각은 처음 저장한 뒤 바꾸지 않는다. |
-| `blog` | BlogPublication: `PublicationId`, 루트 `PostId`·활성 revision. revision과 구성원은 revision별로 저장·조회 | 루트와 활성 revision은 함께 설정한다. revision은 `STAGING → ACTIVE → SUPERSEDED` 또는 `STAGING → ABANDONED`. 활성화는 단일 루트·깊이·순환 없음·모든 구성원의 게시 상태 확인·`PUBLISHED` 구성원의 스냅샷을 검증한다. |
-| `blog` | SiteConfiguration: 단일 사이트의 `SiteDocuments`(루트·헤더·푸터), 메타데이터, 표현 프로필 참조 | 루트 문서가 바뀌면 같은 publication의 새 revision을 수집한다. 실패하면 마지막 정상 설정과 활성 revision을 유지한다. |
+| `blog` | Post: `PostId`, 소스 바인딩, `PostPublication`(공개 여부·공개본 revision·보관 여부·generation), 최신 revision 포인터, 최초 게시 시각. revision(`PostRevision`: 제목·요약·태그·표지·`BlockTree`·소스 revision)은 불변이며 수정·삭제하지 않는다. | 공개 여부는 발행·발행 취소·보관·복원 명령과 1회성 레거시 이전만 바꾼다. 동기화·카탈로그 스캔은 쓰지 않는다. 발행·취소·보관·복원은 generation을 올린다. 보관하면 비공개이며 동기화·발행 대상이 아니고, 복원해도 비공개다. 최초 게시 시각은 한 번 정하면 바꾸지 않는다. |
+| `blog` | BlogPublication: 레거시 공개 범위(루트 `PostId`·활성 revision) | 이전 데이터로 보존한다. 새 공개 판정에 쓰지 않는다. 새로 만드는 경우는 사이트 설정의 첫 적용뿐이며 `site_configuration.publication_id`가 참조할 빈 행(루트·활성 revision 없음)이다. |
+| `blog` | SiteConfiguration: 단일 사이트의 `SiteDocuments`(루트는 선택, 헤더·푸터), 메타데이터, 표현 프로필 참조 | 설정 동기화에 실패하면 마지막 정상 설정을 유지한다. |
 | `blog` | PresentationProfile: `PresentationProfileRef`(ID·버전), 키, 토큰, 신뢰된 자산 | 저장한 버전은 바꾸지 않는다. 키마다 명시적으로 활성화한 현재 버전만 선택한다. |
-| `blog` | SyncState: `SyncTarget`별 다음 갱신 시각, 마지막 성공 시각, 연속 실패 기록 | 실패 횟수와 마지막 실패 종류는 함께 존재한다. 성공하면 실패 기록을 지우고 실패하면 백오프한다. |
+| `blog` | SyncState: `SyncTarget`별 다음 갱신 시각, 마지막 성공 시각, 연속 실패 기록(`MEDIA` 포함) | 실패 횟수와 마지막 실패 종류는 함께 존재한다. 성공하면 실패 기록을 지우고 실패하면 백오프한다. |
 
-**하나의 BC:** 게시글·공개 범위·사이트 설정·표현 프로필·동기화는 같은 운영자가 같은 Notion 원본의 언어로 결정한다. 공개 판정이 세 루트의 사실을 함께 쓰고 동기화가 그 사실을 같은 트랜잭션에서 갱신하므로 하나의 `blog` BC로 유지한다. 테이블·서비스·어댑터 수는 분리 근거가 아니다.
+**하나의 BC:** 게시글·사이트 설정·표현 프로필·동기화는 같은 운영자가 같은 Notion 원본의 언어로 결정한다. 공개 판정과 동기화가 같은 사실을 함께 쓰므로 하나의 `blog` BC로 유지한다. 테이블·서비스·어댑터 수는 분리 근거가 아니다.
 
-**여러 루트:** Post는 문서마다 생성·갱신되고, BlogPublication은 구조 동기화마다 revision을 바꾸며, SiteConfiguration은 설정 동기화로, PresentationProfile은 배포 산출물로, SyncState는 대상별 일정으로 바뀐다. 생명주기와 동시 변경이 다르므로 별도 루트로 둔다. `SyncTarget`·`PublicationId`·`PostId`·`PresentationProfileRef`로 서로 참조한다.
+**여러 루트:** Post는 문서마다 revision이 쌓이고 관리자 명령으로 공개가 바뀌며, SiteConfiguration은 설정 동기화로, PresentationProfile은 배포 산출물로, SyncState는 대상별 일정으로 바뀐다. 생명주기와 동시 변경이 다르므로 별도 루트로 둔다. `SyncTarget`·`PostId`·`PresentationProfileRef`로 서로 참조한다.
 
 ### 공개와 동기화 규칙
 
-- 글을 제공하려면 **활성 revision의 구성원이고, 게시 상태가 `PUBLISHED`이며, 렌더링 가능한 스냅샷이 있어야 한다.** 범위 밖·미게시·없는 ID·UUID가 아닌 ID는 404, 초기화 전이나 사용할 수 없는 설정·스냅샷은 503이다.
-- HTML 경로는 `GET /`(활성 루트)와 `GET /posts/{postId}`(내부 UUID)뿐이다. RSS는 `GET /feed.xml`이다. 제목 기반 경로·slug·별칭을 만들지 않는다.
-- 공개 범위는 루트 문서와 부모 정보로 확인한 구조적 자식·후손이다. 본문 링크·멘션·북마크·`link_to_page`는 범위를 넓히지 않는다. 루트 아래에 실제로 속한 인라인 데이터베이스의 행은 별도 게시글로 수집한다.
-- Notion 응답의 `public_url`이 명시적 `null`이거나 `in_trash`가 참일 때만 `UNPUBLISHED`로 기록한다. 필드 누락·잘못된 값·타임아웃·`429`·`5xx`·인증·매핑 실패는 동기화 실패로 기록하고 마지막 게시 상태와 스냅샷을 유지한다. Notion 장애를 readiness 실패로 연결하지 않는다.
-- 동기화는 갱신 시각이 지난 `SyncTarget`만 처리한다. 범위에서 빠진 글의 예약은 활성화 트랜잭션에서 삭제하고, 미게시 구성원은 재게시 확인을 위해 계속 동기화한다.
+- 글을 제공하려면 **`PostPublication`이 공개이고 공개본 revision을 읽을 수 있어야 한다.** 비공개·보관·없는 ID·UUID가 아닌 ID는 404, 사이트 설정·표현 자산이 없거나 읽을 수 없는 revision은 503이다.
+- 공개 HTML 경로는 `GET /`(글 목록)와 `GET /posts/{postId}`(내부 UUID)이다. RSS는 `GET /feed.xml`, 공개 파일은 `GET /media/{mediaKey}`다. 제목 기반 경로·slug·별칭을 만들지 않는다. 관리 경로는 `/admin/**`이며 조회는 `GET`, 새로고침·발행·발행 취소·보관·복원은 `POST`만 받는다.
+- 경로는 애너테이션 컨트롤러로만 선언한다. 컨트롤러 경로의 HTTP 메서드·경로 정확한 목록은 `TargetArchitectureBoundaryTest`의 허용 목록과 REST Docs가 원본이다. 보안 체인이 소유한 로그인 시작(`/oauth2/authorization/admin`)·로그인 콜백(`/login/oauth2/code/admin`)·로그아웃(`POST /admin/logout`)은 이 목록에 넣지 않고 `AdminSecurityConfig`와 `AdminSecurity*Test`가 원본이다. 정적 자원과 actuator 상태 경로도 컨트롤러 목록 대상이 아니다.
+- **발행:** 미리보기가 준 `revisionId`와 `generation`을 함께 보낸다. 잠금 안에서 없음·보관됨·같은 revision으로 이미 공개(`AlreadyPublished`)·generation 또는 최신 revision 불일치(`StaleRevision`)·파일 미보관(`MediaNotReady`) 순으로 판정한다. 같은 revision이 이미 공개이면 generation 비교보다 먼저 `AlreadyPublished`일 수 있다. 검토하지 않은 revision은 공개되지 않는다.
+- **발행 취소·보관:** 기대 버전 없이 항상 성공하며 Notion 없이 DB만 쓴다. 이미 비공개여도 generation을 올려 진행 중인 발행 요청을 무효로 만든다. 복원은 비공개로 되돌린다.
+- **동기화는 초안만 만든다.** 최신 revision을 추가하고 포인터를 옮기며 공개 여부와 공개본 revision을 건드리지 않는다. 새 revision은 모든 업로드 파일의 보관이 끝난 뒤에만 만든다. 파일은 revision마다 새로 내려받고 SHA-256이 같으면 한 번만 저장하며, 이미 저장된 파일의 바이트·형식·저장 시각은 이후 가져오기가 바꾸지 않는다.
+- **파일:** Notion 업로드 파일(`SourceHosted`)만 PostgreSQL에 바이트로 보관하고 `External`은 그대로 둔다. revision마다 `post_revision_media`에 원본 키와 보관 키를 묶으며 행은 수정하지 않는다. 레거시 행은 보관 키가 비어 있다. 복구는 그 행이 저장한 자기 URL, 또는 소스 revision이 정확히 같을 때의 새 URL로만 시도하며 만료되었으면 비어 있을 수 있다. 비어 있는 파일은 화면에서 사용할 수 없다는 표시로 렌더링하고 원본 URL로 대체하지 않으며 발행을 막고 누락 파일 수로 보인다. 공개 `/media`는 공개본 revision이 참조하는 파일만, 관리 미리보기는 모든 revision의 파일을 제공한다.
+- **글 작성은 Notion 전용이다.** 앱은 Notion 페이지를 만들거나 고치지 않는다. 카탈로그 스캔이 글 데이터베이스에서 소스 문서를 찾으면 그때 Post를 등록하고 `PostId`를 정한다. 등록 전에 `PostId`를 예약하거나 요청 마커를 기록하지 않는다. 관리 화면은 Notion 편집 링크만 제공한다. Notion 쿼리의 `POST` 호출은 읽기 작업이다.
+- **이전 데이터:** 시작할 때 한 번 [레거시 이전](#레거시-글-이전)이 실행된다. 이후 Notion의 `public_url`·`in_trash`·이동·`403`·`404`·타임아웃은 동기화 실패 종류로만 기록한다.
+- 동기화는 갱신 시각이 지난 `SyncTarget`만 처리한다. 카탈로그 스캔은 별도 고정 지연 스케줄러가 실행하며 등록만 하고 해제하지 않는다.
 - 스케줄러는 대상마다 `RuntimeException`을 격리해 작업 종류·예외 타입만 기록하고 다음 대상을 계속한다. 원인에 인터럽트가 있거나 그 밖의 `Throwable`이면 원래 예외를 전파한다. 스케줄러를 활성화한 인스턴스는 하나여야 한다.
+- 관리자 새로고침 실패는 결과 종류로 답하고 작업·예외 타입·가장 안쪽 원인 타입만 진단 로그로 남긴다. 예외 메시지·스택·Notion 응답 원문은 기록하지 않는다.
+- 본문의 `SourceDocument` 링크는 이 앱에서 공개 상태인 글만 내부 링크로 만든다. 비공개·알 수 없는 대상은 링크 없이 저장된 원래 표시(URL)를 유지하고, 명시적 외부 URL은 그대로 외부 링크다. 인라인 데이터베이스의 읽을 수 있는 행은 Notion `public_url`과 무관하게 가져오며 선택한 열·필터는 원본 설정을 따른다.
 - 스냅샷 JSON에는 논리적 `kind`와 `schemaVersion`만 저장한다. 구현 클래스 이름·Jackson default typing·Notion 원본 응답을 저장하지 않는다.
 - 블록 스타일은 의미 값만 저장한다. CSS·JavaScript·`<head>` 조각을 Notion에서 받거나 저장하지 않고, 표현은 등록된 프로필과 신뢰된 자산만 사용한다.
+- 관리 화면은 OIDC 설정이 하나라도 비면 닫힌다(`403`). 인증 설정은 `config`의 보안 설정 안에 두고 포트·유스케이스·모델은 인증 방식을 알지 못한다.
+
+### 레거시 글 이전
+
+- `MigrateLegacyPostsService`가 시작 시 웹 서버와 스케줄러보다 먼저 실행되고, 소스에 연결된 모든 글 중 아직 관리되지 않는 글을 `PostPublication`으로 가져온다. 실패하면 앱이 시작하지 않는다.
+- 이전에 실제로 공개되던 글(활성 구성원·`PUBLISHED`·저장본 있음)만 같은 스냅샷의 복사본을 공개본으로 공개한다. 나머지는 비공개다. 기존 UUID·최초 게시 시각·히스토리와 실효 공개 상태를 보존한다.
+- 레거시 테이블과 행은 읽기만 하고 수정·삭제하지 않는다. 이미 관리 중인 글은 건너뛰므로 다시 실행해도 변하지 않는다.
 
 ### Notion 설정 데이터 소스
 
-`NOTION_SETTINGS_DATA_SOURCE_ID`의 데이터 소스를 API 버전 `2026-03-11`로 끝까지 조회한다. 다른 API 버전으로는 시작하지 않는다.
+`NOTION_SETTINGS_DATA_SOURCE_ID`의 데이터 소스를 API 버전 `2026-03-11`로 끝까지 조회한다. 다른 API 버전으로는 시작하지 않는다. 글 데이터 소스는 `notion.posts.*`(`NOTION_POSTS_*`)로 따로 지정하며 속성은 ID로 가리킨다. 데이터 소스 ID가 비면 카탈로그 스캔이 설정 오류로 실패한다.
 
 | 속성 | 타입 | 규칙 |
 | --- | --- | --- |
@@ -84,20 +98,21 @@ BC가 정해져도 루트의 소유·생명주기가 미정이면 루트와 테�
 | `Page` | rich text | Notion page URL 또는 32자리 page ID |
 | `Data` | rich text | `head` 행의 JSON 객체 |
 
-- `rootPage`(`Kind=page`)는 필수다. 없으면 설정 동기화가 실패하고 마지막 정상 설정을 유지한다.
-- `header`·`footer`(`Kind=blocks`)는 활성 범위의 `PUBLISHED` 구성원이고 스냅샷이 있을 때만 렌더링하고, 아니면 본문을 실패시키지 않고 생략한다.
+- `rootPage`(`Kind=page`)는 선택이다. 있으면 레거시 루트 문서를 `/posts/{postId}`로 유지하고 사이트 문서(루트·헤더·푸터)는 목록·RSS에서 제외한다.
+- `header`·`footer`(`Kind=blocks`)는 공개 상태이고 공개본을 읽을 수 있을 때만 렌더링하고, 아니면 본문을 실패시키지 않고 생략한다.
 - `head`의 JSON은 `siteName`, `defaultDescription`, `languageTag`, `faviconAssetKey`, `presentationProfileKey`만 허용한다. 다른 필드·HTML·CSS·JavaScript·원격 자산 URL은 거부한다.
 
 ### 여러 루트를 함께 쓰는 업무
 
 다음 업무는 불변식 때문에 한 쓰기 트랜잭션에서 여러 루트를 바꾼다. 범위를 넓히거나 나누지 않는다.
 
-- **공개 범위 활성화(`ActivatePublicationService`):** 이전 revision `SUPERSEDED`, 새 revision `ACTIVE`, BlogPublication 포인터 교체, 범위에서 빠진 글의 SyncState 삭제, publication 성공 기록. 활성 범위와 갱신 예약이 어긋나지 않게 한다. 중간 실패는 전체 롤백하고 이전 활성 revision을 유지한다.
-- **게시글 반영(`ApplyImportedPostService`):** Post 식별·스냅샷·게시 상태·최초 게시 시각과 해당 SyncState 성공 기록. 게시 상태와 스냅샷이 어긋나 503이 되는 상태를 만들지 않는다.
-- **사이트 설정 적용(`ApplyImportedSiteConfigurationService`):** SiteConfiguration 저장, 첫 적용 시 BlogPublication 생성, 설정 SyncState 성공 기록.
-- **RSS 조회(`GetPostFeedService`):** 설정·활성 범위·게시 상태·스냅샷을 `REPEATABLE_READ` 읽기 전용 트랜잭션 하나에서 읽는다.
+- **글 반영(`ApplyImportedPostService`):** Post의 revision·미디어 바인딩·최신 포인터와 SyncState 성공 기록. 소스 조회는 트랜잭션 밖에서 하므로 잠금 안에서 보관 여부를 다시 판정하고, 보관됐거나 관리되지 않는 글이면 파일·revision·포인터·일정을 쓰지 않는다(`NotFound`). 동기화 실패 기록도 같은 잠금·판정 뒤에만 쓴다. 같은 소스 revision이면 변경하지 않는다.
+- **글 등록(`RegisterPostService`):** Post 등록과 SyncState 예약. 한 페이지는 하나의 `PostId`에 연결한다.
+- **사이트 설정 적용(`ApplyImportedSiteConfigurationService`):** SiteConfiguration 저장, 첫 적용이면 `site_configuration.publication_id`가 참조할 빈 BlogPublication 생성, 사이트 문서의 Post 등록과 SyncState 예약, 설정 SyncState 성공 기록.
+- **레거시 이전(`MigrateLegacyPostsService`):** 대상 글 전체의 Post 등록·복사 revision·SyncState 예약을 `migrate()` 한 번의 트랜잭션에서 처리한다.
+- **RSS 조회(`GetPublicFeedService`):** 설정·공개 글·공개본 revision을 `REPEATABLE_READ` 읽기 전용 트랜잭션 하나에서 읽는다.
 
-동일 소스의 동시 동기화는 단일 스케줄러 실행으로 직렬화한다. 여러 인스턴스에서 스케줄러를 실행하려면 DB 잠금·lease를 먼저 설계한다.
+관리되는 같은 글에 대한 발행·발행 취소·보관·복원·동기화 반영·동기화 실패 기록·동기화 일정 취소는 `post_publication` 행 잠금으로 직렬화한다. `sync_state`를 함께 쓰는 경로는 이 잠금을 먼저 잡는다. 관리되지 않는 ID의 일정 취소는 잠글 행이 없으므로 남은 일정만 삭제하며, 새 등록과의 동시 실행은 이 행 잠금의 보장 대상이 아니다. 동일 소스의 동시 동기화는 단일 스케줄러 실행으로도 줄인다. 여러 인스턴스에서 스케줄러를 실행하려면 DB 잠금·lease를 먼저 설계한다.
 
 ### BC 간 연동 요구가 생기면
 
@@ -117,8 +132,8 @@ blog/application/model/              순수 유스케이스 데이터·저장 pr
 blog/application/port/input/         유스케이스 계약
 blog/application/port/output/        persistence·source·presentation·diagnostics 계약
 blog/application/service/            유스케이스 구현
-blog/adapter/inbound/<group>/        web(HTTP·Thymeleaf·RSS), scheduling
-blog/adapter/outbound/<group>/       notion, persistence(Exposed·스냅샷 JSON), presentation, diagnostics
+blog/adapter/inbound/<group>/        web(공개·관리 HTTP·Thymeleaf·RSS·파일), scheduling, startup
+blog/adapter/outbound/<group>/       notion, media(파일 내려받기), persistence(Exposed·스냅샷 JSON), presentation, diagnostics
 domain/AggregateRoot.kt              공용 기술 표식
 config/                             빈 조립·기술 설정
 ```
@@ -136,7 +151,7 @@ config/                             빈 조립·기술 설정
 - `application/service`: 자기 BC의 도메인·애플리케이션을 사용한다. Spring 타입은 **`org.springframework.transaction.annotation`의 `Transactional`·`Propagation`·`Isolation`만** 허용한다.
 - 입력 어댑터: 자기 BC 입력 포트·도메인·모델과 입력 기술을 사용한다. 출력 어댑터: 자기 BC 출력 포트·도메인·모델과 외부 기술을 사용한다. 서비스 구현·반대 방향 포트·다른 어댑터 그룹·`config`를 직접 참조하지 않는다.
 - Exposed·Spring JDBC·`java.sql`·`javax.sql`은 출력 어댑터의 `persistence` 경로와 `config`에서만 사용한다. Exposed 행·테이블·쿼리·트랜잭션 타입을 포트·도메인·웹 요청/응답으로 노출하지 않고 어댑터 안에서 변환한다.
-- Notion API DTO·HTTP 클라이언트는 `adapter/outbound/notion`, JSON 처리는 Notion과 `persistence` 출력 어댑터 안에 둔다. 도메인·애플리케이션은 Notion ID·DTO·응답을 알지 못한다.
+- Notion API DTO와 Spring HTTP 클라이언트(`RestClient`·요청 팩토리)는 `adapter/outbound/notion`에만 둔다. JDK `HttpClient` 같은 HTTP 전송은 Notion API 호출(`notion`)과 파일 내려받기(`media`) 출력 어댑터에만 둔다. 파일 내려받기는 Notion 토큰을 붙이는 클라이언트를 쓰지 않고 인증·쿠키 헤더를 보내지 않는다. JSON 처리는 Notion과 `persistence` 출력 어댑터 안에 둔다. 도메인·애플리케이션은 Notion ID·DTO·응답을 알지 못한다.
 - `config`는 모든 BC 구현의 조립과 기술 설정에 접근할 수 있지만 금지된 업무 호출을 만들지 않는다.
 
 코어의 직접 I/O는 금지한다. 대상은 `java.io`, `java.sql`, `javax.sql`, `java.net`, `java.nio.file`, `java.nio.channels`, `java.rmi`, `java.util.prefs`, `kotlin.io`와 `Process`·`ProcessBuilder`·`ProcessHandle`·`Runtime`이다. 예외는 순수 계약 `java.io.Serializable`과 주소 값 `java.net.URI`뿐이다. 파일·네트워크·DB·외부 프로세스는 출력 포트로 요청한다. 시각은 주입한 `Clock`에서 얻고 `Instant.now()`를 직접 호출하지 않는다.
@@ -175,10 +190,10 @@ config/                             빈 조립·기술 설정
 - 유스케이스의 Spring `@Transactional`로 업무 단위를 정하고 어그리게이트에서 불변식을 지킨다.
 - Exposed Spring Boot 4 스타터의 `springTransactionManager`를 사용한다. `Database`·매니저를 중복 구성하지 않고 저장소에 별도 `transaction {}`를 넣지 않는다.
 - 유스케이스에 `TransactionTemplate`·매니저를 주입하거나 공통 트랜잭션 추상화·데코레이터를 추가하지 않는다.
-- 쓰기 서비스(`Apply*`, `Stage*`, `Activate*`, `Cancel*`)는 쓰기 `@Transactional`, 조회 서비스(`GetBlogPageService`, `SynchronizationQueryService`)는 `@Transactional(readOnly = true)`를 쓴다. `GetPostFeedService`는 `REPEATABLE_READ` 읽기 전용이다. 기본 `REQUIRED`의 기존 트랜잭션 참여 범위도 확인한다.
-- Notion을 호출하는 `Synchronize*Service`는 트랜잭션을 열지 않는 오케스트레이터다. 외부 HTTP 호출 동안 DB 트랜잭션을 유지하지 않고 읽기·쓰기 서비스 호출로 DB 경계를 나눈다. 스케줄러는 갱신 대상 조회와 서비스 호출만 한다.
+- 쓰기 서비스(`Apply*`, `Register*`, `Publish*`, `Cancel*`, `Migrate*`)는 쓰기 `@Transactional`, 조회 서비스(`GetPublicPostService`, `AdminPostQueryService`, `SynchronizationQueryService` 등)는 `@Transactional(readOnly = true)`를 쓴다. `GetPublicFeedService`는 `REPEATABLE_READ` 읽기 전용이다. 관리되는 글의 발행·취소·보관·복원, 글 반영과 그 실패 기록, 동기화 일정 취소는 `post_publication` 행을 잠근 쓰기 트랜잭션 안에서 보관 여부까지 판정한다. 트랜잭션 밖에서 읽은 보관 여부로 쓰기를 결정하지 않는다. 기본 `REQUIRED`의 기존 트랜잭션 참여 범위도 확인한다.
+- Notion·파일 서버를 호출하는 `Synchronize*Service`는 트랜잭션을 열지 않는 오케스트레이터다. 공개 조회는 Notion을 호출하지 않고, 관리자의 새로고침만 DB 트랜잭션 밖에서 호출한다. 외부 HTTP 호출 동안 DB 트랜잭션을 유지하지 않고 읽기·쓰기 서비스 호출로 DB 경계를 나눈다. 스케줄러는 갱신 대상 조회와 서비스 호출만 한다.
 - Spring이 관리하는 빈을 외부에서 호출한다. 직접 생성한 객체나 자기 객체 내부 호출을 새 트랜잭션 경계로 취급하지 않는다. `readOnly`를 접근 제어나 쓰기 차단에 쓰지 않는다.
-- 기본 롤백 대상은 `RuntimeException`과 `Error`다. 그 밖의 예외도 롤백해야 한다면 `rollbackFor`를 명시한다.
+- 기본 롤백 대상은 `RuntimeException`과 `Error`다. 그 밖의 예외도 롤백해야 한다면 `rollbackFor`를 명시한다. 여러 저장을 쓰는 쓰기 경계는 Exposed의 `ExposedSQLException`이 검사 예외이므로 `@Transactional(rollbackFor = [Exception::class])`를 명시하고 원인을 보존해 전체를 롤백한다.
 - 가상 스레드에서도 JDBC 트랜잭션 안에서 비동기·코루틴 디스패처 전환으로 작업을 넘기지 않는다. 가상 스레드를 이유로 연결 풀 제한을 없애지 않고 트래픽·쿼리에 맞게 조정한다.
 - 모든 입력·출력 어댑터의 클래스·메서드는 직접·합성·상속 `@Transactional`, 트랜잭션 인프라 의존, 수동 트랜잭션 제어를 금지한다. 연결·커넥터 경유나 메서드 참조도 같다. 일반 저장소 조회는 허용한다. 정확한 탐지 대상과 JTA 도입 조건은 [트랜잭션 검사](quality-maintenance.md#트랜잭션-검사-확장)에 있다.
 - 여러 루트의 원자적 쓰기는 [여러 루트를 함께 쓰는 업무](#여러-루트를-함께-쓰는-업무)에 기록하고 위 분류 절차에서 먼저 재검토한다.
@@ -186,6 +201,6 @@ config/                             빈 조립·기술 설정
 ## 자동 검사와 완료 조건
 
 - 선택 근거·BC와 루트 등록·[기본 범위](development.md#테스트-범위)의 불변식과 실패 경로 테스트를 남기고 [전체 빌드](development.md#실행과-검증)를 통과한다.
-- 공통·DDD·BC 검사를 운영 코드에 함께 적용한다. Notion·JSON·Exposed 위치, 공개 경로, 스냅샷 형식, 시각 사용은 `TargetArchitectureBoundaryTest`가 추가로 검사한다.
+- 공통·DDD·BC 검사를 운영 코드에 함께 적용한다. Notion DTO·HTTP 클라이언트·JSON·Exposed 위치, 컨트롤러의 HTTP 메서드·경로 목록과 경로 등록 방식, 스냅샷 형식, 시각 사용은 `TargetArchitectureBoundaryTest`가 추가로 검사한다.
 - 정적 검사 통과만으로 업무 의미·깊은 불변성·조립 내용·실제 변경 대상을 보장한다고 보고하지 않는다.
 - 누락된 루트 표식, 함수 값·반사·인라인·값 클래스 소거를 통한 결합은 코드 검토와 행동 테스트로 확인한다. 요구에 없는 사업 결정을 추측하지 않는다.

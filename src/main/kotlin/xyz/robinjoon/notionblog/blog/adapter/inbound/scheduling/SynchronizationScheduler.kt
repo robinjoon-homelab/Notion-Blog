@@ -4,7 +4,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.scheduling.annotation.Scheduled
 import xyz.robinjoon.notionblog.blog.application.port.input.SynchronizationQueryUseCase
 import xyz.robinjoon.notionblog.blog.application.port.input.SynchronizePostUseCase
-import xyz.robinjoon.notionblog.blog.application.port.input.SynchronizePublicationUseCase
 import xyz.robinjoon.notionblog.blog.application.port.input.SynchronizeSiteConfigurationUseCase
 import xyz.robinjoon.notionblog.blog.domain.sync.SyncTarget
 import java.time.Clock
@@ -19,7 +18,6 @@ import java.util.concurrent.atomic.AtomicBoolean
 class SynchronizationScheduler(
     private val queryService: SynchronizationQueryUseCase,
     private val siteConfigurationService: SynchronizeSiteConfigurationUseCase,
-    private val publicationService: SynchronizePublicationUseCase,
     private val postService: SynchronizePostUseCase,
     private val clock: Clock,
     private val dueBatchSize: Int,
@@ -57,7 +55,10 @@ class SynchronizationScheduler(
     private fun dispatch(target: SyncTarget) {
         when (target) {
             SyncTarget.SiteConfiguration -> siteConfigurationService.synchronize()
-            is SyncTarget.Publication -> publicationService.synchronize()
+
+            // 게시 트리는 더 이상 아무것도 결정하지 않는다. 남겨 둔 그 일정은 실행 대상으로 반환되지 않는다.
+            is SyncTarget.Publication -> Unit
+
             is SyncTarget.Post -> postService.synchronize(target.postId)
         }
     }

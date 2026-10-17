@@ -5,6 +5,8 @@ import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.lessEq
+import org.jetbrains.exposed.v1.core.neq
+import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.upsert
@@ -28,9 +30,11 @@ class ExposedSyncStateRepository : SyncStateRepository {
         require(limit >= 0) { "sync state due query limit cannot be negative" }
         if (limit == 0) return emptyList()
 
+        // 레거시 게시 트리 일정은 이력으로 남기지만 다시 동기화하지 않는다. 그래서 일괄 처리 자리를 차지하거나 삭제되지 않도록 개수
+        // 제한을 적용하기 전에 제외한다.
         return SyncStateTable
             .selectAll()
-            .where { SyncStateTable.refreshAfter lessEq now.asOffsetDateTime() }
+            .where { (SyncStateTable.refreshAfter lessEq now.asOffsetDateTime()) and (SyncStateTable.targetKind neq PUBLICATION) }
             .orderBy(
                 SyncStateTable.refreshAfter to SortOrder.ASC,
                 SyncStateTable.targetKind to SortOrder.ASC,
@@ -48,6 +52,20 @@ class ExposedSyncStateRepository : SyncStateRepository {
                     (SyncStateTable.targetKey eq persistedTarget.key)
             }.singleOrNull()
             ?.toSyncState()
+    }
+
+    override fun findAll(targets: Set<SyncTarget>): Map<SyncTarget, SyncState> {
+        if (targets.isEmpty()) return emptyMap()
+
+        val persisted = targets.map { it.toPersistedTarget() }
+        return SyncStateTable
+            .selectAll()
+            .where {
+                persisted
+                    .map { target -> (SyncStateTable.targetKind eq target.kind) and (SyncStateTable.targetKey eq target.key) }
+                    .reduce { combined, condition -> combined or condition }
+            }.map { row -> row.toSyncState() }
+            .associateBy(SyncState::target)
     }
 
     override fun save(state: SyncState) {

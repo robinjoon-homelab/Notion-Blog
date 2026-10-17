@@ -70,6 +70,7 @@ class ApplicationPropertiesTest {
         assertThatIllegalArgumentException().isThrownBy { notion().copy(requestTimeout = Duration.ZERO) }
         assertThatIllegalArgumentException().isThrownBy { BlogProperties.Synchronization(intervalMs = 0) }
         assertThatIllegalArgumentException().isThrownBy { BlogProperties.Synchronization(dueBatchSize = 0) }
+        assertThatIllegalArgumentException().isThrownBy { BlogProperties.Synchronization(catalogIntervalMs = 0) }
         assertThatIllegalArgumentException().isThrownBy { BlogProperties.Synchronization(successInterval = Duration.ZERO) }
         assertThatIllegalArgumentException().isThrownBy {
             BlogProperties.Synchronization(initialFailureDelay = Duration.ofSeconds(5), maximumFailureDelay = Duration.ofSeconds(1))

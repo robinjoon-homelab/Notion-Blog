@@ -12,15 +12,13 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
-import xyz.robinjoon.notionblog.blog.application.model.PostFeed
-import xyz.robinjoon.notionblog.blog.application.model.PostFeedEntry
-import xyz.robinjoon.notionblog.blog.application.model.PostFeedLookupResult
-import xyz.robinjoon.notionblog.blog.application.port.input.GetPostFeedUseCase
-import xyz.robinjoon.notionblog.blog.domain.post.Post
+import xyz.robinjoon.notionblog.blog.application.model.PublicFeed
+import xyz.robinjoon.notionblog.blog.application.model.PublicFeedLookupResult
+import xyz.robinjoon.notionblog.blog.application.model.PublishedPost
+import xyz.robinjoon.notionblog.blog.application.port.input.GetPublicFeedUseCase
 import xyz.robinjoon.notionblog.blog.domain.post.PostId
 import xyz.robinjoon.notionblog.blog.domain.post.block.BlockId
 import xyz.robinjoon.notionblog.blog.domain.post.block.BlockNode
-import xyz.robinjoon.notionblog.blog.domain.post.block.BlockTree
 import xyz.robinjoon.notionblog.blog.domain.post.block.content.TextBlockContent
 import xyz.robinjoon.notionblog.blog.domain.post.block.inline.InlineContent
 import xyz.robinjoon.notionblog.blog.domain.site.SiteMetadata
@@ -31,14 +29,14 @@ import java.util.HexFormat
 import java.util.UUID
 
 class RssFeedControllerTest {
-    private val service = mockk<GetPostFeedUseCase>()
+    private val service = mockk<GetPublicFeedUseCase>()
     private val renderer = RssFeedRenderer(RssSummaryExtractor())
     private val urls = PublicBlogUrls(URI("https://trusted.example"))
     private val mockMvc = MockMvcBuilders.standaloneSetup(RssFeedController(service, renderer, urls)).build()
 
     @Test
     fun `available feed returns UTF-8 XML with SHA-256 of transmitted bytes and revalidation policy`() {
-        every { service.get() } returns PostFeedLookupResult.Found(feed())
+        every { service.get() } returns PublicFeedLookupResult.Found(feed())
 
         val response =
             mockMvc
@@ -59,7 +57,7 @@ class RssFeedControllerTest {
     @ParameterizedTest
     @ValueSource(strings = ["exact", "weak", "list", "wildcard"])
     fun `matching validators return 304 with empty body ETag and no-cache`(validator: String) {
-        every { service.get() } returns PostFeedLookupResult.Found(feed())
+        every { service.get() } returns PublicFeedLookupResult.Found(feed())
         val etag =
             requireNotNull(
                 mockMvc
@@ -90,7 +88,7 @@ class RssFeedControllerTest {
 
     @Test
     fun `normal empty feed exists and supports wildcard revalidation`() {
-        every { service.get() } returns PostFeedLookupResult.Found(feed().copy(entries = emptyList()))
+        every { service.get() } returns PublicFeedLookupResult.Found(feed().copy(entries = emptyList()))
 
         mockMvc
             .perform(get("/feed.xml"))
@@ -125,7 +123,7 @@ class RssFeedControllerTest {
     @ParameterizedTest
     @ValueSource(strings = ["old-etag", "wildcard"])
     fun `unavailable content cannot be converted to 304 by a previous or wildcard validator`(validator: String) {
-        every { service.get() } returns PostFeedLookupResult.Found(feed())
+        every { service.get() } returns PublicFeedLookupResult.Found(feed())
         val etag =
             requireNotNull(
                 mockMvc
@@ -134,7 +132,7 @@ class RssFeedControllerTest {
                     .response
                     .getHeader(HttpHeaders.ETAG),
             )
-        every { service.get() } returns PostFeedLookupResult.ContentUnavailable
+        every { service.get() } returns PublicFeedLookupResult.ContentUnavailable
 
         val response =
             mockMvc
@@ -150,7 +148,7 @@ class RssFeedControllerTest {
 
     @Test
     fun `changed representation returns 200 and a new validator after content is re-evaluated`() {
-        every { service.get() } returns PostFeedLookupResult.Found(feed())
+        every { service.get() } returns PublicFeedLookupResult.Found(feed())
         val etag =
             requireNotNull(
                 mockMvc
@@ -159,7 +157,7 @@ class RssFeedControllerTest {
                     .response
                     .getHeader(HttpHeaders.ETAG),
             )
-        every { service.get() } returns PostFeedLookupResult.Found(feed().copy(metadata = metadata().copy(siteName = "New name")))
+        every { service.get() } returns PublicFeedLookupResult.Found(feed().copy(metadata = metadata().copy(siteName = "New name")))
 
         val response =
             mockMvc
@@ -174,7 +172,7 @@ class RssFeedControllerTest {
 
     @Test
     fun `content changes beyond the summary retain the same representation validator`() {
-        every { service.get() } returns PostFeedLookupResult.Found(feed("a".repeat(300) + "old"))
+        every { service.get() } returns PublicFeedLookupResult.Found(feed("a".repeat(300) + "old"))
         val etag =
             requireNotNull(
                 mockMvc
@@ -183,7 +181,7 @@ class RssFeedControllerTest {
                     .response
                     .getHeader(HttpHeaders.ETAG),
             )
-        every { service.get() } returns PostFeedLookupResult.Found(feed("a".repeat(300) + "new"))
+        every { service.get() } returns PublicFeedLookupResult.Found(feed("a".repeat(300) + "new"))
 
         mockMvc
             .perform(get("/feed.xml").header(HttpHeaders.IF_NONE_MATCH, etag))
@@ -193,7 +191,7 @@ class RssFeedControllerTest {
 
     @Test
     fun `request host and forwarded headers never influence published feed URLs`() {
-        every { service.get() } returns PostFeedLookupResult.Found(feed())
+        every { service.get() } returns PublicFeedLookupResult.Found(feed())
 
         val response =
             mockMvc
@@ -214,7 +212,7 @@ class RssFeedControllerTest {
 
     @Test
     fun `If-Modified-Since alone does not replace representation validation`() {
-        every { service.get() } returns PostFeedLookupResult.Found(feed())
+        every { service.get() } returns PublicFeedLookupResult.Found(feed())
 
         mockMvc
             .perform(get("/feed.xml").header(HttpHeaders.IF_MODIFIED_SINCE, "Mon, 05 Oct 2099 00:00:00 GMT"))
@@ -225,14 +223,14 @@ class RssFeedControllerTest {
     private fun metadata() = SiteMetadata("Blog", "Description", "ko-KR", null)
 
     private fun feed(summary: String = "Summary 😀") =
-        PostFeed(
+        PublicFeed(
             metadata(),
             listOf(
-                PostFeedEntry(
-                    Post.restore(
-                        PostId(UUID.fromString("00000000-0000-0000-0000-000000000001")),
-                        "Title",
-                        BlockTree(listOf(BlockNode(BlockId("text"), TextBlockContent.Paragraph(listOf(InlineContent.Text(summary)))))),
+                PublishedPost(
+                    WebFixtures.revision(
+                        title = "Title",
+                        nodes = listOf(BlockNode(BlockId("text"), TextBlockContent.Paragraph(listOf(InlineContent.Text(summary))))),
+                        postId = PostId(UUID.fromString("00000000-0000-0000-0000-000000000001")),
                     ),
                     Instant.parse("2026-10-05T03:04:05Z"),
                 ),

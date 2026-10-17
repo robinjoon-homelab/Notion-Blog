@@ -32,12 +32,15 @@ data class SiteConfiguration private constructor(
     }
 }
 
-// The source documents that define the site: the publication root and the optional layout fragments.
+// 선택적인 레거시 루트 문서와 레이아웃 조각이다. 어느 것도 게시 대상을 결정하지 않는다.
 data class SiteDocuments(
-    val root: SourceDocumentRef,
+    val root: SourceDocumentRef?,
     val header: SourceDocumentRef?,
     val footer: SourceDocumentRef?,
-)
+) {
+    val all: Set<SourceDocumentRef>
+        get() = setOfNotNull(root, header, footer)
+}
 
 data class SiteMetadata(
     val siteName: String,

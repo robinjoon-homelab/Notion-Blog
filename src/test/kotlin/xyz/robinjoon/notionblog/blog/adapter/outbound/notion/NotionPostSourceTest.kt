@@ -15,7 +15,6 @@ import xyz.robinjoon.notionblog.blog.adapter.outbound.notion.dto.NotionPageRespo
 import xyz.robinjoon.notionblog.blog.adapter.outbound.notion.dto.NotionPaginationResponse
 import xyz.robinjoon.notionblog.blog.adapter.outbound.notion.dto.NotionParentResponse
 import xyz.robinjoon.notionblog.blog.adapter.outbound.notion.source.NotionPostSource
-import xyz.robinjoon.notionblog.blog.application.model.ImportedPublicationStatus
 import xyz.robinjoon.notionblog.blog.application.port.output.source.RetryableSourceException
 import xyz.robinjoon.notionblog.blog.application.port.output.source.SourceAccessException
 import xyz.robinjoon.notionblog.blog.application.port.output.source.SourceConfigurationException
@@ -32,7 +31,7 @@ class NotionPostSourceTest {
     private val objectMapper = JsonMapper.builder().build()
 
     @Test
-    fun `returns published page with nested blocks and confirmed child pages without inlining child content`() {
+    fun `returns page with nested blocks and confirmed child pages without inlining child content`() {
         val client = mockk<NotionApiClient>()
         every { client.fetchPage(ROOT) } returns page(ROOT)
         every { client.fetchDirectBlockChildren(ROOT) } returns
@@ -50,7 +49,6 @@ class NotionPostSourceTest {
         val imported = source(client).fetch(reference(ROOT_DASHED_UPPER))
 
         assertThat(imported.sourceDocument).isEqualTo(reference(ROOT))
-        assertThat(imported.publicationStatus).isEqualTo(ImportedPublicationStatus.PUBLISHED)
         assertThat(imported.content.roots).hasSize(2)
         assertThat(
             imported.content.roots
@@ -69,7 +67,7 @@ class NotionPostSourceTest {
     }
 
     @Test
-    fun `keeps discovering structural children of an unpublished parent`() {
+    fun `keeps discovering structural children of a page without a public URL`() {
         val client = mockk<NotionApiClient>()
         every { client.fetchPage(ROOT) } returns page(ROOT, publicUrl = null)
         every { client.fetchDirectBlockChildren(ROOT) } returns
@@ -80,7 +78,7 @@ class NotionPostSourceTest {
 
         val imported = source(client).fetch(reference(ROOT))
 
-        assertThat(imported.publicationStatus).isEqualTo(ImportedPublicationStatus.UNPUBLISHED)
+        assertThat(imported.title).isNotBlank()
         assertThat(imported.containedChildren).containsExactly(reference(CHILD))
     }
 
