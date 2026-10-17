@@ -29,6 +29,7 @@ dependencies {
 
 ktlint {
     version.set("1.8.0")
+    ignoreFailures.set(false)
 }
 
 tasks.withType<KtLintCheckTask>().configureEach {
