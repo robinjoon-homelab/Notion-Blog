@@ -69,6 +69,7 @@ dependencies {
 
 ktlint {
     version.set("1.8.0")
+    ignoreFailures.set(false)
 }
 
 detekt {
@@ -76,7 +77,7 @@ detekt {
     config.setFrom(files("config/detekt/detekt.yml"))
     buildUponDefaultConfig.set(false)
     ignoreFailures.set(false)
-    failOnSeverity.set(FailOnSeverity.Error)
+    failOnSeverity.set(FailOnSeverity.Warning)
 }
 
 tasks.withType<Detekt>().configureEach {

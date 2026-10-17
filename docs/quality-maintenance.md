@@ -11,13 +11,14 @@
 ## detekt와 빌드 연결
 
 - detekt는 **`2.0.0-alpha.6`으로 고정**한다. 루트 `build.gradle.kts`의 플러그인·`toolVersion`과 `quality-rules/build.gradle.kts`의 `detektVersion`을 함께 바꾸고, 업그레이드하면 JDK 25·Kotlin 호환성과 사용자 정의 규칙 회귀를 확인한다.
-- `config.validation`, `warningsAsErrors`, `ignoreFailures=false`, `failOnSeverity=Error`를 유지하고 관례 기반 baseline을 쓰지 않는다. `LargeClass`의 warning은 리뷰 신호로 둔다.
+- `config.validation`, `warningsAsErrors`, `ignoreFailures=false`, `failOnSeverity=Warning`을 유지하고 관례 기반 baseline을 쓰지 않는다. `LargeClass`를 포함한 warning 이상의 코드 위반은 빌드를 실패시킨다.
 - `NestedBlockDepth`·`TooManyFunctions`는 끈 상태로 둔다.
 - 강제 규칙·허용 예외를 바꾸면 [`ForbiddenSuppress`](../config/detekt/detekt.yml) 목록과 [억제 정책](code-quality.md#예외와-억제)을 함께 확인한다. 별도 소스 검사기를 추가하지 않는다.
 - `test`·`check`는 `detektMain`·`detektTest`와 규칙 fixture 테스트를 실행하고, 공개 `detekt`도 두 타입 분석을 포함한다. 타입 분석 없는 기본 태스크로 되돌리지 않는다.
 - 컴파일을 `detektMain`에 의존시키지 않는다.
 - `detektTest`는 공통·테스트 설정을 함께 읽고 비활성 plain JAR가 아닌 실제 main/test 클래스 출력 경로를 쓴다. `detekt.use.worker.api=true`를 유지한다.
-- `KtLintCheckTask`는 `ktlintFormat` 뒤, 컴파일·테스트 전에 전체 소스에 실행하고 CI의 `git diff --exit-code`를 유지한다.
+- 두 모듈의 ktlint는 `ignoreFailures=false`를 유지한다. `KtLintCheckTask`는 `ktlintFormat` 뒤, 컴파일·테스트 전에 전체 소스에 실행하고 CI의 `git diff --exit-code`를 유지한다.
+- 검사 실패 기준·빌드 연결을 바꾸면 임시 복사본에 코드 위반을 넣어 `build`가 0이 아닌 종료 코드를 반환하는지 확인한다. JDK·Gradle·외부 플러그인의 실행 환경 경고와 코드 품질 위반은 구분한다.
 - `architecture.productionClasses`로 전체 운영 클래스 출력 경로를 전달한다. 속성 누락·빈 스캔·테스트 fixture 혼입은 실패해야 한다.
 
 ## quality-rules 모듈
@@ -82,7 +83,7 @@ detekt는 분석 전에 컴파일된 규칙 JAR를 플러그인으로 읽으므�
 ### 블로그 추가 검사
 
 - 공통 검사기에 앱 역할 분기를 넣지 않는다. 블로그 고유 경계는 `ArchitecturePackages`를 사용하는 별도 테스트로 유지한다.
-- `TargetArchitectureBoundaryTest`는 운영 소스에서 Notion DTO·JSON·Exposed의 위치, 스냅샷의 구현 클래스 이름, 직접 시각·안전하지 않은 타입·저장소 `transaction {}`를 검사한다. `TargetArchitectureBoundaryRulesTest`는 계층 우선·기능 우선 두 레이아웃의 정상·위반 사례를 유지한다.
+- `TargetArchitectureBoundaryTest`는 운영 소스에서 Notion DTO·JSON·Exposed의 위치, 스냅샷의 구현 클래스 이름, 직접 시각·안전하지 않은 타입·저장소 `transaction {}`를 검사한다. `TargetArchitectureBoundaryRulesTest`는 패키지·기술 의존 경계를, `TargetArchitectureRouteRulesTest`는 경로 계약을 다루며 각각 계층 우선·기능 우선 두 레이아웃의 정상·위반 사례를 유지한다.
 - HTTP 클라이언트 위치는 import와 전체 이름 참조를 모두 검사한다. Spring `org.springframework.web.client`·`org.springframework.http.client`는 `notion` 출력 어댑터만, `java.net.http`·`HttpURLConnection`·`URLConnection`·OkHttp·Apache HttpClient는 `notion`·`media` 출력 어댑터만 쓸 수 있다.
 - 경로 목록은 소스 문자열로 파싱하지 않는다. 컴파일된 운영 클래스 전체(`architecture.productionClasses`)의 컨트롤러를 Spring MVC `RequestMappingHandlerMapping`으로 해석해 `HTTP 메서드 경로` 목록이 허용 목록과 중복까지 정확히 같아야 한다. 합성·상속 애너테이션, `value`·`path`, 배열, 상수, 타입 수준 접두사, `@HttpExchange`를 실행 시와 같게 해석한다. 메서드 없는 매핑은 `ANY`로 남아 실패하고, 입력 어댑터 밖 컨트롤러의 매핑도 실패로 보고한다.
 - 함수형 라우터·뷰 컨트롤러·`HandlerMapping`·`HttpRequestHandler`·레거시 `Controller` 인터페이스·서블릿 등록은 경로 목록이 보지 못하므로 운영 소스에서 참조 자체를 실패시킨다. 보안 체인 소유 경로·정적 자원·actuator는 [공개와 동기화 규칙](ddd-architecture.md#공개와-동기화-규칙)을 따른다.
