@@ -1,0 +1,108 @@
+/* 공개 홈 목록과 관리 화면이 함께 쓰는 Notion 스타일 셸. */
+:root {
+  color-scheme: light dark;
+  --nb-paper: light-dark(#ffffff, #191919);
+  --nb-sidebar: light-dark(#f7f7f5, #202020);
+  --nb-soft: light-dark(#f1f1ef, #2f2f2f);
+  --nb-hover: light-dark(#eaeae8, #383838);
+  --nb-ink: light-dark(#37352f, #e3e3e1);
+  --nb-secondary: light-dark(#787774, #a8a8a5);
+  --nb-line: light-dark(#e9e9e7, #353535);
+  --nb-solid: light-dark(#37352f, #dededb);
+  --nb-on-solid: light-dark(#ffffff, #202020);
+  --nb-warm: light-dark(#f5e9d6, #443a2a);
+  --nb-warm-ink: light-dark(#886233, #d6b184);
+  --nb-good: light-dark(#e6efdf, #2e3e30);
+  --nb-good-ink: light-dark(#4b6d4c, #b0c7ad);
+  --nb-danger: light-dark(#a14d46, #ddaaa4);
+}
+
+.nb-shell,
+.nb-shell * { box-sizing: border-box; }
+.nb-shell [hidden] { display: none !important; }
+body.nb-body-root { margin: 0; background: var(--nb-paper); color: var(--nb-ink); font: 400 14px/1.65 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; }
+.nb-shell h1, .nb-shell h2, .nb-shell p { margin: 0; }
+.nb-shell a { color: inherit; }
+.nb-shell { display: grid; grid-template-columns: 200px minmax(0, 1fr); min-height: 100vh; }
+.nb-sidebar { background: var(--nb-sidebar); padding: 16px 9px; border-right: 1px solid var(--nb-line); }
+.nb-workspace-name { display: flex; align-items: center; gap: 8px; padding: 2px 6px 20px; font-weight: 500; font-size: 13px; }
+.nb-side-heading { color: var(--nb-secondary); font-size: 11px; padding: 13px 8px 6px; }
+.nb-side-link { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 4px; font-size: 13px; text-decoration: none; }
+.nb-side-link[aria-current="page"], .nb-side-link:hover { background: var(--nb-hover); }
+.nb-side-form { margin: 0; }
+.nb-side-form button { width: 100%; background: transparent; border: 0; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.nb-main { min-width: 0; padding: 32px 42px 44px; max-width: 960px; }
+.nb-button.nb-menu { display: none; }
+.nb-heading { font-size: 32px; font-weight: 500; letter-spacing: -.045em; line-height: 1.35; overflow-wrap: anywhere; }
+.nb-muted { color: var(--nb-secondary); }
+.nb-small { font-size: 12px; }
+.nb-section-head { margin-bottom: 26px; }
+.nb-section-head p { margin-top: 8px; }
+.nb-button { display: inline-flex; align-items: center; justify-content: center; padding: 5px 10px; border: 1px solid var(--nb-line); border-radius: 4px; background: var(--nb-paper); color: inherit; font: inherit; text-decoration: none; cursor: pointer; }
+.nb-button:hover { background: var(--nb-soft); }
+.nb-primary { background: var(--nb-solid); border-color: var(--nb-solid); color: var(--nb-on-solid); }
+.nb-primary:hover { background: var(--nb-solid); opacity: .9; }
+.nb-link-danger { background: transparent; border: 0; padding: 5px 0; color: var(--nb-danger); font: inherit; cursor: pointer; }
+.nb-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin: 22px 0 10px; }
+.nb-filters { display: flex; flex-wrap: wrap; gap: 4px; }
+.nb-filter { padding: 4px 9px; border-radius: 4px; font-size: 13px; text-decoration: none; color: var(--nb-secondary); }
+.nb-filter[aria-current="true"] { background: var(--nb-soft); color: var(--nb-ink); }
+.nb-search { display: flex; gap: 6px; }
+.nb-search input { min-width: 0; padding: 5px 8px; border: 1px solid var(--nb-line); border-radius: 4px; background: var(--nb-paper); color: inherit; font: inherit; }
+.nb-database { width: 100%; table-layout: fixed; border-collapse: collapse; text-align: left; }
+.nb-database th { font-weight: 400; font-size: 12px; color: var(--nb-secondary); padding: 7px 9px; border-top: 1px solid var(--nb-line); border-bottom: 1px solid var(--nb-line); }
+.nb-database td { padding: 11px 9px; border-bottom: 1px solid var(--nb-line); vertical-align: top; overflow-wrap: anywhere; }
+.nb-database th:not(:last-child), .nb-database td:not(:last-child) { border-right: 1px solid var(--nb-line); }
+.nb-database th:first-child { width: 55%; }
+.nb-post-title { font-weight: 500; font-size: 14px; text-decoration: none; }
+.nb-post-title:hover { text-decoration: underline; text-underline-offset: 4px; }
+.nb-post-summary { color: var(--nb-secondary); font-size: 12px; margin-top: 4px; }
+.nb-status-stack { display: flex; flex-wrap: wrap; gap: 5px; }
+.nb-badge { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 11px; background: var(--nb-soft); color: var(--nb-secondary); }
+.nb-badge-live { background: var(--nb-good); color: var(--nb-good-ink); }
+.nb-badge-change { background: var(--nb-warm); color: var(--nb-warm-ink); }
+.nb-notice { margin: 0 0 18px; padding: 10px 12px; border-radius: 4px; background: var(--nb-soft); font-size: 13px; }
+.nb-notice-error { background: var(--nb-warm); color: var(--nb-warm-ink); }
+.nb-empty { padding: 23px 0; color: var(--nb-secondary); }
+.nb-empty h2 { font-size: 18px; font-weight: 500; margin-bottom: 8px; color: var(--nb-ink); }
+.nb-pager { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 18px; font-size: 12px; color: var(--nb-secondary); }
+.nb-home-post { border-top: 1px solid var(--nb-line); padding: 15px 0; }
+.nb-home-post:last-of-type { border-bottom: 1px solid var(--nb-line); }
+.nb-home-post .nb-post-title { font-size: 16px; }
+.nb-home-post .nb-post-summary { margin: 5px 0 6px; }
+.nb-property { display: grid; grid-template-columns: 90px minmax(0, 1fr); gap: 13px; padding: 6px 0; font-size: 12px; overflow-wrap: anywhere; }
+.nb-property > :first-child { color: var(--nb-secondary); }
+.nb-panel { margin-top: 28px; border-top: 1px solid var(--nb-line); padding-top: 18px; }
+.nb-panel-title { font-size: 14px; font-weight: 500; }
+.nb-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.nb-actions form { margin: 0; }
+.nb-login { max-width: 360px; margin: 14vh auto 0; padding: 0 16px; }
+
+@media (max-width: 780px) {
+  .nb-main { padding: 27px 24px 35px; }
+}
+@media (max-width: 600px) {
+  .nb-shell { grid-template-columns: minmax(0, 1fr); }
+  .nb-sidebar { display: none; border-right: 0; border-bottom: 1px solid var(--nb-line); }
+  .nb-shell.nb-menu-open .nb-sidebar { display: block; }
+  .nb-button.nb-menu { display: inline-flex; margin: 10px 16px 0; }
+  .nb-main { padding: 20px 16px 32px; }
+  .nb-heading { font-size: 27px; }
+  .nb-database th:first-child { width: 62%; }
+  .nb-database td, .nb-database th { padding-left: 7px; padding-right: 7px; }
+  .nb-property { grid-template-columns: 70px minmax(0, 1fr); gap: 10px; }
+  .nb-actions .nb-button { flex: 1 1 120px; }
+}
+@media (pointer: coarse) {
+  .nb-button, .nb-link-danger { min-height: 44px; }
+}
+
+/* 공개 페이지와 미리보기. */
+.notion-page .nb-post-list { list-style: none; margin: 18px 0 0; padding: 0; }
+.notion-page .nb-post-list > li { margin: 0; padding-inline-start: 0; }
+.nb-cover { display: block; width: 100%; max-height: 240px; object-fit: cover; margin-bottom: 20px; }
+.nb-properties { margin: 0 0 18px; }
+.nb-property > * { min-width: 0; }
+.nb-preview.notion-page { margin: 0; padding: 0; max-width: none; }
+.nb-shell > div { min-width: 0; }
+.nb-property a, .nb-property span { overflow-wrap: anywhere; }

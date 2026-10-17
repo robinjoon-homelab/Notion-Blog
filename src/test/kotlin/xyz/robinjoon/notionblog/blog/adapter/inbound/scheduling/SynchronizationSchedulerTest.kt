@@ -15,7 +15,6 @@ import org.springframework.boot.test.system.CapturedOutput
 import org.springframework.boot.test.system.OutputCaptureExtension
 import xyz.robinjoon.notionblog.blog.application.port.input.SynchronizationQueryUseCase
 import xyz.robinjoon.notionblog.blog.application.port.input.SynchronizePostUseCase
-import xyz.robinjoon.notionblog.blog.application.port.input.SynchronizePublicationUseCase
 import xyz.robinjoon.notionblog.blog.application.port.input.SynchronizeSiteConfigurationUseCase
 import xyz.robinjoon.notionblog.blog.domain.post.PostId
 import xyz.robinjoon.notionblog.blog.domain.publication.PublicationId
@@ -33,7 +32,6 @@ class SynchronizationSchedulerTest {
     private val clock = Clock.fixed(now, ZoneOffset.UTC)
     private val queryService = mockk<SynchronizationQueryUseCase>()
     private val siteConfigurationService = mockk<SynchronizeSiteConfigurationUseCase>()
-    private val publicationService = mockk<SynchronizePublicationUseCase>()
     private val postService = mockk<SynchronizePostUseCase>()
 
     @Test
@@ -47,7 +45,6 @@ class SynchronizationSchedulerTest {
                 SyncTarget.Post(postId),
             )
         every { siteConfigurationService.synchronize() } throws RuntimeException("token=do-not-log")
-        every { publicationService.synchronize() } just Runs
         every { postService.synchronize(postId) } just Runs
 
         scheduler(dueBatchSize = 7).synchronizeDue()
@@ -162,7 +159,6 @@ class SynchronizationSchedulerTest {
         SynchronizationScheduler(
             queryService = queryService,
             siteConfigurationService = siteConfigurationService,
-            publicationService = publicationService,
             postService = postService,
             clock = clock,
             dueBatchSize = dueBatchSize,

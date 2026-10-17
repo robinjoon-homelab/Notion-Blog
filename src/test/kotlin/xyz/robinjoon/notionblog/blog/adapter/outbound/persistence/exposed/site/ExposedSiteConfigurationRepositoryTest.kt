@@ -80,6 +80,26 @@ class ExposedSiteConfigurationRepositoryTest {
             assertThat(repository.findCurrent()).isEqualTo(replacement)
         }
 
+    @Test
+    fun `round trips a site without the optional legacy root document`() =
+        inTransaction {
+            val publicationId = PublicationId(UUID.randomUUID())
+            val withoutRoot =
+                configuration(publicationId, profile).let { configured ->
+                    SiteConfiguration.restore(
+                        configured.publicationId,
+                        SiteDocuments(root = null, header = null, footer = null),
+                        configured.metadata,
+                        configured.presentationProfile,
+                    )
+                }
+            insertPublication(publicationId)
+
+            repository.save(withoutRoot, Instant.parse("2026-10-16T00:00:00Z"))
+
+            assertThat(repository.findCurrent()).isEqualTo(withoutRoot)
+        }
+
     private fun configuration(
         publicationId: PublicationId,
         profile: PresentationProfileRef,

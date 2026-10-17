@@ -6,7 +6,6 @@ import org.junit.jupiter.api.Test
 import tools.jackson.databind.json.JsonMapper
 import xyz.robinjoon.notionblog.blog.adapter.outbound.notion.dto.NotionPageParentResponse
 import xyz.robinjoon.notionblog.blog.adapter.outbound.notion.dto.NotionPageResponse
-import xyz.robinjoon.notionblog.blog.application.model.ImportedPublicationStatus
 import xyz.robinjoon.notionblog.blog.application.port.output.source.SourceMappingException
 import xyz.robinjoon.notionblog.blog.domain.SourceDocumentRef
 import xyz.robinjoon.notionblog.blog.domain.SourceId
@@ -30,13 +29,12 @@ class NotionPageMapperTest {
         assertThat(mapped.sourceDocument).isEqualTo(reference("a0b1c2d3e4f56789abcdef0123456789"))
         assertThat(mapped.title).isEqualTo("A title")
         assertThat(mapped.sourceRevision.value).isEqualTo("2026-08-25T00:00:00Z")
-        assertThat(mapped.publicationStatus).isEqualTo(ImportedPublicationStatus.PUBLISHED)
     }
 
     @Test
-    fun `treats trashed and non-public pages as unpublished`() {
-        assertThat(mapper.map(page().copy(inTrash = true), reference()).publicationStatus).isEqualTo(ImportedPublicationStatus.UNPUBLISHED)
-        assertThat(mapper.map(page(publicUrl = null), reference()).publicationStatus).isEqualTo(ImportedPublicationStatus.UNPUBLISHED)
+    fun `maps trashed and non-public pages without deriving any publication state`() {
+        assertThat(mapper.map(page().copy(inTrash = true), reference()).title).isEqualTo("Title")
+        assertThat(mapper.map(page(publicUrl = null), reference()).title).isEqualTo("Title")
     }
 
     @Test

@@ -14,17 +14,19 @@ import xyz.robinjoon.notionblog.blog.adapter.inbound.web.view.MentionInlineView
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.view.MentionKindView
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.view.NativeIconView
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.view.TextInlineView
+import xyz.robinjoon.notionblog.blog.application.model.ContentReferences
 import xyz.robinjoon.notionblog.blog.application.model.LinkResolution
+import xyz.robinjoon.notionblog.blog.domain.post.PostRevisionId
 import xyz.robinjoon.notionblog.blog.domain.post.block.content.BlockIcon
 import xyz.robinjoon.notionblog.blog.domain.post.block.inline.InlineContent
 import xyz.robinjoon.notionblog.blog.domain.post.block.inline.LinkTarget
 import xyz.robinjoon.notionblog.blog.domain.post.block.inline.TextAnnotations
 import xyz.robinjoon.notionblog.blog.domain.post.block.media.MediaSource
-import java.time.Clock
 
 internal class PostContentViewMapper(
-    private val links: Map<LinkTarget.SourceDocument, LinkResolution>,
-    private val clock: Clock,
+    private val references: ContentReferences,
+    private val revisionId: PostRevisionId,
+    private val mediaPath: String,
 ) {
     fun withLink(
         inline: InlineView,
@@ -75,7 +77,7 @@ internal class PostContentViewMapper(
             }
 
             is LinkTarget.SourceDocument -> {
-                when (val resolution = links[target]) {
+                when (val resolution = references.links[target]) {
                     is LinkResolution.Internal -> InternalLinkView("/posts/${resolution.postId.value}")
                     is LinkResolution.External -> WebContentUrls.external(resolution.url)?.let(::ExternalLinkView)
                     LinkResolution.Unlinked, null -> null
@@ -90,15 +92,14 @@ internal class PostContentViewMapper(
             }
 
             is MediaSource.SourceHosted -> {
-                if (source.expiresAt?.isAfter(clock.instant()) !=
-                    false
-                ) {
-                    WebContentUrls.external(source.url)
-                } else {
-                    null
-                }
+                ownedMediaUrl(source)
             }
         }
+
+    // 원본 서명 URL은 공개 HTML에 내보내지 않는다. 보관본이 없으면 null로 두어 누락 안내를 보인다.
+    // 같은 원본 파일명도 리비전마다 내용이 다를 수 있어, 이 매퍼가 그리는 리비전의 보관본만 찾는다.
+    private fun ownedMediaUrl(source: MediaSource.SourceHosted): String? =
+        references.media.keyFor(revisionId, source)?.let { key -> "$mediaPath${key.value}" }
 
     fun iconView(icon: BlockIcon?): BlockIconView? =
         when (icon) {

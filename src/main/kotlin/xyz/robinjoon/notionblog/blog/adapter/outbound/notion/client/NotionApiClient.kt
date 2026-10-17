@@ -152,6 +152,47 @@ internal class NotionApiClient(
         return responseParser.dataSourcePage(response)
     }
 
+    fun queryPostRows(
+        dataSourceId: String,
+        propertyIds: List<String>,
+        cursor: String? = null,
+    ): NotionPaginationResponse<NotionPageResponse> {
+        require(dataSourceId.isNotBlank()) { "Notion data source ID must not be blank" }
+        require(propertyIds.all(String::isNotBlank)) { "Notion property IDs must not be blank" }
+        require(cursor == null || cursor.isNotBlank()) { "Notion data source cursor must not be blank" }
+        val requestBody =
+            buildMap<String, Any> {
+                put("result_type", "page")
+                put("is_archived", false)
+                put(PAGE_SIZE_PARAMETER, PAGE_SIZE)
+                cursor?.let { put(START_CURSOR_PARAMETER, it) }
+            }
+        val response =
+            execute {
+                restClient
+                    .post()
+                    .uri { builder ->
+                        builder
+                            .path("/data_sources/{dataSourceId}/query")
+                            .apply { propertyIds.indices.forEach { queryParam("filter_properties", "{property$it}") } }
+                            .build(queryVariables(dataSourceId, propertyIds))
+                    }.contentType(MediaType.APPLICATION_JSON)
+                    .body(requestBody)
+                    .retrieve()
+                    .body(JsonNode::class.java)
+            }
+        return responseParser.dataSourcePage(response)
+    }
+
+    private fun queryVariables(
+        dataSourceId: String,
+        propertyIds: List<String>,
+    ): Map<String, String> =
+        buildMap {
+            put("dataSourceId", dataSourceId)
+            propertyIds.forEachIndexed { index, propertyId -> put("property$index", decodePropertyId(propertyId)) }
+        }
+
     fun fetchBlockParent(blockId: String): NotionParentResponse {
         val requestedId = NotionIdNormalizer.normalize(blockId)
         val response = get("/blocks/{blockId}", blockId)
@@ -283,10 +324,15 @@ internal class NotionApiClient(
         } catch (exception: RestClientResponseException) {
             throw failureTranslator.httpFailure(exception.statusCode.value(), exception)
         } catch (exception: ResourceAccessException) {
+            if (isInterruption(exception)) Thread.currentThread().interrupt()
             throw failureTranslator.requestFailure(exception)
         } catch (exception: RestClientException) {
             throw failureTranslator.invalidResponse(exception)
         }
+
+    /** 스레드 인터럽트는 소스 장애가 아니다. 일반 타임아웃(SocketTimeoutException은 InterruptedIOException)은 인터럽트로 보지 않는다. */
+    private fun isInterruption(exception: ResourceAccessException): Boolean =
+        Thread.currentThread().isInterrupted || generateSequence<Throwable>(exception) { it.cause }.any { it is InterruptedException }
 
     private fun validateBaseUrl(value: String): String {
         require(value.isNotBlank()) { "Notion base URL must not be blank" }

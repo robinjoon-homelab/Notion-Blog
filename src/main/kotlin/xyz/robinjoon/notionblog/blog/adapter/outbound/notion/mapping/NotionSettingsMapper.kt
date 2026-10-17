@@ -29,17 +29,14 @@ internal class NotionSettingsMapper(
                     .map(::parseEnabledRow)
                     .toList()
 
-            val root =
-                enabledRows.firstOrNull { it.key == ROOT_PAGE_KEY }
-                    ?: throw InvalidSettingsException()
-            requireKind(root, PAGE_KIND)
+            val root = enabledRows.firstOrNull { it.key == ROOT_PAGE_KEY }?.also { requireKind(it, PAGE_KIND) }
 
             val header = enabledRows.firstOrNull { it.key == HEADER_KEY }?.also { requireKind(it, BLOCKS_KIND) }
             val footer = enabledRows.firstOrNull { it.key == FOOTER_KEY }?.also { requireKind(it, BLOCKS_KIND) }
             val head = enabledRows.firstOrNull { it.key == HEAD_KEY }?.also { requireKind(it, HEAD_KIND) }
 
             ImportedSiteConfiguration(
-                rootDocument = sourceDocument(root.page),
+                rootDocument = root?.let { sourceDocument(it.page) },
                 headerDocument = header?.let { sourceDocument(it.page) },
                 footerDocument = footer?.let { sourceDocument(it.page) },
                 metadata =

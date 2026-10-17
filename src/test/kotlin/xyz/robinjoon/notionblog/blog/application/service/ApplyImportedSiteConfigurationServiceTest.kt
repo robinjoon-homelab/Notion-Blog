@@ -52,6 +52,7 @@ class ApplyImportedSiteConfigurationServiceTest {
     private val publications = mockk<PublicationRepository>()
     private val assets = mockk<PresentationAssetCatalog>()
     private val syncStates = mockk<SyncStateRepository>()
+    private val registrations = mockk<RegisterPostService>()
     private val newPublicationId = PublicationId(UUID.fromString("00000000-0000-0000-0000-000000000099"))
 
     @Test
@@ -73,8 +74,7 @@ class ApplyImportedSiteConfigurationServiceTest {
             service(resolver { publicationId })
                 .apply(imported(profileKey = PresentationProfileKey("selected"), faviconAssetKey = "favicon"))
 
-        assertThat(applied.rootChanged).isTrue()
-        assertThat(applied.configuration).isEqualTo(
+        assertThat(applied).isEqualTo(
             SiteConfiguration.restore(
                 publicationId = publicationId,
                 documents = SiteDocuments(root = document("root-1"), header = document("header"), footer = document("footer")),
@@ -123,30 +123,38 @@ class ApplyImportedSiteConfigurationServiceTest {
 
         val applied = service(resolver { newPublicationId }).apply(imported())
 
-        assertThat(applied.rootChanged).isTrue()
-        assertThat(applied.configuration.publicationId).isEqualTo(publicationId)
+        assertThat(applied.publicationId).isEqualTo(publicationId)
+        assertThat(applied.documents.root).isEqualTo(document("root-1"))
     }
 
     @Test
-    fun `unchanged root is reported as unchanged`() {
+    fun `a site without the legacy root document is accepted`() {
         val publicationId = PublicationId(UUID.fromString("00000000-0000-0000-0000-000000000013"))
         every { configurations.findCurrent() } returns configuration(publicationId)
         every { profiles.findCurrentProfile(PresentationProfileKey("default")) } returns profile(PresentationProfileKey("default"))
         givenWrites()
 
-        val applied = service(resolver { newPublicationId }).apply(imported())
+        val applied = service(resolver { newPublicationId }).apply(imported().copy(rootDocument = null))
 
-        assertThat(applied.rootChanged).isFalse()
+        assertThat(applied.documents.root).isNull()
     }
 
     private fun givenWrites() {
         every { configurations.save(any(), any()) } just Runs
+        every { registrations.registerSourceDocuments(any()) } just Runs
         every { syncStates.find(SyncTarget.SiteConfiguration) } returns null
         every { syncStates.save(any()) } just Runs
     }
 
     private fun service(resolver: ImportedSiteConfigurationResolver) =
-        ApplyImportedSiteConfigurationService(configurations, publications, resolver, syncStates, clock, refreshPolicy)
+        ApplyImportedSiteConfigurationService(
+            configurations,
+            publications,
+            resolver,
+            SyncStateRecorder(syncStates, refreshPolicy),
+            registrations,
+            clock,
+        )
 
     private fun resolver(publicationIdFactory: () -> PublicationId) =
         ImportedSiteConfigurationResolver(profiles, assets, PresentationProfileKey("default"), publicationIdFactory)

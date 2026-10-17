@@ -3,11 +3,10 @@ package xyz.robinjoon.notionblog.config
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import xyz.robinjoon.notionblog.blog.domain.SourceDocumentRef
 import xyz.robinjoon.notionblog.blog.domain.post.PostId
+import xyz.robinjoon.notionblog.blog.domain.post.PostRevisionId
 import xyz.robinjoon.notionblog.blog.domain.presentation.PresentationProfileKey
 import xyz.robinjoon.notionblog.blog.domain.publication.PublicationId
-import xyz.robinjoon.notionblog.blog.domain.publication.PublicationRevisionId
 import xyz.robinjoon.notionblog.blog.domain.sync.RefreshPolicy
 import java.time.Clock
 import java.util.UUID
@@ -27,13 +26,13 @@ internal class ApplicationConfig {
         )
 
     @Bean
-    fun postIdFactory(): (SourceDocumentRef) -> PostId = { PostId(UUID.randomUUID()) }
+    fun postIdFactory(): () -> PostId = { PostId(UUID.randomUUID()) }
+
+    @Bean
+    fun postRevisionIdFactory(): () -> PostRevisionId = { PostRevisionId(UUID.randomUUID()) }
 
     @Bean
     fun publicationIdFactory(): () -> PublicationId = { PublicationId(UUID.randomUUID()) }
-
-    @Bean
-    fun revisionIdFactory(): () -> PublicationRevisionId = { PublicationRevisionId(UUID.randomUUID()) }
 
     @Bean
     fun defaultPresentationProfileKey(properties: BlogProperties): PresentationProfileKey =

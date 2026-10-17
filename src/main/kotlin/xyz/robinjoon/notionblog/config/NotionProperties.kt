@@ -5,7 +5,7 @@ import java.time.Duration
 
 @ConfigurationProperties("notion")
 data class NotionProperties
-    // quality-exception: 기존 notion.* 환경 설정 9개를 평탄한 바인딩 계약으로 유지한다.
+    // quality-exception: 기존 notion.* 환경 설정 10개를 평탄한 바인딩 계약으로 유지한다.
     @Suppress("LongParameterList")
     constructor(
         val token: String = "",
@@ -17,7 +17,15 @@ data class NotionProperties
         val collectionTimeout: Duration = Duration.ofSeconds(30),
         val maxBlockDepth: Int = 32,
         val maxBlockCount: Int = 10_000,
+        val posts: Posts = Posts(),
     ) {
+        /** 비어 있는 값은 선택 매핑을 설정하지 않은 것으로 보며, 데이터 소스 ID가 비어 있으면 카탈로그 사용은 설정 오류로 실패한다. */
+        data class Posts(
+            val dataSourceId: String = "",
+            val summaryPropertyId: String = "",
+            val tagsPropertyId: String = "",
+        )
+
         init {
             require(token.isNotBlank()) { "notion.token must not be blank" }
             require(settingsDataSourceId.isNotBlank()) { "notion.settings-data-source-id must not be blank" }

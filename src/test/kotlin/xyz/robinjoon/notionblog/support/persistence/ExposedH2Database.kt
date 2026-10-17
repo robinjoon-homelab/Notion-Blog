@@ -6,7 +6,11 @@ import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.SchemaUtils
 import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.OwnedMediaTable
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.PostAvailabilityTable
+import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.PostPublicationTable
+import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.PostRevisionMediaTable
+import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.PostRevisionTable
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.PostSnapshotTable
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.PostSourceBindingTable
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.PostTable
@@ -48,6 +52,10 @@ class ExposedH2Database : AutoCloseable {
                 PresentationProfileAssetTable,
                 SiteConfigurationTable,
                 SyncStateTable,
+                PostRevisionTable,
+                PostPublicationTable,
+                OwnedMediaTable,
+                PostRevisionMediaTable,
             )
         }
     }

@@ -12,7 +12,7 @@ internal class NotionFailureTranslator {
         cause: Throwable? = null,
     ): SourceException =
         when {
-            statusCode == TOO_MANY_REQUESTS || statusCode >= SERVER_ERROR_START -> {
+            statusCode == TOO_MANY_REQUESTS || statusCode == CONFLICT || statusCode >= SERVER_ERROR_START -> {
                 RetryableSourceException("Notion source request failed with HTTP $statusCode", cause)
             }
 
@@ -39,6 +39,7 @@ internal class NotionFailureTranslator {
 
     private companion object {
         const val TOO_MANY_REQUESTS = 429
+        const val CONFLICT = 409
         const val SERVER_ERROR_START = 500
         const val UNAUTHORIZED = 401
         const val FORBIDDEN = 403

@@ -2,67 +2,103 @@ package xyz.robinjoon.notionblog.blog.adapter.inbound.web
 
 import io.mockk.every
 import io.mockk.mockk
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers.model
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.view
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
-import xyz.robinjoon.notionblog.blog.adapter.inbound.web.view.PostPageView
-import xyz.robinjoon.notionblog.blog.application.model.BlogPage
-import xyz.robinjoon.notionblog.blog.application.model.BlogPageLookupResult
-import xyz.robinjoon.notionblog.blog.application.port.input.GetBlogPageUseCase
+import xyz.robinjoon.notionblog.blog.adapter.inbound.web.view.HomePageView
+import xyz.robinjoon.notionblog.blog.application.model.ContentReferences
+import xyz.robinjoon.notionblog.blog.application.model.PageQuery
+import xyz.robinjoon.notionblog.blog.application.model.PostListEntry
+import xyz.robinjoon.notionblog.blog.application.model.PostListLookupResult
+import xyz.robinjoon.notionblog.blog.application.model.PostListPage
+import xyz.robinjoon.notionblog.blog.application.model.PublicPostLookupResult
+import xyz.robinjoon.notionblog.blog.application.model.ResultPage
+import xyz.robinjoon.notionblog.blog.application.model.RevisionMedia
+import xyz.robinjoon.notionblog.blog.application.port.input.GetPostListUseCase
+import xyz.robinjoon.notionblog.blog.application.port.input.GetPublicPostUseCase
 import xyz.robinjoon.notionblog.blog.domain.post.PostId
+import xyz.robinjoon.notionblog.blog.domain.post.PostProperties
+import java.time.Clock
+import java.time.Instant
+import java.time.ZoneOffset
 import java.util.UUID
 
 class BlogControllerTest {
-    private val service = mockk<GetBlogPageUseCase>()
-    private val assembler = mockk<PostPageViewAssembler>()
-    private val page = mockk<BlogPage>()
-    private val viewModel = mockk<PostPageView>()
+    private val lists = mockk<GetPostListUseCase>()
+    private val posts = mockk<GetPublicPostUseCase>()
+    private val clock = Clock.fixed(Instant.parse("2026-10-16T00:00:00Z"), ZoneOffset.UTC)
     private val mockMvc: MockMvc =
         MockMvcBuilders
-            .standaloneSetup(BlogController(service, assembler))
+            .standaloneSetup(BlogController(lists, posts, PostPageViewAssembler(clock)))
             .setControllerAdvice(WebExceptionHandler())
             .build()
 
     @Test
-    fun `root found is rendered as post view with page model`() {
-        every { service.getRoot() } returns BlogPageLookupResult.Found(page)
-        every { assembler.assemble(page) } returns viewModel
+    fun `home lists published entries ten per page`() {
+        every { lists.get(PageQuery(1, 10)) } returns PostListLookupResult.Found(listPage(entries = 12, page = 1))
 
-        mockMvc
-            .perform(get("/"))
-            .andExpect(status().isOk)
-            .andExpect(view().name("blog/post"))
-            .andExpect(model().attribute("page", viewModel))
+        val page = home("/")
+
+        assertThat(page.entries).hasSize(10)
+        assertThat(page.entries.first().title).isEqualTo("Post 1")
+        assertThat(page.pagination.nextHref).isEqualTo("/?page=2")
+        assertThat(page.pagination.previousHref).isNull()
     }
 
     @Test
-    fun `post found is rendered as post view with page model`() {
-        val postId = PostId(UUID.fromString("00000000-0000-0000-0000-000000000001"))
-        every { service.get(postId) } returns BlogPageLookupResult.Found(page)
-        every { assembler.assemble(page) } returns viewModel
+    fun `second home page holds the remainder and links back`() {
+        every { lists.get(PageQuery(2, 10)) } returns PostListLookupResult.Found(listPage(entries = 12, page = 2))
 
-        mockMvc
-            .perform(get("/posts/${postId.value}"))
-            .andExpect(status().isOk)
-            .andExpect(view().name("blog/post"))
-            .andExpect(model().attribute("page", viewModel))
+        val page = home("/?page=2")
+
+        assertThat(page.entries).hasSize(2)
+        assertThat(page.pagination.previousHref).isEqualTo("/")
+        assertThat(page.pagination.nextHref).isNull()
     }
 
     @Test
-    fun `not found and unavailable results map to dedicated error views`() {
-        every { service.getRoot() } returns BlogPageLookupResult.NotFound
+    fun `a home page number below one is treated as the first page`() {
+        every { lists.get(PageQuery(1, 10)) } returns PostListLookupResult.Found(listPage(entries = 3, page = 1))
+
+        assertThat(home("/?page=-4").pagination.page).isEqualTo(1)
+    }
+
+    @Test
+    fun `unavailable home maps to the unavailable view`() {
+        every { lists.get(PageQuery(1, 10)) } returns PostListLookupResult.ContentUnavailable
+
         mockMvc
             .perform(get("/"))
+            .andExpect(status().isServiceUnavailable)
+            .andExpect(view().name("error/blog-unavailable"))
+    }
+
+    @Test
+    fun `post found is rendered as post view`() {
+        every { posts.get(WebFixtures.postId) } returns
+            PublicPostLookupResult.Found(WebFixtures.publicPage(WebFixtures.revision(title = "Hello")))
+
+        mockMvc
+            .perform(get("/posts/${WebFixtures.postId.value}"))
+            .andExpect(status().isOk)
+            .andExpect(view().name("blog/post"))
+    }
+
+    @Test
+    fun `not found and unavailable posts map to dedicated error views`() {
+        every { posts.get(WebFixtures.postId) } returns PublicPostLookupResult.NotFound
+        mockMvc
+            .perform(get("/posts/${WebFixtures.postId.value}"))
             .andExpect(status().isNotFound)
             .andExpect(view().name("error/blog-not-found"))
 
-        every { service.getRoot() } returns BlogPageLookupResult.ContentUnavailable
+        every { posts.get(WebFixtures.postId) } returns PublicPostLookupResult.ContentUnavailable
         mockMvc
-            .perform(get("/"))
+            .perform(get("/posts/${WebFixtures.postId.value}"))
             .andExpect(status().isServiceUnavailable)
             .andExpect(view().name("error/blog-unavailable"))
     }
@@ -74,4 +110,32 @@ class BlogControllerTest {
             .andExpect(status().isNotFound)
             .andExpect(view().name("error/blog-not-found"))
     }
+
+    private fun home(url: String): HomePageView =
+        mockMvc
+            .perform(get(url))
+            .andExpect(status().isOk)
+            .andExpect(view().name("blog/home"))
+            .andReturn()
+            .modelOf("page")
+
+    private fun listPage(
+        entries: Int,
+        page: Int,
+    ): PostListPage =
+        PostListPage(
+            WebFixtures.chrome(),
+            ResultPage.of(
+                (1..entries).map { index ->
+                    PostListEntry(
+                        PostId(UUID.nameUUIDFromBytes("post-$index".toByteArray())),
+                        WebFixtures.revisionId,
+                        PostProperties("Post $index", "Summary $index", listOf("kotlin"), null),
+                        Instant.parse("2026-10-05T03:04:05Z"),
+                    )
+                },
+                PageQuery(page, 10),
+            ),
+            ContentReferences(emptyMap(), RevisionMedia.empty),
+        )
 }

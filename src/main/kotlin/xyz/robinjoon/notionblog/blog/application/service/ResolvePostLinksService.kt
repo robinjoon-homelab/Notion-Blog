@@ -2,7 +2,7 @@ package xyz.robinjoon.notionblog.blog.application.service
 
 import xyz.robinjoon.notionblog.blog.application.model.LinkResolution
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.PostRepository
-import xyz.robinjoon.notionblog.blog.application.port.output.persistence.PublicationRepository
+import xyz.robinjoon.notionblog.blog.application.port.output.persistence.PublishedPostStore
 import xyz.robinjoon.notionblog.blog.domain.post.block.BlockNode
 import xyz.robinjoon.notionblog.blog.domain.post.block.BlockTree
 import xyz.robinjoon.notionblog.blog.domain.post.block.content.BlockContent
@@ -15,32 +15,25 @@ import xyz.robinjoon.notionblog.blog.domain.post.block.content.SpecialBlockConte
 import xyz.robinjoon.notionblog.blog.domain.post.block.content.TextBlockContent
 import xyz.robinjoon.notionblog.blog.domain.post.block.inline.InlineContent
 import xyz.robinjoon.notionblog.blog.domain.post.block.inline.LinkTarget
-import xyz.robinjoon.notionblog.blog.domain.publication.PublicationId
-import java.net.URI
 
 class ResolvePostLinksService(
     private val postRepository: PostRepository,
-    private val publicationRepository: PublicationRepository,
+    private val publishedPosts: PublishedPostStore,
 ) {
-    fun resolve(
-        publicationId: PublicationId,
-        trees: Collection<BlockTree>,
-    ): Map<LinkTarget.SourceDocument, LinkResolution> {
+    // 원본 문서로 가는 링크는 그 글이 애플리케이션에서 공개 상태일 때만 내부 링크가 된다. 그렇지 않으면 원래 URL이 비공개 원본
+    // 페이지를 가리킬 수 있으므로 링크하지 않는다. 저장된 URL은 리비전에 그대로 남는다.
+    fun resolve(trees: Collection<BlockTree>): Map<LinkTarget.SourceDocument, LinkResolution> {
         val targets = linkedSetOf<LinkTarget.SourceDocument>()
         trees.forEach { tree -> tree.roots.forEach { node -> collect(node, targets) } }
 
         val bindings = postRepository.findBindingsBySourceDocuments(targets.mapTo(linkedSetOf()) { it.reference })
-        val activePostIds =
-            publicationRepository.findActiveMemberPostIds(
-                publicationId,
-                bindings.values.mapTo(linkedSetOf()) { it.postId },
-            )
+        val publicPostIds = publishedPosts.findPublicPostIds(bindings.values.mapTo(linkedSetOf()) { it.postId })
 
         return targets.associateWith { target ->
             val binding = bindings[target.reference]
             when {
-                binding != null && binding.postId in activePostIds -> LinkResolution.Internal(binding.postId)
-                else -> target.originalUrl.safeExternalOrUnlinked()
+                binding != null && binding.postId in publicPostIds -> LinkResolution.Internal(binding.postId)
+                else -> LinkResolution.Unlinked
             }
         }
     }
@@ -154,13 +147,4 @@ class ResolvePostLinksService(
             targets += target
         }
     }
-
-    private fun URI?.safeExternalOrUnlinked(): LinkResolution =
-        if (this != null && scheme?.lowercase() in setOf("http", "https") &&
-            host != null
-        ) {
-            LinkResolution.External(this)
-        } else {
-            LinkResolution.Unlinked
-        }
 }

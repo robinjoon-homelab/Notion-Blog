@@ -79,16 +79,26 @@ class NotionSettingsMapperTest {
                 ),
             )
 
-        assertThat(configuration.rootDocument.externalId).isEqualTo("0123456789abcdef0123456789abcdef")
+        assertThat(configuration.rootDocument?.externalId).isEqualTo("0123456789abcdef0123456789abcdef")
         assertThat(configuration.headerDocument?.externalId).isEqualTo("11111111111111111111111111111111")
     }
 
     @Test
-    fun `rejects missing root wrong kinds and unsafe head data without exposing source contents`() {
+    fun `an absent or disabled root page leaves the root unset while other settings still map`() {
+        val absent = mapper.map(listOf(row("header", "blocks", page = "11111111111111111111111111111111")))
+        val disabled = mapper.map(listOf(disabledRow("rootPage", "page", page = "0123456789abcdef0123456789abcdef")))
+
+        assertThat(absent.rootDocument).isNull()
+        assertThat(absent.headerDocument?.externalId).isEqualTo("11111111111111111111111111111111")
+        assertThat(disabled.rootDocument).isNull()
+        assertThat(mapper.map(emptyList()).metadata.siteName).isEqualTo("Blog")
+    }
+
+    @Test
+    fun `rejects wrong kinds and unsafe head data without exposing source contents`() {
         val secret = "token=server-secret<script>alert(1)</script>"
 
         listOf(
-            emptyList(),
             listOf(row("rootPage", "blocks", page = "0123456789abcdef0123456789abcdef")),
             listOf(row("rootPage", "page", page = "https://notion.site.attacker.example/$secret")),
             listOf(

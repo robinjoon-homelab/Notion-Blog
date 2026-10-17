@@ -5,10 +5,10 @@ import org.junit.jupiter.api.Test
 import org.w3c.dom.Document
 import org.w3c.dom.Element
 import org.w3c.dom.NodeList
-import xyz.robinjoon.notionblog.blog.application.model.PostFeed
-import xyz.robinjoon.notionblog.blog.application.model.PostFeedEntry
-import xyz.robinjoon.notionblog.blog.domain.post.Post
+import xyz.robinjoon.notionblog.blog.application.model.PublicFeed
+import xyz.robinjoon.notionblog.blog.application.model.PublishedPost
 import xyz.robinjoon.notionblog.blog.domain.post.PostId
+import xyz.robinjoon.notionblog.blog.domain.post.PostProperties
 import xyz.robinjoon.notionblog.blog.domain.post.block.BlockId
 import xyz.robinjoon.notionblog.blog.domain.post.block.BlockNode
 import xyz.robinjoon.notionblog.blog.domain.post.block.BlockTree
@@ -30,7 +30,7 @@ class RssFeedRendererTest {
     @Test
     fun `RSS channel and items have required metadata absolute links stable GUID and GMT date`() {
         val entry = entry("First 글", "Summary 😀")
-        val feed = PostFeed(metadata(), listOf(entry, entry("Second", "Second summary", 2)))
+        val feed = PublicFeed(metadata(), listOf(entry, entry("Second", "Second summary", 2)))
         val bytes = renderer.render(feed, urls)
         val document = parse(bytes)
         val channel = document.getElementsByTagNameNS(null, "channel").element()
@@ -53,8 +53,8 @@ class RssFeedRendererTest {
         assertThat(item.value("title")).isEqualTo("First 글")
         assertThat(items.element(1).value("title")).isEqualTo("Second")
         assertThat(item.value("description")).isEqualTo("Summary 😀")
-        assertThat(item.value("link")).isEqualTo("https://blog.example:8443/posts/${entry.post.id.value}")
-        assertThat(item.value("guid")).isEqualTo("urn:uuid:${entry.post.id.value}")
+        assertThat(item.value("link")).isEqualTo("https://blog.example:8443/posts/${entry.revision.postId.value}")
+        assertThat(item.value("guid")).isEqualTo("urn:uuid:${entry.revision.postId.value}")
         assertThat(item.getElementsByTagName("guid").element().getAttribute("isPermaLink")).isEqualTo("false")
         assertThat(item.value("pubDate")).endsWith(" GMT")
         assertThat(ZonedDateTime.parse(item.value("pubDate"), DateTimeFormatter.RFC_1123_DATE_TIME).toInstant()).isEqualTo(publishedAt)
@@ -64,7 +64,7 @@ class RssFeedRendererTest {
 
     @Test
     fun `empty feed is valid and absent description falls back to site name`() {
-        val document = parse(renderer.render(PostFeed(metadata().copy(defaultDescription = null), emptyList()), urls))
+        val document = parse(renderer.render(PublicFeed(metadata().copy(defaultDescription = null), emptyList()), urls))
 
         assertThat(document.getElementsByTagNameNS(null, "item").length).isZero()
         assertThat(document.getElementsByTagName("channel").element().value("description")).isEqualTo("My Blog")
@@ -73,9 +73,16 @@ class RssFeedRendererTest {
     @Test
     fun `domain and content changes preserve GUID and first publication date`() {
         val original = entry("Original", "Original body")
-        val changed = original.copy(post = Post.restore(original.post.id, "Changed title", original.post.content))
-        val before = parse(renderer.render(PostFeed(metadata(), listOf(original)), urls))
-        val after = parse(renderer.render(PostFeed(metadata(), listOf(changed)), PublicBlogUrls(URI("https://moved.example"))))
+        val properties = original.revision.properties
+        val changed =
+            original.copy(
+                revision =
+                    original.revision.copy(
+                        properties = PostProperties("Changed title", properties.summary, properties.tags, properties.cover),
+                    ),
+            )
+        val before = parse(renderer.render(PublicFeed(metadata(), listOf(original)), urls))
+        val after = parse(renderer.render(PublicFeed(metadata(), listOf(changed)), PublicBlogUrls(URI("https://moved.example"))))
 
         assertThat(
             after.getElementsByTagName("guid").item(0).textContent,
@@ -90,7 +97,7 @@ class RssFeedRendererTest {
     fun `item description is HTML escaped inside XML while other text keeps its literal meaning`() {
         val malicious = "<script>alert(\"x\")</script> & ]]>"
         val metadata = metadata().copy(siteName = malicious, defaultDescription = malicious)
-        val bytes = renderer.render(PostFeed(metadata, listOf(entry(malicious, malicious))), urls)
+        val bytes = renderer.render(PublicFeed(metadata, listOf(entry(malicious, malicious))), urls)
         val document = parse(bytes)
         val channel = document.getElementsByTagName("channel").element()
         val item = document.getElementsByTagName("item").element()
@@ -113,7 +120,7 @@ class RssFeedRendererTest {
                 defaultDescription = "Description$forbidden$allowed",
                 languageTag = "ko\uFFFF-KR",
             )
-        val document = parse(renderer.render(PostFeed(metadata, listOf(entry("Title$forbidden$allowed", "body"))), urls))
+        val document = parse(renderer.render(PublicFeed(metadata, listOf(entry("Title$forbidden$allowed", "body"))), urls))
         val channel = document.getElementsByTagName("channel").element()
         val item = document.getElementsByTagName("item").element()
 
@@ -130,7 +137,7 @@ class RssFeedRendererTest {
         val document =
             parse(
                 renderer.render(
-                    PostFeed(metadata().copy(siteName = invalid, defaultDescription = invalid), listOf(entry(invalid, invalid))),
+                    PublicFeed(metadata().copy(siteName = invalid, defaultDescription = invalid), listOf(entry(invalid, invalid))),
                     urls,
                 ),
             )
@@ -149,11 +156,11 @@ class RssFeedRendererTest {
         title: String,
         summary: String,
         id: Int = 1,
-    ) = PostFeedEntry(
-        Post.restore(
-            PostId(UUID.fromString("00000000-0000-0000-0000-${id.toString().padStart(12, '0')}")),
-            title,
-            BlockTree(listOf(BlockNode(BlockId("text"), TextBlockContent.Paragraph(listOf(InlineContent.Text(summary)))))),
+    ) = PublishedPost(
+        WebFixtures.revision(
+            title = title,
+            nodes = listOf(BlockNode(BlockId("text"), TextBlockContent.Paragraph(listOf(InlineContent.Text(summary))))),
+            postId = PostId(UUID.fromString("00000000-0000-0000-0000-${id.toString().padStart(12, '0')}")),
         ),
         publishedAt,
     )

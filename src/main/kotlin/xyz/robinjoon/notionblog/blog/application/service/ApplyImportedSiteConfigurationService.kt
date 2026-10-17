@@ -1,67 +1,42 @@
 package xyz.robinjoon.notionblog.blog.application.service
 
 import org.springframework.transaction.annotation.Transactional
-import xyz.robinjoon.notionblog.blog.application.model.AppliedSiteConfiguration
 import xyz.robinjoon.notionblog.blog.application.model.ImportedSiteConfiguration
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.PublicationRepository
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.SiteConfigurationRepository
-import xyz.robinjoon.notionblog.blog.application.port.output.persistence.SyncStateRepository
 import xyz.robinjoon.notionblog.blog.domain.publication.BlogPublication
-import xyz.robinjoon.notionblog.blog.domain.sync.RefreshPolicy
+import xyz.robinjoon.notionblog.blog.domain.site.SiteConfiguration
 import xyz.robinjoon.notionblog.blog.domain.sync.SyncFailureKind
-import xyz.robinjoon.notionblog.blog.domain.sync.SyncState
 import xyz.robinjoon.notionblog.blog.domain.sync.SyncTarget
 import java.time.Clock
-import java.time.Instant
 
-@Transactional
+// 사이트 설정을 적용한다. 루트·헤더·푸터 문서는 관리자가 게시할 수 있도록 비공개 관리 글이 되며, 설정 자체는 아무것도 게시하지 않는다.
+// Exposed는 SQL 실패를 checked 예외로 알리므로 런타임 실패처럼 명시적으로 롤백한다.
+@Transactional(rollbackFor = [Exception::class])
 class ApplyImportedSiteConfigurationService(
     private val siteConfigurationRepository: SiteConfigurationRepository,
     private val publicationRepository: PublicationRepository,
     private val configurationResolver: ImportedSiteConfigurationResolver,
-    private val syncStateRepository: SyncStateRepository,
+    private val recorder: SyncStateRecorder,
+    private val registrations: RegisterPostService,
     private val clock: Clock,
-    private val refreshPolicy: RefreshPolicy,
 ) {
-    @Transactional
-    fun apply(imported: ImportedSiteConfiguration): AppliedSiteConfiguration {
+    @Transactional(rollbackFor = [Exception::class])
+    fun apply(imported: ImportedSiteConfiguration): SiteConfiguration {
         val now = clock.instant()
         val current = siteConfigurationRepository.findCurrent()
         val configuration = configurationResolver.resolve(imported, current)
 
+        // 사이트 설정 행이 여전히 레거시 게시를 참조하므로 그 레거시 행은 이력으로 남긴다.
         if (current == null) {
             publicationRepository.save(BlogPublication.create(configuration.publicationId))
         }
         siteConfigurationRepository.save(configuration, now)
-        recordSuccess(now)
-
-        return AppliedSiteConfiguration(
-            configuration = configuration,
-            rootChanged = current?.documents?.root != imported.rootDocument,
-        )
+        registrations.registerSourceDocuments(configuration.documents.all)
+        recorder.recordSuccess(SyncTarget.SiteConfiguration, now)
+        return configuration
     }
 
-    @Transactional
-    fun recordFailure(kind: SyncFailureKind) {
-        val now = clock.instant()
-        val target = SyncTarget.SiteConfiguration
-        val current = syncStateRepository.find(target)
-        val nextFailureCount = Math.addExact(current?.failureCount ?: 0, 1)
-        val refreshAfter = refreshPolicy.nextFailureRefreshAt(now, nextFailureCount)
-        val updated =
-            current?.recordFailure(kind, refreshAfter)
-                ?: SyncState.schedule(target, now).recordFailure(kind, refreshAfter)
-
-        syncStateRepository.save(updated)
-    }
-
-    private fun recordSuccess(now: Instant) {
-        val target = SyncTarget.SiteConfiguration
-        val refreshAfter = refreshPolicy.nextSuccessfulRefreshAt(now)
-        val updated =
-            syncStateRepository.find(target)?.recordSuccess(now, refreshAfter)
-                ?: SyncState.schedule(target, now).recordSuccess(now, refreshAfter)
-
-        syncStateRepository.save(updated)
-    }
+    @Transactional(rollbackFor = [Exception::class])
+    fun recordFailure(kind: SyncFailureKind) = recorder.recordFailure(SyncTarget.SiteConfiguration, kind, clock.instant())
 }

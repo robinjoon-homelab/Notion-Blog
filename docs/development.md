@@ -7,13 +7,16 @@
 - 로컬 앱은 PostgreSQL을 사용한다. H2로 대체하지 않는다. `.env.example`을 `local.env`로 복사해 값을 채우고 `set -a; source local.env; set +a`로 불러온다. `local.env`는 커밋하지 않는다.
 - 필수 환경변수는 `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`, `NOTION_TOKEN`, `NOTION_SETTINGS_DATA_SOURCE_ID`다. 선택 값과 기본값은 `src/main/resources/application.yml`의 `notion.*`, `blog.*` 설정을 따른다.
 - `NOTION_API_VERSION`은 `2026-03-11`만 허용한다. `BLOG_PUBLIC_BASE_URL`은 하위 경로·사용자 정보·query·fragment 없는 HTTP(S) 원점이며, 빈 값이면 RSS가 503을 반환한다.
-- 로컬 API는 `http://localhost:8080`으로 호출한다. 빈 DB에서는 Flyway seed의 설정 동기화 대상부터 처리하며, 활성 공개 범위가 생기기 전 `/`와 게시글 경로는 503이다.
+- 글 데이터베이스는 `NOTION_POSTS_DATA_SOURCE_ID`와 속성 ID(`NOTION_POSTS_SUMMARY_PROPERTY_ID`, `NOTION_POSTS_TAGS_PROPERTY_ID`)로 지정한다. 모두 선택이며 비우면 카탈로그 스캔이 설정 오류로 실패하고 기존 설정 데이터 소스 동작은 유지된다. 설정 데이터 소스의 `rootPage`도 선택이다.
+- 관리 화면은 OIDC로만 열린다. `blog.admin.oidc.{issuer-uri,client-id,client-secret,allowed-subject}`(`BLOG_ADMIN_OIDC_ISSUER_URI`, `BLOG_ADMIN_OIDC_CLIENT_ID`, `BLOG_ADMIN_OIDC_CLIENT_SECRET`, `BLOG_ADMIN_OIDC_ALLOWED_SUBJECT`)가 하나라도 비면 `/admin/**`은 `403`으로 닫히고 공개 읽기만 동작한다. 허용하는 운영자는 `allowed-subject` 하나다. 클라이언트 시크릿은 환경 주입만 쓴다.
+- 업로드 파일 한도는 `BLOG_MEDIA_MAX_BYTES`(파일당 기본 25MiB), `BLOG_MEDIA_MAX_IMPORT_BYTES`(글 하나 기본 100MiB), `BLOG_MEDIA_REQUEST_TIMEOUT`(기본 10s), `BLOG_MEDIA_MAX_REDIRECTS`(기본 3)다. 글 카탈로그 스캔 간격은 `BLOG_SYNCHRONIZATION_CATALOG_INTERVAL_MS`(기본 5분)다.
+- 로컬 API는 `http://localhost:8080`으로 호출한다. 빈 DB에서는 Flyway seed의 설정 동기화 대상부터 처리하며, 사이트 설정과 표현 프로필이 준비되기 전 `/`와 게시글 경로는 503이다.
 - 운영 PostgreSQL은 [배포 계약](deployment.md#컨테이너와-db-계약)을 따른다. DB 파일·자격 증명을 커밋하지 않는다.
 
 ## 기능 변경
 
 1. 명령·조회·성공·실패·동시 실행 조건을 확인하고 [경계 선정 절차](ddd-architecture.md#새-기능을-분류하는-절차)로 소유 BC·루트를 정한다.
-2. 도메인 규칙과 [기본 범위](#테스트-범위)의 테스트를 작성한다. 새 BC·루트는 `HexagonalArchitectureTest.contextAggregates`와 아키텍처 문서의 목록에도 등록한다.
+2. 도메인 규칙과 [기본 범위](#테스트-범위)의 테스트를 작성한다. 새 BC·루트는 `HexagonalArchitectureTest.contextAggregates`와 아키텍처 문서의 목록에도 등록하고, 새 HTTP 경로는 `TargetArchitectureBoundaryTest`의 허용 목록에도 `HTTP 메서드 경로` 형식으로 추가한다.
 3. 필요한 입력·출력 포트와 유스케이스를 변경하고 [트랜잭션 계약](ddd-architecture.md#트랜잭션)을 적용한다.
 4. 어댑터와 `config`의 빈 조립을 변경한다. HTTP·DB를 바꾸면 아래 해당 절차도 수행한다.
 5. [변경 설명](ddd-architecture.md#변경-설명에-남길-최소-기록)을 남기고 [변경별 검증과 전체 빌드](#실행과-검증)를 실행한다.
@@ -46,7 +49,8 @@
 
 ## API 변경
 
-- `BlogHttpDocumentationTest`에서 입력 포트를 MockK로 대체하고 MockMvc로 실제 컨트롤러·예외 변환·보안 헤더 필터·Thymeleaf·RSS 렌더링의 요청·응답·상태 코드와 404·503·조건부 요청 응답을 검증한다. DB와 서비스 구현을 연결하지 않는다.
+- `BlogHttpDocumentationTest`에서 입력 포트를 MockK로 대체하고 MockMvc로 실제 컨트롤러·예외 변환·보안 헤더 필터·Thymeleaf·RSS 렌더링의 요청·응답·상태 코드와 404·503·조건부 요청 응답을 검증한다. 관리 화면·관리 명령·공개/관리 파일 경로는 `AdminHttpDocumentationTest`에서 입력 포트를 MockK로 대체하고 MockMvc로 실제 컨트롤러·예외 변환·보안 헤더 필터·Thymeleaf 렌더링을 검증한다. 두 테스트 모두 DB와 서비스 구현을 연결하지 않는다.
+- 관리 경로의 인증·권한·CSRF·로그아웃은 보안 설정과 탐침 컨트롤러만 연결한 `AdminSecurityFilterChainTest`·`AdminSecurityClosedChainTest`에서 검증한다.
 - API 변경과 함께 REST Docs 설명을 수정하고 `src/docs/asciidoc/index.adoc`에 생성 스니펫을 연결한다. 문서는 같은 출처 스타일만 쓰므로 외부 글꼴·스크립트를 불러오는 Asciidoctor 속성을 켜지 않는다.
 - HTTP 상세를 README·개발 가이드에 재작성하지 않는다. 업무 규칙은 [아키텍처 문서](ddd-architecture.md#현재-업무-규칙)에서 관리한다.
 - `build/generated-snippets`와 `build/docs/asciidoc/index.html`을 직접 편집하지 않는다.
@@ -54,7 +58,7 @@
 
 ## 스키마 변경
 
-- `src/main/resources/db/migration`의 마지막 버전 다음 번호로 `V<번호>__describe_change.sql`을 추가한다. 배포된 V1~V7을 포함해 기존 마이그레이션은 수정하지 않는다.
+- `src/main/resources/db/migration`의 마지막 버전 다음 번호로 `V<번호>__describe_change.sql`을 추가한다. 배포된 마이그레이션은 수정하지 않는다. 기존 테이블·행·UUID·이력을 삭제하거나 덮어쓰지 않는 추가형으로 쓰고, 기존 데이터 이전은 앱의 멱등 시작 작업([레거시 글 이전](ddd-architecture.md#레거시-글-이전))에서 한다.
 - Flyway로만 DDL을 적용하고 `spring.exposed.generate-ddl=false`를 유지한다.
 - 기존 데이터 변환·새 제약의 테스트 작성 여부와 방식은 [테스트 범위](#테스트-범위)를 따른다. 여러 저장 작업에는 [트랜잭션 계약](ddd-architecture.md#트랜잭션)을 적용한다.
 - 스냅샷 JSON 형식을 바꾸면 `schemaVersion`을 관리하고 `src/test/resources/snapshot/schema-v1`의 기존 스냅샷을 계속 읽는지 검증한다.
@@ -73,7 +77,7 @@ set -a; source local.env; set +a
 
 - 도메인·유스케이스: `./gradlew :test --tests '*SynchronizePostServiceTest'`처럼 대상 테스트를 지정한다.
 - RDB 어댑터: `./gradlew :test --tests '*ExposedPostRepositoryTest'`처럼 대상 어댑터 테스트를 지정한다.
-- HTTP·문서: `./gradlew :test --tests '*BlogHttpDocumentationTest'`.
+- HTTP·문서: `./gradlew :test --tests '*HttpDocumentationTest'`(공개 `BlogHttpDocumentationTest`, 관리 `AdminHttpDocumentationTest`).
 - 형식: 수정은 `./gradlew ktlintFormat`, 확인은 `./gradlew ktlintCheck`.
 - 검사 규칙: `./gradlew detektMain detektTest`, `./gradlew :quality-rules:test`. [검사기 지침](quality-maintenance.md)의 회귀 범위도 확인한다.
 - 배포 스크립트: [배포 없이 검증](deployment.md#배포-없이-검증)의 Python 테스트도 실행한다.

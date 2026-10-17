@@ -9,15 +9,9 @@ import xyz.robinjoon.notionblog.blog.domain.sync.SyncFailureKind
 class SynchronizeSiteConfigurationService(
     private val source: SiteConfigurationSource,
     private val applyService: ApplyImportedSiteConfigurationService,
-    private val publicationService: SynchronizePublicationService,
 ) : SynchronizeSiteConfigurationUseCase {
     override fun synchronize() {
-        val imported = fetch()
-        val applied = apply(imported)
-
-        if (applied.rootChanged) {
-            publicationService.synchronize()
-        }
+        apply(fetch())
     }
 
     private fun fetch() =

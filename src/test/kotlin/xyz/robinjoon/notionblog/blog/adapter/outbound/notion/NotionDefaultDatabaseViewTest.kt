@@ -11,11 +11,10 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
-import org.junit.jupiter.params.provider.NullSource
 import org.junit.jupiter.params.provider.ValueSource
 import xyz.robinjoon.notionblog.blog.adapter.outbound.notion.client.NotionApiClient
+import xyz.robinjoon.notionblog.blog.adapter.outbound.notion.source.CollectedPost
 import xyz.robinjoon.notionblog.blog.adapter.outbound.notion.source.NotionPostSource
-import xyz.robinjoon.notionblog.blog.application.model.ImportedPost
 import xyz.robinjoon.notionblog.blog.application.port.output.source.SourceConfigurationException
 import xyz.robinjoon.notionblog.blog.domain.SourceDocumentRef
 import xyz.robinjoon.notionblog.blog.domain.SourceId
@@ -44,7 +43,7 @@ class NotionDefaultDatabaseViewTest {
 
     @ParameterizedTest
     @ValueSource(strings = ["table", "list", "gallery"])
-    fun `imports default view responses with only the schema title and published rows`(type: String) {
+    fun `imports default view responses with only the schema title and every readable non-trashed row`(type: String) {
         val cover = if (type == "gallery") """, "cover":{"type":"page_cover"}""" else ""
         fixture(type, """, "configuration":{"type":"$type"$cover}""")
 
@@ -55,32 +54,24 @@ class NotionDefaultDatabaseViewTest {
         assertThat(view.data.title).isEqualTo("Default view")
         assertThat(view.data.columns.map { it.name }).containsExactly("Name")
         assertThat(view.data.titleColumnIndex).isZero()
-        assertThat(view.data.rows).hasSize(1)
-        assertThat(
-            view.data.rows
-                .single()
-                .cells
-                .single(),
-        ).containsExactly(
-            InlineContent.Text(
-                "Public row",
-                link = LinkTarget.SourceDocument(SourceDocumentRef(sourceId, ROW), URI("https://site.notion.site/$ROW")),
+        assertThat(view.data.rows).hasSize(2)
+        assertThat(view.data.rows.map { it.cells.single() }).containsExactly(
+            listOf(
+                InlineContent.Text(
+                    "Public row",
+                    link = LinkTarget.SourceDocument(SourceDocumentRef(sourceId, ROW), URI("https://site.notion.site/$ROW")),
+                ),
+            ),
+            listOf(
+                InlineContent.Text("Private row", link = LinkTarget.SourceDocument(SourceDocumentRef(sourceId, PRIVATE_ROW), null)),
             ),
         )
-        assertThat(view.data.toString()).doesNotContain("Private row", "Trash row", "Hidden value", "Status", "Done")
+        assertThat(view.data.toString()).doesNotContain("Trash row", "Hidden value", "Status", "Done")
         assertThat(imported.containedChildren).isEmpty()
         if (type == "gallery") {
-            assertThat(
-                view.data.rows
-                    .single()
-                    .cover,
-            ).isEqualTo(MediaSource.External(URI(COVER)))
+            assertThat(view.data.rows.map { it.cover }).containsOnly(MediaSource.External(URI(COVER)))
         } else {
-            assertThat(
-                view.data.rows
-                    .single()
-                    .cover,
-            ).isNull()
+            assertThat(view.data.rows.map { it.cover }).containsOnlyNulls()
         }
         assertRequestedProperties("title")
     }
@@ -113,36 +104,44 @@ class NotionDefaultDatabaseViewTest {
 
         assertLayout(view, type)
         assertThat(view.data.columns.map { it.name }).containsExactly("Name")
-        assertThat(
-            view.data.rows
-                .single()
-                .cells
-                .single(),
-        ).containsExactly(
-            InlineContent.Text(
-                "Public row",
-                link = LinkTarget.SourceDocument(SourceDocumentRef(sourceId, ROW), URI("https://site.notion.site/$ROW")),
+        assertThat(view.data.rows.map { it.cells.single() }).containsExactly(
+            listOf(
+                InlineContent.Text(
+                    "Public row",
+                    link = LinkTarget.SourceDocument(SourceDocumentRef(sourceId, ROW), URI("https://site.notion.site/$ROW")),
+                ),
+            ),
+            listOf(
+                InlineContent.Text("Private row", link = LinkTarget.SourceDocument(SourceDocumentRef(sourceId, PRIVATE_ROW), null)),
             ),
         )
-        assertThat(
-            view.data.rows
-                .single()
-                .cover,
-        ).isNull()
+        assertThat(view.data.rows.map { it.cover }).containsOnlyNulls()
         assertThat(view.data.toString()).doesNotContain("Hidden value", "Status", "Done")
         assertRequestedProperties("title")
     }
 
+    @Test
+    fun `a later row without public sharing metadata is still collected because public_url is ignored`() {
+        fixture("table", "", privateRowPublicUrl = null)
+
+        val rows = dataView(source().fetch(SourceDocumentRef(sourceId, ROOT))).data.rows
+
+        assertThat(
+            rows.map {
+                (it.link as? LinkTarget.SourceDocument)?.reference
+            },
+        ).containsExactly(SourceDocumentRef(sourceId, ROW), SourceDocumentRef(sourceId, PRIVATE_ROW))
+    }
+
     @ParameterizedTest
-    @NullSource
     @ValueSource(strings = ["false", "123", "{}", "[]", "\"\"", "\"   \""])
-    fun `fails the containing post instead of returning collected rows when a later row has invalid publication metadata`(
-        publicUrl: String?,
-    ) {
+    fun `a malformed public_url hint on a later row is ignored and the row is still collected`(publicUrl: String) {
         fixture("table", "", privateRowPublicUrl = publicUrl)
 
-        assertThatThrownBy { source().fetch(SourceDocumentRef(sourceId, ROOT)) }
-            .isInstanceOf(SourceConfigurationException::class.java)
+        val rows = dataView(source().fetch(SourceDocumentRef(sourceId, ROOT))).data.rows
+
+        assertThat(rows.map { it.cells.single().toString() }).anyMatch { it.contains("Private row") }
+        assertThat(rows).hasSize(2)
     }
 
     @Test
@@ -161,12 +160,8 @@ class NotionDefaultDatabaseViewTest {
 
         assertThat(view.data.columns.map { it.name }).containsExactly("Status")
         assertThat(view.data.titleColumnIndex).isNull()
-        assertThat(
-            view.data.rows
-                .single()
-                .cells
-                .single(),
-        ).containsExactly(InlineContent.Text("Done"))
+        assertThat(view.data.rows).hasSize(2)
+        assertThat(view.data.rows.map { it.cells.single() }).containsOnly(listOf(InlineContent.Text("Done")))
         assertThat(view.data.toString()).doesNotContain("Public row", "Hidden value", "Unspecified value")
         assertRequestedProperties("status")
     }
@@ -238,7 +233,7 @@ class NotionDefaultDatabaseViewTest {
 
     private fun requests(): List<RecordedRequest> = List(server.requestCount) { server.takeRequest() }
 
-    private fun dataView(imported: ImportedPost): DataViewContent {
+    private fun dataView(imported: CollectedPost): DataViewContent {
         val contents =
             imported.content.roots
                 .flatMap(::nodes)

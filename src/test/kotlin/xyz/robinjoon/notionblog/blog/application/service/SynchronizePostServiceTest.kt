@@ -1,94 +1,96 @@
 package xyz.robinjoon.notionblog.blog.application.service
 
 import io.mockk.every
-import io.mockk.just
 import io.mockk.mockk
-import io.mockk.runs
+import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
-import xyz.robinjoon.notionblog.blog.application.model.ImportedPost
-import xyz.robinjoon.notionblog.blog.application.model.ImportedPublicationStatus
+import xyz.robinjoon.notionblog.blog.application.model.CapturedMedia
+import xyz.robinjoon.notionblog.blog.application.model.ImportedRevision
 import xyz.robinjoon.notionblog.blog.application.model.PostSynchronizationContext
-import xyz.robinjoon.notionblog.blog.application.port.output.source.PostSource
+import xyz.robinjoon.notionblog.blog.application.model.RefreshPostResult
+import xyz.robinjoon.notionblog.blog.application.port.output.diagnostics.OperationFailureReporter
+import xyz.robinjoon.notionblog.blog.application.port.output.media.MediaFetchException
+import xyz.robinjoon.notionblog.blog.application.port.output.source.PostRevisionSource
 import xyz.robinjoon.notionblog.blog.application.port.output.source.SourceAccessException
-import xyz.robinjoon.notionblog.blog.domain.SourceDocumentRef
-import xyz.robinjoon.notionblog.blog.domain.SourceId
 import xyz.robinjoon.notionblog.blog.domain.SourceRevision
-import xyz.robinjoon.notionblog.blog.domain.post.PostId
 import xyz.robinjoon.notionblog.blog.domain.post.block.BlockTree
-import xyz.robinjoon.notionblog.blog.domain.publication.PublicationId
-import java.util.UUID
+import xyz.robinjoon.notionblog.blog.domain.sync.SyncFailureKind
+import xyz.robinjoon.notionblog.support.fixture.PostFixtures
 
 class SynchronizePostServiceTest {
     private val queries = mockk<SynchronizationQueryService>()
-    private val source = mockk<PostSource>()
-    private val applyService = mockk<ApplyImportedPostService>()
-    private val publicationService = mockk<SynchronizePublicationService>()
-    private val cancelService = mockk<CancelInactivePostSynchronizationService>()
-    private val service = SynchronizePostService(queries, source, applyService, publicationService, cancelService)
+    private val source = mockk<PostRevisionSource>()
+    private val media = mockk<CapturePostMediaService>()
+    private val applyService = mockk<ApplyImportedPostService>(relaxUnitFun = true)
+    private val cancelService = mockk<CancelSynchronizationService>(relaxUnitFun = true)
+    private val failures = mockk<OperationFailureReporter>(relaxUnitFun = true)
+    private val service = SynchronizePostService(queries, source, media, applyService, cancelService, failures)
+    private val postId = PostFixtures.postId(1)
+    private val document = PostFixtures.document("doc")
 
-    @Test
-    fun `propagates source failures and invalid imports`() {
-        val postId = postId()
-        val expected = sourceDocument("expected")
-        every { queries.loadPost(postId) } returns
-            PostSynchronizationContext(
-                PublicationId(UUID.randomUUID()),
-                postId,
-                expected,
-                emptySet(),
-            )
-        val sourceFailure = SourceAccessException()
-        every { source.fetch(expected) } throws sourceFailure
-        every { applyService.recordFailure(any(), any()) } just runs
-
-        assertThatThrownBy { service.synchronize(postId) }.isSameAs(sourceFailure)
-
-        val mismatched = imported(sourceDocument("unexpected"), emptyList())
-        every { source.fetch(expected) } returns mismatched
-
-        assertThatThrownBy { service.synchronize(postId) }.isInstanceOf(IllegalArgumentException::class.java)
-
-        val invalid = imported(expected, emptyList())
-        every { source.fetch(expected) } returns invalid
-        every { applyService.apply(invalid) } throws IllegalArgumentException()
-
-        assertThatThrownBy { service.synchronize(postId) }.isInstanceOf(IllegalArgumentException::class.java)
+    @AfterEach
+    fun clearInterrupt() {
+        Thread.interrupted()
     }
 
     @Test
-    fun `propagates a publication synchronization failure`() {
-        val postId = postId()
-        val parent = sourceDocument("parent")
-        val child = sourceDocument("child")
-        every { queries.loadPost(postId) } returns
-            PostSynchronizationContext(
-                publicationId = PublicationId(UUID.randomUUID()),
-                postId = postId,
-                sourceDocument = parent,
-                activeDirectChildren = emptySet(),
-            )
-        val imported = imported(parent, listOf(child))
-        every { source.fetch(parent) } returns imported
-        every { applyService.apply(imported) } returns postId
-        every { publicationService.synchronize() } throws SourceAccessException()
+    fun `an unmanaged or archived post is not found`() {
+        every { queries.loadPost(any()) } returns null
 
-        assertThatThrownBy { service.synchronize(postId) }.isInstanceOf(SourceAccessException::class.java)
+        assertThat(service.refresh(postId)).isEqualTo(RefreshPostResult.NotFound)
+    }
+
+    @Test
+    fun `a stored import is returned as the refresh result`() {
+        givenContext(latest = "rev-1")
+        every { source.fetchRevision(any()) } returns imported("rev-2")
+        every { media.capture(any(), any()) } returns CapturedMedia.empty
+        every { applyService.apply(any(), any(), any()) } returns RefreshPostResult.Updated(PostFixtures.revisionId(2))
+
+        assertThat(service.refresh(postId)).isEqualTo(RefreshPostResult.Updated(PostFixtures.revisionId(2)))
+    }
+
+    @Test
+    fun `source and file failures become failure kinds for the admin`() {
+        val failure = SourceAccessException("page is in the trash")
+        givenContext(latest = "rev-1")
+        every { source.fetchRevision(any()) } throws failure
+
+        assertThat(service.refresh(postId)).isEqualTo(RefreshPostResult.Failed(SyncFailureKind.ACCESS))
+
+        val withFile = BlockTree(listOf(PostFixtures.image("i", PostFixtures.hosted("x.png"))))
+        every { source.fetchRevision(any()) } returns imported("rev-2", withFile)
+        every { media.capture(any(), any()) } throws MediaFetchException("too large")
+
+        assertThat(service.refresh(postId)).isEqualTo(RefreshPostResult.Failed(SyncFailureKind.MEDIA))
+    }
+
+    @Test
+    fun `a document other than the requested one is a mapping failure`() {
+        givenContext(latest = "rev-1")
+        every { source.fetchRevision(any()) } returns imported("rev-2").copy(sourceDocument = PostFixtures.document("other"))
+
+        assertThat(service.refresh(postId)).isEqualTo(RefreshPostResult.Failed(SyncFailureKind.MAPPING))
+    }
+
+    @Test
+    fun `an interrupted import propagates the same failure instead of returning a failure kind`() {
+        val interrupted = MediaFetchException("cancelled", InterruptedException("stop"))
+        givenContext(latest = "rev-1")
+        every { source.fetchRevision(any()) } returns imported("rev-2")
+        every { media.capture(any(), any()) } throws interrupted
+
+        assertThatThrownBy { service.refresh(postId) }.isSameAs(interrupted)
+    }
+
+    private fun givenContext(latest: String) {
+        every { queries.loadPost(any()) } returns PostSynchronizationContext(postId, document, SourceRevision(latest), emptyList())
     }
 
     private fun imported(
-        sourceDocument: SourceDocumentRef,
-        children: List<SourceDocumentRef>,
-    ) = ImportedPost(
-        sourceDocument = sourceDocument,
-        title = "Post",
-        publicationStatus = ImportedPublicationStatus.PUBLISHED,
-        sourceRevision = SourceRevision("revision-1"),
-        content = BlockTree(emptyList()),
-        containedChildren = children,
-    )
-
-    private fun postId() = PostId(UUID.randomUUID())
-
-    private fun sourceDocument(externalId: String) = SourceDocumentRef(SourceId("notion-main"), externalId)
+        sourceRevision: String,
+        content: BlockTree = PostFixtures.paragraphs("Body"),
+    ) = ImportedRevision(document, PostFixtures.properties(), SourceRevision(sourceRevision), content)
 }

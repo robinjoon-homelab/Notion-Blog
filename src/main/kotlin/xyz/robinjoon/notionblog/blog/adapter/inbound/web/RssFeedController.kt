@@ -9,14 +9,14 @@ import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.context.request.ServletWebRequest
-import xyz.robinjoon.notionblog.blog.application.model.PostFeedLookupResult
-import xyz.robinjoon.notionblog.blog.application.port.input.GetPostFeedUseCase
+import xyz.robinjoon.notionblog.blog.application.model.PublicFeedLookupResult
+import xyz.robinjoon.notionblog.blog.application.port.input.GetPublicFeedUseCase
 import java.security.MessageDigest
 import java.util.HexFormat
 
 @RestController
 class RssFeedController(
-    private val service: GetPostFeedUseCase,
+    private val service: GetPublicFeedUseCase,
     private val renderer: RssFeedRenderer,
     private val urls: PublicBlogUrls,
 ) {
@@ -26,7 +26,7 @@ class RssFeedController(
             return unavailable()
         }
         val result = service.get()
-        if (result !is PostFeedLookupResult.Found) {
+        if (result !is PublicFeedLookupResult.Found) {
             return unavailable()
         }
         val bytes = renderer.render(result.feed, urls)

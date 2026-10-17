@@ -12,24 +12,26 @@
 
 == 공개 상태와 응답
 
-* 글은 활성 공개 범위의 구성원이고, 마지막으로 확인한 게시 상태가 공개이며, 읽을 수 있는 저장본이 있을 때만 제공합니다.
-* 웹 요청은 저장된 내용만 사용합니다. Notion 장애가 마지막 정상 저장본을 곧바로 숨기지 않습니다.
-* 초기 설정과 활성 공개 범위가 없으면 형식이 올바른 게시글 ID에도 먼저 `503`을 반환할 수 있습니다.
+* 글은 관리자가 발행해 공개 상태이고 읽을 수 있는 공개본이 있을 때만 제공합니다. Notion의 공개 설정·휴지통·이동은 공개 여부를 바꾸지 않습니다.
+* 웹 요청은 저장된 내용만 사용합니다. Notion 장애가 공개 글을 곧바로 숨기지 않습니다.
+* 사이트 설정이나 표현 자산을 사용할 수 없으면 형식이 올바른 게시글 ID에도 먼저 `503`을 반환할 수 있습니다.
 * HTML 전체 마크업과 표현 자산은 화면 구현에 따라 바뀔 수 있습니다.
 
 [options="header,autowidth"]
 |===
 |상태 |의미
-|`200 OK` |HTML 또는 RSS를 제공합니다.
-|`404 Not Found` |HTML 대상이 범위 밖이거나 미게시 상태입니다. 존재하지 않거나 형식이 잘못된 게시글 ID도 포함합니다.
-|`503 Service Unavailable` |아직 초기화되지 않았거나 필요한 저장본·설정을 사용할 수 없습니다.
+|`200 OK` |HTML, RSS 또는 파일을 제공합니다.
+|`303 See Other` |관리 명령 뒤 미리보기나 목록으로 돌아갑니다.
+|`400 Bad Request` |관리 명령의 식별자 형식이 잘못되었습니다.
+|`404 Not Found` |대상이 없거나 공개 상태가 아닙니다. 형식이 잘못된 ID도 포함합니다.
+|`503 Service Unavailable` |필요한 저장본·설정을 사용할 수 없습니다.
 |===
 
-== 루트 문서
+== 글 목록
 
-`GET /`는 설정한 블로그 루트 문서를 반환합니다.
+`GET /`는 공개된 글 목록(제목·요약·최초 게시일·태그)을 반환합니다.
 
-=== 루트 조회
+=== 목록 조회
 
 include::{snippets}/root-found/http-request.adoc[]
 include::{snippets}/root-found/response-headers.adoc[]
@@ -42,12 +44,6 @@ include::{snippets}/root-found/http-response.adoc[]
 
 === 오류
 
-==== 루트가 미게시 상태인 경우
-
-루트의 미게시 상태를 확인하면 `404`입니다. 자식 문서의 게시 상태는 바뀌지 않습니다.
-
-include::{snippets}/root-not-found/http-response.adoc[]
-
 ==== 초기화되지 않은 경우
 
 include::{snippets}/root-unavailable/http-response.adoc[]
@@ -55,7 +51,7 @@ include::{snippets}/root-unavailable/http-response.adoc[]
 == 개별 게시글
 
 * `postId`는 블로그가 저장한 내부 UUID입니다. Notion 페이지 ID나 제목으로 대신 조회할 수 없습니다.
-* 미게시 상태를 확인한 글은 공개 범위 안에 남아 있어도 `404`입니다.
+* 공개하지 않은 글과 보관한 글은 `404`입니다.
 
 === 게시글 조회
 
@@ -71,7 +67,7 @@ include::{snippets}/post-found/http-response.adoc[]
 
 === 오류
 
-==== 공개를 취소한 글
+==== 공개하지 않은 글
 
 include::{snippets}/post-not-found/http-request.adoc[]
 include::{snippets}/post-not-found/http-response.adoc[]
@@ -95,10 +91,9 @@ include::{snippets}/post-unavailable/http-response.adoc[]
 
 == RSS 피드
 
-* `GET /feed.xml`은 RSS 2.0 XML을 반환합니다. 현재 공개 범위에서 게시된 글 중 루트·헤더·푸터를 제외한 최근 20개를 요약과 함께 제공합니다.
-* `pubDate`는 처음으로 게시 상태를 확인한 시각이며 수정·미게시·재게시로 바뀌지 않습니다.
+* `GET /feed.xml`은 RSS 2.0 XML을 반환합니다. 공개된 글 중 사이트 문서(루트·헤더·푸터)를 제외한 최근 20개를 요약과 함께 제공합니다.
+* `pubDate`는 처음 발행한 시각이며 수정·발행 취소·재발행으로 바뀌지 않습니다.
 * 절대 URL은 `blog.public-base-url` 설정에서 만듭니다. 공개할 글이 없어도 준비된 블로그는 빈 피드를 `200`으로 반환합니다.
-* 루트 문서가 미게시 상태여도 공개된 자식 글은 피드에 포함될 수 있습니다.
 
 === 피드 조회
 
@@ -119,9 +114,78 @@ include::{snippets}/feed-not-modified/response-headers.adoc[]
 
 ==== 피드를 만들 수 없는 경우
 
-공개 기준 URL, 사이트 설정, 활성 공개 범위 또는 필요한 저장본이 없으면 `Cache-Control: no-store`, `ETag`와 본문 없는 `503`입니다. 이 확인은 조건부 요청보다 먼저 하므로 `If-None-Match: *`도 `304`로 바뀌지 않습니다.
+공개 기준 URL, 사이트 설정 또는 읽을 수 있는 공개본이 없으면 `Cache-Control: no-store`, `ETag`와 본문 없는 `503`입니다. 이 확인은 조건부 요청보다 먼저 하므로 `If-None-Match: *`도 `304`로 바뀌지 않습니다.
 
 include::{snippets}/feed-unavailable/http-request.adoc[]
 include::{snippets}/feed-unavailable/request-headers.adoc[]
 include::{snippets}/feed-unavailable/http-response.adoc[]
 include::{snippets}/feed-unavailable/response-headers.adoc[]
+
+== 공개 파일
+
+* `GET /media/{mediaKey}`는 공개본이 참조하는 보관 파일만 제공합니다. 발행을 취소하면 곧바로 `404`입니다.
+* `ETag`와 `Cache-Control: no-cache`로 재확인하며, 같은 `If-None-Match`에는 본문 없는 `304`를 반환합니다. 이미지·영상·오디오·PDF만 `inline`이고 나머지는 `attachment`입니다.
+
+include::{snippets}/media-found/http-request.adoc[]
+include::{snippets}/media-found/path-parameters.adoc[]
+include::{snippets}/media-found/http-response.adoc[]
+
+include::{snippets}/media-not-modified/http-request.adoc[]
+include::{snippets}/media-not-modified/http-response.adoc[]
+
+=== 오류
+
+include::{snippets}/media-missing/http-response.adoc[]
+
+include::{snippets}/media-invalid-key/http-response.adoc[]
+
+== 관리 경로
+
+* `/admin/**`은 OIDC로 허용한 관리자만 쓰며 설정이 비어 있으면 `403`으로 닫힙니다. 모든 `POST`는 CSRF 토큰이 필요합니다. 아래 예시는 인증을 통과한 요청에 컨트롤러가 답하는 내용이며 보안 필터는 포함하지 않습니다.
+* 관리 응답은 `Cache-Control: no-store`입니다.
+* 발행은 미리보기가 준 `revisionId`와 `generation`을 함께 보냅니다. 그 사이 새 변경이 생기면 발행하지 않고 미리보기로 돌아가 안내합니다. 발행 취소·보관·복원은 Notion 없이 처리합니다.
+
+=== 글 관리 목록
+
+include::{snippets}/admin-posts-list/http-request.adoc[]
+include::{snippets}/admin-posts-list/http-response.adoc[]
+
+=== 미리보기
+
+include::{snippets}/admin-post-preview/http-request.adoc[]
+include::{snippets}/admin-post-preview/path-parameters.adoc[]
+
+[%collapsible]
+.HTML 응답 예시
+====
+include::{snippets}/admin-post-preview/http-response.adoc[]
+====
+
+==== 오류
+
+include::{snippets}/admin-post-missing/http-response.adoc[]
+
+include::{snippets}/admin-post-invalid-id/http-response.adoc[]
+
+include::{snippets}/admin-post-unavailable/http-response.adoc[]
+
+=== 가져오기·발행·발행 취소·보관·복원
+
+include::{snippets}/admin-post-refresh/http-request.adoc[]
+include::{snippets}/admin-post-refresh/http-response.adoc[]
+
+include::{snippets}/admin-post-publish-stale/http-request.adoc[]
+include::{snippets}/admin-post-publish-stale/http-response.adoc[]
+
+include::{snippets}/admin-post-unpublish/http-response.adoc[]
+
+include::{snippets}/admin-post-archive/http-response.adoc[]
+
+include::{snippets}/admin-post-restore/http-response.adoc[]
+
+include::{snippets}/admin-post-archive-missing/http-response.adoc[]
+
+=== 미리보기 파일
+
+include::{snippets}/admin-media-found/http-request.adoc[]
+include::{snippets}/admin-media-found/http-response.adoc[]

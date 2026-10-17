@@ -1,0 +1,35 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:fragment="head(chrome, title)">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${title + ' · ' + chrome.siteName}">Post · Site</title>
+    <meta th:if="${chrome.description != null}" name="description" th:content="${chrome.description}">
+    <link th:if="${chrome.faviconHref != null}" rel="icon" th:href="${chrome.faviconHref}">
+    <link th:if="${chrome.feedUrl != null}" rel="alternate" type="application/rss+xml" th:href="${chrome.feedUrl}">
+    <link th:each="asset : ${chrome.styleSheets}" rel="stylesheet" th:href="${asset.publicPath}"
+          th:type="${asset.mediaType}" th:integrity="${asset.integrity}" crossorigin="anonymous">
+    <link rel="stylesheet" href="/ui/notion-shell.css">
+    <script th:each="asset : ${chrome.scripts}" th:src="${asset.publicPath}" th:type="${asset.mediaType}"
+            th:integrity="${asset.integrity}" crossorigin="anonymous" defer></script>
+</head>
+<body>
+<header th:fragment="header(chrome)" th:if="${chrome.header != null}" class="notion-page-header">
+    <th:block th:replace="~{blog/fragments :: document(${chrome.header})}"></th:block>
+</header>
+<footer th:fragment="footer(chrome)" th:if="${chrome.footer != null}" class="notion-page-footer">
+    <th:block th:replace="~{blog/fragments :: document(${chrome.footer})}"></th:block>
+</footer>
+<article th:fragment="article(page)" class="notion-content">
+    <img th:if="${page.properties.coverHref != null}" class="nb-cover" th:src="${page.properties.coverHref}" alt="">
+    <h1 class="notion-title" th:text="${page.title}">Post title</h1>
+    <div class="nb-properties" th:if="${page.properties.summary != null or !#lists.isEmpty(page.properties.tags) or page.properties.publishedOn != null}">
+        <div class="nb-property" th:if="${page.properties.summary != null}"><span>요약</span><span th:text="${page.properties.summary}">요약</span></div>
+        <div class="nb-property" th:if="${!#lists.isEmpty(page.properties.tags)}"><span>태그</span>
+            <span><span th:each="tag : ${page.properties.tags}" class="nb-badge" th:text="${tag}">태그</span></span></div>
+        <div class="nb-property" th:if="${page.properties.publishedOn != null}"><span>게시일</span><span th:text="${page.properties.publishedOn}">2026. 10. 16.</span></div>
+    </div>
+    <th:block th:replace="~{blog/fragments :: blocks(${page.post.blocks})}"></th:block>
+</article>
+</body>
+</html>

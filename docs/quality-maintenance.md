@@ -82,7 +82,11 @@ detekt는 분석 전에 컴파일된 규칙 JAR를 플러그인으로 읽으므�
 ### 블로그 추가 검사
 
 - 공통 검사기에 앱 역할 분기를 넣지 않는다. 블로그 고유 경계는 `ArchitecturePackages`를 사용하는 별도 테스트로 유지한다.
-- `TargetArchitectureBoundaryTest`는 운영 소스에서 Notion DTO·HTTP·JSON·Exposed의 위치, 세 공개 경로, 스냅샷의 구현 클래스 이름, 직접 시각·안전하지 않은 타입·저장소 `transaction {}`를 검사한다. `TargetArchitectureBoundaryRulesTest`는 계층 우선·기능 우선 두 레이아웃의 정상·위반 사례를 유지한다.
+- `TargetArchitectureBoundaryTest`는 운영 소스에서 Notion DTO·JSON·Exposed의 위치, 스냅샷의 구현 클래스 이름, 직접 시각·안전하지 않은 타입·저장소 `transaction {}`를 검사한다. `TargetArchitectureBoundaryRulesTest`는 계층 우선·기능 우선 두 레이아웃의 정상·위반 사례를 유지한다.
+- HTTP 클라이언트 위치는 import와 전체 이름 참조를 모두 검사한다. Spring `org.springframework.web.client`·`org.springframework.http.client`는 `notion` 출력 어댑터만, `java.net.http`·`HttpURLConnection`·`URLConnection`·OkHttp·Apache HttpClient는 `notion`·`media` 출력 어댑터만 쓸 수 있다.
+- 경로 목록은 소스 문자열로 파싱하지 않는다. 컴파일된 운영 클래스 전체(`architecture.productionClasses`)의 컨트롤러를 Spring MVC `RequestMappingHandlerMapping`으로 해석해 `HTTP 메서드 경로` 목록이 허용 목록과 중복까지 정확히 같아야 한다. 합성·상속 애너테이션, `value`·`path`, 배열, 상수, 타입 수준 접두사, `@HttpExchange`를 실행 시와 같게 해석한다. 메서드 없는 매핑은 `ANY`로 남아 실패하고, 입력 어댑터 밖 컨트롤러의 매핑도 실패로 보고한다.
+- 함수형 라우터·뷰 컨트롤러·`HandlerMapping`·`HttpRequestHandler`·레거시 `Controller` 인터페이스·서블릿 등록은 경로 목록이 보지 못하므로 운영 소스에서 참조 자체를 실패시킨다. 보안 체인 소유 경로·정적 자원·actuator는 [공개와 동기화 규칙](ddd-architecture.md#공개와-동기화-규칙)을 따른다.
+- 경로 fixture는 컴포넌트 스캔에 잡히지 않게 `src/test/kotlin/architecturefixtures/routes/`의 Kotlin 컨트롤러로 두고 검사할 패키지를 인자로 지정한다. 메서드 변경(`POST`→`GET`·`ANY`, `GET`→`DELETE`), 추가 경로(`PATCH`·`value`·`path`·상수·배열·타입 접두사·`@HttpExchange`·상속), 중복·빈 목록·입력 어댑터 밖 경로의 위반 사례와 같은 경로를 다른 형식으로 쓴 정상 사례를 유지한다.
 - `RepositoryBoundaryTest`는 Dockerfile·`.dockerignore`·CI 워크플로가 [공용 배포 계약](deployment.md#공용-파일-사용)을 따르고 하네스 매니페스트가 저장소에 없는지 검사한다. 공용 파일을 템플릿과 맞출 때 함께 갱신한다.
 - 공통 검사기를 갱신할 때도 `ArchitectureRulesTest`의 블로그 역할 회귀 사례와 앱 전용 fixture는 보존한다.
 

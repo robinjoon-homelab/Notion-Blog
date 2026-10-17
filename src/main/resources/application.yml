@@ -1,5 +1,11 @@
 server:
   port: ${SERVER_PORT:8080}
+  servlet:
+    session:
+      cookie:
+        http-only: true
+        secure: true
+        same-site: lax
 
 spring:
   application:
@@ -26,9 +32,19 @@ notion:
   collection-timeout: ${NOTION_COLLECTION_TIMEOUT:30s}
   max-block-depth: ${NOTION_MAX_BLOCK_DEPTH:32}
   max-block-count: ${NOTION_MAX_BLOCK_COUNT:10000}
+  posts:
+    data-source-id: ${NOTION_POSTS_DATA_SOURCE_ID:}
+    summary-property-id: ${NOTION_POSTS_SUMMARY_PROPERTY_ID:}
+    tags-property-id: ${NOTION_POSTS_TAGS_PROPERTY_ID:}
 
 blog:
   public-base-url: ${BLOG_PUBLIC_BASE_URL:https://blog.homelab.robinjoon.xyz}
+  admin:
+    oidc:
+      issuer-uri: ${BLOG_ADMIN_OIDC_ISSUER_URI:}
+      client-id: ${BLOG_ADMIN_OIDC_CLIENT_ID:}
+      client-secret: ${BLOG_ADMIN_OIDC_CLIENT_SECRET:}
+      allowed-subject: ${BLOG_ADMIN_OIDC_ALLOWED_SUBJECT:}
   synchronization:
     enabled: ${BLOG_SYNCHRONIZATION_ENABLED:true}
     interval-ms: ${BLOG_SYNCHRONIZATION_INTERVAL_MS:60000}
@@ -36,6 +52,12 @@ blog:
     success-interval: ${BLOG_SYNCHRONIZATION_SUCCESS_INTERVAL:5m}
     initial-failure-delay: ${BLOG_SYNCHRONIZATION_INITIAL_FAILURE_DELAY:5s}
     maximum-failure-delay: ${BLOG_SYNCHRONIZATION_MAXIMUM_FAILURE_DELAY:5m}
+    catalog-interval-ms: ${BLOG_SYNCHRONIZATION_CATALOG_INTERVAL_MS:300000}
+  media:
+    max-bytes: ${BLOG_MEDIA_MAX_BYTES:26214400}
+    max-import-bytes: ${BLOG_MEDIA_MAX_IMPORT_BYTES:104857600}
+    request-timeout: ${BLOG_MEDIA_REQUEST_TIMEOUT:10s}
+    max-redirects: ${BLOG_MEDIA_MAX_REDIRECTS:3}
   presentation:
     default-profile-key: notion-default
     assets:

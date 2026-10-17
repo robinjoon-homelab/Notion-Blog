@@ -5,17 +5,18 @@ import xyz.robinjoon.notionblog.blog.adapter.outbound.notion.NotionInlineDatabas
 import xyz.robinjoon.notionblog.blog.adapter.outbound.notion.NotionMeetingNotesSections
 import xyz.robinjoon.notionblog.blog.adapter.outbound.notion.client.NotionApiClient
 import xyz.robinjoon.notionblog.blog.adapter.outbound.notion.dto.NotionBlockEnvelope
+import xyz.robinjoon.notionblog.blog.adapter.outbound.notion.dto.NotionPageResponse
 import xyz.robinjoon.notionblog.blog.adapter.outbound.notion.mapping.NotionBlockMapper
 import xyz.robinjoon.notionblog.blog.adapter.outbound.notion.mapping.NotionBlockMappingException
 import xyz.robinjoon.notionblog.blog.adapter.outbound.notion.mapping.NotionIdNormalizer
 import xyz.robinjoon.notionblog.blog.adapter.outbound.notion.mapping.NotionPageMapper
-import xyz.robinjoon.notionblog.blog.application.model.ImportedPost
-import xyz.robinjoon.notionblog.blog.application.port.output.source.PostSource
+import xyz.robinjoon.notionblog.blog.adapter.outbound.notion.mapping.NotionPageMetadata
 import xyz.robinjoon.notionblog.blog.application.port.output.source.RetryableSourceException
 import xyz.robinjoon.notionblog.blog.application.port.output.source.SourceConfigurationException
 import xyz.robinjoon.notionblog.blog.application.port.output.source.SourceMappingException
 import xyz.robinjoon.notionblog.blog.domain.SourceDocumentRef
 import xyz.robinjoon.notionblog.blog.domain.SourceId
+import xyz.robinjoon.notionblog.blog.domain.SourceRevision
 import xyz.robinjoon.notionblog.blog.domain.post.block.BlockId
 import xyz.robinjoon.notionblog.blog.domain.post.block.BlockNode
 import xyz.robinjoon.notionblog.blog.domain.post.block.BlockTree
@@ -30,7 +31,7 @@ internal class NotionPostSource(
     private val maxBlockCount: Int,
     private val collectionTimeout: Duration,
     private val nanoTime: () -> Long = System::nanoTime,
-) : PostSource {
+) {
     private val pageMapper = NotionPageMapper()
     private val blockMapper = NotionBlockMapper(sourceId)
     private val databaseReader = NotionInlineDatabaseReader(client, blockMapper, sourceId, maxDepth)
@@ -41,14 +42,18 @@ internal class NotionPostSource(
         require(collectionTimeout.isPositive) { "Notion collection timeout must be positive" }
     }
 
-    override fun fetch(reference: SourceDocumentRef): ImportedPost {
+    /** 페이지와 본문을 읽는다. [beforeBody]는 블록을 요청하기 전에 페이지에 대해 먼저 실행된다. */
+    fun fetch(
+        reference: SourceDocumentRef,
+        beforeBody: (NotionPageResponse) -> Unit = {},
+    ): CollectedPost {
         if (reference.sourceId != sourceId) {
             throw SourceConfigurationException("Notion source reference belongs to another source")
         }
         val startedAt = nanoTime()
         return try {
             val requestedReference = reference.copy(externalId = NotionIdNormalizer.normalize(reference.externalId))
-            Collection(requestedReference, startedAt).fetch()
+            Collection(requestedReference, startedAt).fetch(beforeBody)
         } catch (exception: NotionBlockMappingException) {
             throw SourceMappingException("Notion block could not be mapped", exception)
         } catch (exception: IllegalArgumentException) {
@@ -71,16 +76,16 @@ internal class NotionPostSource(
         private var blockCount = 0
         private var materializedBlockCount = 0
 
-        fun fetch(): ImportedPost {
+        fun fetch(beforeBody: (NotionPageResponse) -> Unit): CollectedPost {
             checkDeadline()
             val page = client.fetchPage(sourceDocument.externalId)
             checkDeadline()
+            beforeBody(page)
             val metadata = pageMapper.map(page, sourceDocument)
             val roots = collectChildren(sourceDocument.externalId, 1, null)
-            return ImportedPost(
-                sourceDocument = metadata.sourceDocument,
-                title = metadata.title,
-                publicationStatus = metadata.publicationStatus,
+            return CollectedPost(
+                page = page,
+                metadata = metadata,
                 sourceRevision = NotionDatabaseRevision.append(metadata.sourceRevision, inlineDatabases),
                 content = BlockTree(roots),
                 containedChildren = containedChildren.toList(),
@@ -299,4 +304,15 @@ internal class NotionPostSource(
         const val SYNCED_BLOCK_TYPE = "synced_block"
         const val TAB_TYPE = "tab"
     }
+}
+
+internal data class CollectedPost(
+    val page: NotionPageResponse,
+    val metadata: NotionPageMetadata,
+    val sourceRevision: SourceRevision,
+    val content: BlockTree,
+    val containedChildren: List<SourceDocumentRef>,
+) {
+    val sourceDocument: SourceDocumentRef get() = metadata.sourceDocument
+    val title: String get() = metadata.title
 }

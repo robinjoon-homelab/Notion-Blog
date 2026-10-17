@@ -1,0 +1,24 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:fragment="head(title)">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title th:text="${title + ' · 블로그 관리'}">관리</title>
+    <link rel="stylesheet" href="/ui/notion-shell.css">
+    <script src="/ui/notion-shell.js" defer></script>
+</head>
+<body>
+<aside th:fragment="sidebar(current)" class="nb-sidebar" id="nb-sidebar" aria-label="관리 메뉴">
+    <div class="nb-workspace-name"><span aria-hidden="true">🗂️</span>블로그 관리</div>
+    <div class="nb-side-heading">블로그</div>
+    <a class="nb-side-link" href="/admin/posts" th:attr="aria-current=${current == 'posts' ? 'page' : null}"><span aria-hidden="true">📄</span>게시글</a>
+    <a class="nb-side-link" href="/"><span aria-hidden="true">🏠</span>공개 홈</a>
+    <form class="nb-side-form" th:action="@{/admin/logout}" method="post">
+        <button class="nb-side-link" type="submit"><span aria-hidden="true">↩</span>로그아웃</button>
+    </form>
+</aside>
+<div th:fragment="notice(notice)" th:if="${notice != null}" class="nb-notice" th:classappend="${notice.error ? 'nb-notice-error' : ''}" role="status" aria-live="polite" th:text="${notice.text}">알림</div>
+<span th:fragment="badges(badges)" class="nb-status-stack"><span th:each="badge : ${badges}" class="nb-badge" th:classappend="${'nb-badge-' + badge.tone}" th:text="${badge.label}">상태</span></span>
+</body>
+</html>

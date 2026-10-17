@@ -1,13 +1,17 @@
 package xyz.robinjoon.notionblog.blog.adapter.inbound.web
 
-import xyz.robinjoon.notionblog.blog.domain.post.Post
+import xyz.robinjoon.notionblog.blog.domain.post.PostRevision
 import xyz.robinjoon.notionblog.blog.domain.post.block.BlockNode
 import xyz.robinjoon.notionblog.blog.domain.post.block.content.ListBlockContent
 import xyz.robinjoon.notionblog.blog.domain.post.block.content.TextBlockContent
 import xyz.robinjoon.notionblog.blog.domain.post.block.inline.InlineContent
 
 class RssSummaryExtractor {
-    fun extract(post: Post): String {
+    fun extract(post: PostRevision): String {
+        post.properties.summary
+            ?.let(::normalize)
+            ?.takeIf(String::isNotEmpty)
+            ?.let { return truncate(it) }
         val body =
             normalize(
                 post.content.roots
@@ -15,13 +19,15 @@ class RssSummaryExtractor {
                     .flatMap(::text)
                     .joinToString(" "),
             )
-        val summary = body.ifEmpty { RssXmlText.postTitle(normalize(post.title)) }
-        return if (summary.codePointCount(0, summary.length) <= MAX_CODE_POINTS) {
+        return truncate(body.ifEmpty { RssXmlText.postTitle(normalize(post.title)) })
+    }
+
+    private fun truncate(summary: String): String =
+        if (summary.codePointCount(0, summary.length) <= MAX_CODE_POINTS) {
             summary
         } else {
             summary.substring(0, summary.offsetByCodePoints(0, MAX_CODE_POINTS - 1)) + "…"
         }
-    }
 
     private fun text(node: BlockNode): Sequence<String> =
         sequence {
