@@ -8,6 +8,8 @@ import xyz.robinjoon.notionblog.blog.application.port.input.GetPostListUseCase
 import xyz.robinjoon.notionblog.blog.application.port.input.GetPublicFeedUseCase
 import xyz.robinjoon.notionblog.blog.application.port.input.GetPublicPostUseCase
 import xyz.robinjoon.notionblog.blog.application.port.output.diagnostics.SnapshotFailureReporter
+import xyz.robinjoon.notionblog.blog.application.port.output.persistence.CategoryRepository
+import xyz.robinjoon.notionblog.blog.application.port.output.persistence.HomeConfigurationRepository
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.MediaStoragePort
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.PostRepository
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.PresentationProfileRepository
@@ -51,7 +53,9 @@ internal class QueryConfig(
     fun getPostListUseCase(
         chromes: SiteChromeService,
         references: ContentReferencesService,
-    ): GetPostListUseCase = GetPostListService(chromes, references, publishedPosts, snapshotFailures)
+        homeConfigurations: HomeConfigurationRepository,
+        categories: CategoryRepository,
+    ): GetPostListUseCase = GetPostListService(chromes, references, publishedPosts, snapshotFailures, homeConfigurations, categories)
 
     @Bean
     fun getPublicPostUseCase(

@@ -80,7 +80,6 @@ internal object WebFixtures {
             presentationAssets = mapOf(style to PresentationAssetDescriptor("/presentation/notion.css", "text/css", style.integrity)),
             header = header,
             footer = footer,
-            rootPostId = null,
         )
     }
 

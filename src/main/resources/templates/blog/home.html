@@ -7,16 +7,26 @@
     <section class="notion-content">
         <h1 class="notion-title" th:text="${page.chrome.siteName}">Blog</h1>
         <p class="nb-muted" th:if="${page.chrome.description != null}" th:text="${page.chrome.description}">설명</p>
-        <p class="nb-small" th:if="${page.chrome.legacyRootHref != null}"><a th:href="${page.chrome.legacyRootHref}">소개 문서</a></p>
-        <ul class="nb-post-list" th:if="${!#lists.isEmpty(page.entries)}">
+        <nav class="nb-category-nav" aria-label="카테고리" th:if="${page.categories != null}">
+            <a class="nb-filter" th:href="${page.categories.allHref}" th:attr="aria-current=${page.categories.allSelected ? 'true' : null}">전체</a>
+            <a class="nb-filter" th:each="category : ${page.categories.items}" th:href="${category.href}"
+               th:attr="aria-current=${category.selected ? 'true' : null}"><span th:text="${category.name}">분류</span> <span class="nb-count" th:text="${category.count}">3</span></a>
+        </nav>
+        <ul class="nb-post-list nb-home-list" th:classappend="${'nb-home-' + page.layout}" th:if="${!#lists.isEmpty(page.entries)}">
             <li th:each="entry : ${page.entries}" class="nb-home-post">
-                <a class="nb-post-title" th:href="${entry.href}" th:text="${entry.title}">제목</a>
-                <p class="nb-post-summary" th:if="${entry.summary != null}" th:text="${entry.summary}">요약</p>
-                <p class="nb-small nb-muted"><span th:text="${entry.publishedOn}">2026. 10. 16.</span>
-                    <span th:each="tag : ${entry.tags}" class="nb-badge" th:text="${tag}">태그</span></p>
+                <a class="nb-post-thumb" th:if="${entry.thumbnailHref != null}" th:href="${entry.href}" tabindex="-1" aria-hidden="true">
+                    <img th:src="${entry.thumbnailHref}" data-fallback-src="/ui/default-post-thumbnail.svg" alt="" loading="lazy" decoding="async">
+                </a>
+                <div class="nb-post-body">
+                    <a class="nb-post-title" th:href="${entry.href}" th:text="${entry.title}">제목</a>
+                    <p class="nb-post-summary" th:if="${entry.summary != null}" th:text="${entry.summary}">요약</p>
+                    <p class="nb-small nb-muted nb-post-meta" th:if="${entry.publishedOn != null or !#lists.isEmpty(entry.categories)}">
+                        <span th:if="${entry.publishedOn != null}" th:text="${entry.publishedOn}">2026. 10. 16.</span>
+                        <a th:each="category : ${entry.categories}" class="nb-badge nb-category-badge" th:href="${category.href}" th:text="${category.name}">분류</a></p>
+                </div>
             </li>
         </ul>
-        <div class="nb-empty" th:if="${#lists.isEmpty(page.entries)}"><h2>아직 공개된 글이 없습니다.</h2></div>
+        <div class="nb-empty" th:if="${#lists.isEmpty(page.entries)}"><h2 th:text="${page.emptyMessage}">아직 공개된 글이 없습니다.</h2></div>
         <nav class="nb-pager" aria-label="쪽 이동" th:if="${page.pagination.totalPages > 1}">
             <a th:if="${page.pagination.previousHref != null}" th:href="${page.pagination.previousHref}">← 이전</a>
             <span th:text="${page.pagination.page + ' / ' + page.pagination.totalPages}">1 / 2</span>
@@ -26,5 +36,6 @@
     <footer th:replace="~{blog/page-fragments :: footer(${page.chrome})}"></footer>
     <div class="notion-content" th:if="${page.chrome.feedUrl != null}"><p><a th:href="${page.chrome.feedUrl}">RSS 구독</a></p></div>
 </main>
+<script src="/ui/thumbnail-fallback.js" defer></script>
 </body>
 </html>

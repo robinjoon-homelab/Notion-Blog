@@ -30,11 +30,35 @@ class DeclaredRoutes {
     @GetMapping("/admin/login")
     fun login() = Unit
 
+    @GetMapping("/admin/home")
+    fun homeSettings() = Unit
+
+    @PostMapping("/admin/home")
+    fun saveHomeSettings() = Unit
+
+    @GetMapping("/admin/categories")
+    fun categories() = Unit
+
+    @PostMapping("/admin/categories")
+    fun createCategory() = Unit
+
+    @PostMapping("/admin/categories/{categoryId}")
+    fun updateCategory() = Unit
+
+    @PostMapping("/admin/categories/{categoryId}/delete")
+    fun deleteCategory() = Unit
+
     @GetMapping("/admin/posts")
     fun posts() = Unit
 
     @GetMapping("/admin/posts/{postId}")
     fun preview() = Unit
+
+    @GetMapping("/admin/posts/{postId}/categories")
+    fun postCategories() = Unit
+
+    @PostMapping("/admin/posts/{postId}/categories")
+    fun savePostCategories() = Unit
 
     @PostMapping("/admin/posts/{postId}/refresh")
     fun refresh() = Unit

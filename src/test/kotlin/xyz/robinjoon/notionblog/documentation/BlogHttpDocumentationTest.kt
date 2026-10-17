@@ -37,11 +37,14 @@ import xyz.robinjoon.notionblog.blog.adapter.inbound.web.RssSummaryExtractor
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.WebExceptionHandler
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.WebSecurityHeadersFilter
 import xyz.robinjoon.notionblog.blog.application.model.ContentReferences
+import xyz.robinjoon.notionblog.blog.application.model.HomePageQuery
+import xyz.robinjoon.notionblog.blog.application.model.ListedCategory
 import xyz.robinjoon.notionblog.blog.application.model.PageQuery
 import xyz.robinjoon.notionblog.blog.application.model.PostListEntry
 import xyz.robinjoon.notionblog.blog.application.model.PostListLookupResult
 import xyz.robinjoon.notionblog.blog.application.model.PostListPage
 import xyz.robinjoon.notionblog.blog.application.model.PresentationAssetDescriptor
+import xyz.robinjoon.notionblog.blog.application.model.PublicCategoryCount
 import xyz.robinjoon.notionblog.blog.application.model.PublicFeed
 import xyz.robinjoon.notionblog.blog.application.model.PublicFeedLookupResult
 import xyz.robinjoon.notionblog.blog.application.model.PublicPostLookupResult
@@ -56,6 +59,11 @@ import xyz.robinjoon.notionblog.blog.application.port.input.GetPublicPostUseCase
 import xyz.robinjoon.notionblog.blog.domain.SourceDocumentRef
 import xyz.robinjoon.notionblog.blog.domain.SourceId
 import xyz.robinjoon.notionblog.blog.domain.SourceRevision
+import xyz.robinjoon.notionblog.blog.domain.category.CategoryId
+import xyz.robinjoon.notionblog.blog.domain.home.HomeConfiguration
+import xyz.robinjoon.notionblog.blog.domain.home.HomeLayout
+import xyz.robinjoon.notionblog.blog.domain.home.HomePostDetails
+import xyz.robinjoon.notionblog.blog.domain.home.HomePostOrder
 import xyz.robinjoon.notionblog.blog.domain.post.PostId
 import xyz.robinjoon.notionblog.blog.domain.post.PostProperties
 import xyz.robinjoon.notionblog.blog.domain.post.PostRevision
@@ -168,6 +176,36 @@ class BlogHttpDocumentationTest {
             .perform(get("/posts/{postId}", "not-a-uuid"))
             .andExpect(status().isNotFound)
             .andDo(document("post-invalid-id", postIdParameter(), htmlHeaders()))
+    }
+
+    @Test
+    fun `category filter documents the filtered home and the unknown category`() {
+        val category = CategoryId(UUID.fromString("00000000-0000-0000-0000-0000000000c1"))
+        val missing = CategoryId(UUID.fromString("00000000-0000-0000-0000-0000000000c2"))
+        val listed = ListedCategory(category, "Kotlin")
+        val base = listPage()
+        val filtered =
+            base.copy(
+                entries = base.entries.copy(items = base.entries.items.map { it.copy(categories = listOf(listed)) }),
+                configuration = HomeConfiguration.create(HomeLayout.CARDS, HomePostOrder.NEWEST_FIRST, 10, HomePostDetails()),
+                categories = listOf(PublicCategoryCount(listed, 1)),
+                selectedCategoryId = category,
+            )
+        every { postLists.get(HomePageQuery(1, category)) } returns
+            PostListLookupResult.Found(filtered)
+        every { postLists.get(HomePageQuery(1, missing)) } returns PostListLookupResult.NotFound
+
+        mvc
+            .perform(get("/").param("category", category.value.toString()))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString("aria-current=\"true\"")))
+            .andExpect(content().string(containsString("/ui/default-post-thumbnail.svg")))
+            .andExpect(content().string(containsString("nb-home-cards")))
+            .andDo(document("root-category", htmlHeaders()))
+        mvc
+            .perform(get("/").param("category", missing.value.toString()))
+            .andExpect(status().isNotFound)
+            .andDo(document("root-category-missing", htmlHeaders()))
     }
 
     @Test
@@ -284,7 +322,6 @@ class BlogHttpDocumentationTest {
                 mapOf(style to PresentationAssetDescriptor("/presentation/notion/v1/notion.css", "text/css", style.integrity)),
             header = null,
             footer = null,
-            rootPostId = null,
         )
     }
 

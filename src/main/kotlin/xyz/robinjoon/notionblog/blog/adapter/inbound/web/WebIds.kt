@@ -1,5 +1,6 @@
 package xyz.robinjoon.notionblog.blog.adapter.inbound.web
 
+import xyz.robinjoon.notionblog.blog.domain.category.CategoryId
 import xyz.robinjoon.notionblog.blog.domain.post.PostId
 import xyz.robinjoon.notionblog.blog.domain.post.PostRevisionId
 import xyz.robinjoon.notionblog.blog.domain.post.block.media.MediaKey
@@ -11,6 +12,8 @@ internal object WebIds {
     private val mediaKeyPattern = Regex("[0-9a-f]{64}")
 
     fun postId(value: String): PostId? = uuid(value)?.let(::PostId)
+
+    fun categoryId(value: String): CategoryId? = uuid(value)?.let(::CategoryId)
 
     fun revisionId(value: String): PostRevisionId? = uuid(value)?.let(::PostRevisionId)
 

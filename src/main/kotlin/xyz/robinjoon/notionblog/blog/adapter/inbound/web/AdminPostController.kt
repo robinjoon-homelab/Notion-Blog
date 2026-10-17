@@ -7,7 +7,6 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.servlet.ModelAndView
-import xyz.robinjoon.notionblog.blog.adapter.inbound.web.view.NoticeView
 import xyz.robinjoon.notionblog.blog.application.model.AdminPostLookupResult
 import xyz.robinjoon.notionblog.blog.application.model.PreviewVersion
 import xyz.robinjoon.notionblog.blog.application.port.input.AdminPostQueryUseCase
@@ -55,6 +54,4 @@ internal class AdminPostController(
             }
         }
     }
-
-    private fun Model.notice(): NoticeView? = asMap()["notice"] as? NoticeView
 }

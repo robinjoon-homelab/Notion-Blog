@@ -2,6 +2,8 @@ package xyz.robinjoon.notionblog.config
 
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.ExposedCategoryRepository
+import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.ExposedHomeConfigurationRepository
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.ExposedLegacyPostStore
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.ExposedMediaStorage
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.ExposedPostRepository
@@ -13,6 +15,8 @@ import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.Expose
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.ExposedSyncStateRepository
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.snapshot.JsonBlockTreeSnapshotCodec
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.snapshot.JsonPostPropertiesCodec
+import xyz.robinjoon.notionblog.blog.application.port.output.persistence.CategoryRepository
+import xyz.robinjoon.notionblog.blog.application.port.output.persistence.HomeConfigurationRepository
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.LegacyPostStore
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.MediaStoragePort
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.PostRepository
@@ -24,6 +28,12 @@ import xyz.robinjoon.notionblog.blog.application.port.output.persistence.SyncSta
 
 @Configuration(proxyBeanMethods = false)
 internal class PersistenceConfig {
+    @Bean
+    fun homeConfigurationRepository(): HomeConfigurationRepository = ExposedHomeConfigurationRepository()
+
+    @Bean
+    fun categoryRepository(): CategoryRepository = ExposedCategoryRepository()
+
     @Bean
     fun jsonBlockTreeSnapshotCodec(): JsonBlockTreeSnapshotCodec = JsonBlockTreeSnapshotCodec()
 

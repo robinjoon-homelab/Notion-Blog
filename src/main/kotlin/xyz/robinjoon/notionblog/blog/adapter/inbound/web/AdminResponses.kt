@@ -1,6 +1,7 @@
 package xyz.robinjoon.notionblog.blog.adapter.inbound.web
 
 import org.springframework.http.HttpStatus
+import org.springframework.ui.Model
 import org.springframework.web.servlet.ModelAndView
 import org.springframework.web.servlet.mvc.support.RedirectAttributes
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.view.NoticeView
@@ -23,3 +24,6 @@ internal fun errorView(
 ): ModelAndView = ModelAndView(viewName).apply { this.status = status }
 
 internal fun postPath(postId: PostId): String = "/admin/posts/${postId.value}"
+
+// 리다이렉트 직후 한 번만 보이는 플래시 알림을 꺼낸다.
+internal fun Model.notice(): NoticeView? = asMap()["notice"] as? NoticeView

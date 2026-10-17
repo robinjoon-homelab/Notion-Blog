@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.servlet.ModelAndView
-import xyz.robinjoon.notionblog.blog.application.model.PageQuery
+import xyz.robinjoon.notionblog.blog.application.model.HomePageQuery
 import xyz.robinjoon.notionblog.blog.application.model.PostListLookupResult
 import xyz.robinjoon.notionblog.blog.application.model.PublicPostLookupResult
 import xyz.robinjoon.notionblog.blog.application.port.input.GetPostListUseCase
@@ -21,16 +21,24 @@ class BlogController(
     @GetMapping("/")
     fun home(
         @RequestParam(defaultValue = "1") page: Int,
-    ): ModelAndView =
-        when (val result = postLists.get(PageQuery(page.coerceAtLeast(1), HOME_PAGE_SIZE))) {
+        @RequestParam(required = false) category: String?,
+    ): ModelAndView {
+        // 형식이 틀린 분류 값은 없는 분류와 같게 404로 처리한다.
+        val categoryId = category?.let { WebIds.categoryId(it) ?: return errorView("error/blog-not-found", HttpStatus.NOT_FOUND) }
+        return when (val result = postLists.get(HomePageQuery(page.coerceAtLeast(1), categoryId))) {
             is PostListLookupResult.Found -> {
                 ModelAndView("blog/home").addObject("page", assembler.assemble(result.page))
+            }
+
+            PostListLookupResult.NotFound -> {
+                errorView("error/blog-not-found", HttpStatus.NOT_FOUND)
             }
 
             PostListLookupResult.ContentUnavailable -> {
                 errorView("error/blog-unavailable", HttpStatus.SERVICE_UNAVAILABLE)
             }
         }
+    }
 
     @GetMapping("/posts/{postId}")
     fun post(
@@ -42,9 +50,5 @@ class BlogController(
             PublicPostLookupResult.NotFound -> errorView("error/blog-not-found", HttpStatus.NOT_FOUND)
             PublicPostLookupResult.ContentUnavailable -> errorView("error/blog-unavailable", HttpStatus.SERVICE_UNAVAILABLE)
         }
-    }
-
-    private companion object {
-        const val HOME_PAGE_SIZE = 10
     }
 }

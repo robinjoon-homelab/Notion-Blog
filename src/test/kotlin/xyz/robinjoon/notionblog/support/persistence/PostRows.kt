@@ -1,13 +1,16 @@
 package xyz.robinjoon.notionblog.support.persistence
 
 import org.jetbrains.exposed.v1.jdbc.insert
+import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.CategoryTable
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.OwnedMediaTable
+import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.PostCategoryTable
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.PostPublicationTable
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.PostRevisionMediaTable
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.PostRevisionTable
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.PostSourceBindingTable
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.PostTable
 import xyz.robinjoon.notionblog.blog.domain.SourceDocumentRef
+import xyz.robinjoon.notionblog.blog.domain.category.CategoryId
 import xyz.robinjoon.notionblog.blog.domain.post.PostId
 import xyz.robinjoon.notionblog.blog.domain.post.PostRevisionId
 import xyz.robinjoon.notionblog.blog.domain.post.PostVisibility
@@ -98,6 +101,29 @@ object PostRows {
             it[sourceUrl] = "$sourceKey?X-Amz-Signature=sig"
             it[expiresAt] = null
             it[mediaKey] = key?.value
+        }
+    }
+
+    fun category(
+        categoryId: CategoryId,
+        name: String,
+        position: Int,
+    ) {
+        CategoryTable.insert {
+            it[CategoryTable.categoryId] = categoryId.value
+            it[CategoryTable.name] = name
+            it[normalizedName] = name.lowercase()
+            it[CategoryTable.position] = position
+        }
+    }
+
+    fun assignment(
+        postId: PostId,
+        categoryId: CategoryId,
+    ) {
+        PostCategoryTable.insert {
+            it[PostCategoryTable.postId] = postId.value
+            it[PostCategoryTable.categoryId] = categoryId.value
         }
     }
 }

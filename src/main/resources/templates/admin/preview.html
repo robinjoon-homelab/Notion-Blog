@@ -44,6 +44,7 @@
                     <form th:if="${view.panel.actions.canArchive}" th:action="@{/admin/posts/{id}/archive(id=${view.panel.postId})}" method="post">
                         <button class="nb-link-danger" type="submit">보관</button>
                     </form>
+                    <a class="nb-button" th:href="@{/admin/posts/{id}/categories(id=${view.panel.postId})}">카테고리 지정</a>
                     <form th:if="${view.panel.actions.canRestore}" th:action="@{/admin/posts/{id}/restore(id=${view.panel.postId})}" method="post">
                         <button class="nb-button" type="submit">보관 해제</button>
                     </form>

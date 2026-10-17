@@ -13,6 +13,8 @@
     <div class="nb-workspace-name"><span aria-hidden="true">🗂️</span>블로그 관리</div>
     <div class="nb-side-heading">블로그</div>
     <a class="nb-side-link" href="/admin/posts" th:attr="aria-current=${current == 'posts' ? 'page' : null}"><span aria-hidden="true">📄</span>게시글</a>
+    <a class="nb-side-link" href="/admin/categories" th:attr="aria-current=${current == 'categories' ? 'page' : null}"><span aria-hidden="true">🏷️</span>카테고리</a>
+    <a class="nb-side-link" href="/admin/home" th:attr="aria-current=${current == 'home' ? 'page' : null}"><span aria-hidden="true">🧩</span>홈 화면</a>
     <a class="nb-side-link" href="/"><span aria-hidden="true">🏠</span>공개 홈</a>
     <form class="nb-side-form" th:action="@{/admin/logout}" method="post">
         <button class="nb-side-link" type="submit"><span aria-hidden="true">↩</span>로그아웃</button>

@@ -46,7 +46,7 @@ object SiteFixtures {
         footer: SourceDocumentRef? = null,
     ) = SiteDocuments(root, header, footer)
 
-    fun chrome(header: PostRevision? = null): SiteChrome = SiteChrome(site(), profile, mapOf(style to descriptor), header, null, null)
+    fun chrome(header: PostRevision? = null): SiteChrome = SiteChrome(site(), profile, mapOf(style to descriptor), header, null)
 
     fun noReferences(): ContentReferences = ContentReferences(emptyMap(), RevisionMedia.empty)
 }

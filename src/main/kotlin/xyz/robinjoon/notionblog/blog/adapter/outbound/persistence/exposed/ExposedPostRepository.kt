@@ -28,6 +28,7 @@ import xyz.robinjoon.notionblog.blog.application.port.output.persistence.PostRep
 import xyz.robinjoon.notionblog.blog.domain.SourceDocumentRef
 import xyz.robinjoon.notionblog.blog.domain.SourceId
 import xyz.robinjoon.notionblog.blog.domain.SourceRevision
+import xyz.robinjoon.notionblog.blog.domain.category.CategoryId
 import xyz.robinjoon.notionblog.blog.domain.post.Post
 import xyz.robinjoon.notionblog.blog.domain.post.PostId
 import xyz.robinjoon.notionblog.blog.domain.post.PostPublication
@@ -48,7 +49,7 @@ class ExposedPostRepository(
         managedPosts()
             .where { PostPublicationTable.postId eq postId.value }
             .singleOrNull()
-            ?.toPost()
+            ?.toPost(ExposedPostCategories.read(listOf(postId))[postId].orEmpty())
 
     // 게시 상태 행만 잠근다. 조인에 FOR UPDATE를 거는 방식은 이식성이 없다.
     override fun lock(postId: PostId): Post? {
@@ -61,7 +62,11 @@ class ExposedPostRepository(
         return find(postId)
     }
 
-    override fun findAllManaged(): List<Post> = managedPosts().map { it.toPost() }
+    override fun findAllManaged(): List<Post> {
+        val rows = managedPosts().toList()
+        val categories = ExposedPostCategories.read(rows.map { PostId(it[PostPublicationTable.postId]) })
+        return rows.map { it.toPost(categories[PostId(it[PostPublicationTable.postId])].orEmpty()) }
+    }
 
     override fun findTitles(postIds: Set<PostId>): Map<PostId, String> {
         if (postIds.isEmpty()) return emptyMap()
@@ -119,6 +124,11 @@ class ExposedPostRepository(
             }
         check(updated == 1) { "post ${post.id.value} must be registered before it is saved" }
         recordFirstPublication(post)
+    }
+
+    // 분류 연결만 쓰고 게시 상태, 리비전, 세대는 바꾸지 않는다.
+    override fun saveCategories(post: Post) {
+        ExposedPostCategories.replace(post.id, post.categoryIds)
     }
 
     override fun saveRevision(
@@ -216,20 +226,21 @@ class ExposedPostRepository(
             .join(PostSourceBindingTable, JoinType.INNER, PostTable.postId, PostSourceBindingTable.postId)
             .selectAll()
 
-    private fun ResultRow.toPost(): Post =
-        Post.restore(
-            id = PostId(this[PostPublicationTable.postId]),
-            source = toBinding().sourceDocument,
-            latestRevisionId = this[PostPublicationTable.latestRevisionId]?.let(::PostRevisionId),
-            publication =
-                PostPublication(
-                    visibility = PostVisibility.valueOf(this[PostPublicationTable.visibility]),
-                    publishedRevisionId = this[PostPublicationTable.publishedRevisionId]?.let(::PostRevisionId),
-                    archived = this[PostPublicationTable.archived],
-                    generation = this[PostPublicationTable.generation],
-                    firstPublishedAt = this[PostTable.firstPublishedAt]?.toInstant(),
-                ),
-        )
+    private fun ResultRow.toPost(categoryIds: Set<CategoryId>): Post =
+        Post
+            .restore(
+                id = PostId(this[PostPublicationTable.postId]),
+                source = toBinding().sourceDocument,
+                latestRevisionId = this[PostPublicationTable.latestRevisionId]?.let(::PostRevisionId),
+                publication =
+                    PostPublication(
+                        visibility = PostVisibility.valueOf(this[PostPublicationTable.visibility]),
+                        publishedRevisionId = this[PostPublicationTable.publishedRevisionId]?.let(::PostRevisionId),
+                        archived = this[PostPublicationTable.archived],
+                        generation = this[PostPublicationTable.generation],
+                        firstPublishedAt = this[PostTable.firstPublishedAt]?.toInstant(),
+                    ),
+            ).categorize(categoryIds)
 
     private fun writePublication(
         statement: UpdateBuilder<*>,

@@ -18,7 +18,7 @@ import xyz.robinjoon.notionblog.blog.domain.post.PostSourceBinding
 import xyz.robinjoon.notionblog.blog.domain.presentation.PresentationAssetRef
 import xyz.robinjoon.notionblog.blog.domain.site.SiteConfiguration
 
-// 모든 페이지를 감싸는 사이트 틀이다. 헤더·푸터·레거시 루트 링크는 해당 글이 공개일 때만 나타난다.
+// 모든 페이지를 감싸는 사이트 틀이다. 헤더·푸터는 해당 글이 공개일 때만 나타난다.
 @Transactional(readOnly = true)
 class SiteChromeService(
     private val siteConfigurations: SiteConfigurationRepository,
@@ -41,7 +41,6 @@ class SiteChromeService(
             presentationAssets = resolved,
             header = fragment(bindings, site.documents.header),
             footer = fragment(bindings, site.documents.footer),
-            rootPostId = bindings[site.documents.root]?.postId?.takeIf { publishedPosts.findPublicPostIds(setOf(it)).isNotEmpty() },
         )
     }
 

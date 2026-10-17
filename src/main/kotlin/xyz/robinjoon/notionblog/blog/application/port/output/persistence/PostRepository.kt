@@ -12,7 +12,8 @@ import xyz.robinjoon.notionblog.blog.domain.post.block.media.MediaSource
 import xyz.robinjoon.notionblog.blog.domain.post.block.media.SourceMediaKey
 import java.time.Instant
 
-// 글, 불변 리비전, 리비전별 파일 연결을 다룬다. 글은 게시 상태가 생기면 관리 대상이 된다.
+// 글, 불변 리비전, 리비전별 파일 연결, 분류 연결을 다룬다. 글은 게시 상태가 생기면 관리 대상이 된다. 조회한 글에는 저장된 분류
+// 연결이 함께 담긴다.
 interface PostRepository {
     fun find(postId: PostId): Post?
 
@@ -36,11 +37,14 @@ interface PostRepository {
         registeredAt: Instant,
     )
 
-    // 게시 상태를 쓰고, 저장된 최초 게시 시각이 없을 때만 그 시각을 기록한다.
+    // 게시 상태를 쓰고, 저장된 최초 게시 시각이 없을 때만 그 시각을 기록한다. 분류 연결은 쓰지 않는다.
     fun save(
         post: Post,
         changedAt: Instant,
     )
+
+    // 글의 분류 연결만 post.categoryIds로 바꾼다. 게시 상태·세대·리비전·최초 게시 시각은 쓰지 않는다.
+    fun saveCategories(post: Post)
 
     // 새 리비전을 저장하면서, 그 리비전이 보여 주는 원본 호스팅 파일마다 저장 사본을 연결한다.
     fun saveRevision(
