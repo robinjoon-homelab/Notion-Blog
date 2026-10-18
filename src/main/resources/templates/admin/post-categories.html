@@ -10,25 +10,71 @@
             <a class="nb-muted nb-small" th:href="@{/admin/posts/{id}(id=${view.postId})}">← 글로 돌아가기</a>
             <div class="nb-section-head">
                 <h1 class="nb-heading" th:text="${view.title}">제목</h1>
-                <p class="nb-muted">이 글에 지정할 카테고리를 고릅니다. 공개 여부와 내용은 바뀌지 않으며, 저장하면 공개 홈에 바로 반영됩니다.</p>
+                <p class="nb-muted">분류 편집입니다. 태그, 시리즈, 옮길 원문 태그를 한 번에 저장하며 본문과 공개 상태는 바뀌지 않습니다. 공개 중인 글의 태그와 시리즈는 저장 즉시 내 블로그에 반영되고, 오류가 나면 아무것도 저장되지 않습니다.</p>
             </div>
             <div th:replace="~{admin/fragments :: notice(${view.notice})}"></div>
-            <div class="nb-empty" th:if="${#lists.isEmpty(view.options)}">
-                <h2>지정할 카테고리가 없습니다.</h2>
-                <p><a href="/admin/categories">카테고리 관리</a>에서 먼저 추가하세요.</p>
-            </div>
-            <form th:action="@{/admin/posts/{id}/categories(id=${view.postId})}" method="post" th:if="${!#lists.isEmpty(view.options)}">
-                <fieldset class="nb-fieldset">
-                    <legend>카테고리</legend>
-                    <label class="nb-choice" th:each="option : ${view.options}">
-                        <input type="checkbox" name="categoryId" th:value="${option.id}" th:checked="${option.checked}">
-                        <span><span class="nb-choice-label" th:text="${option.name}">분류</span>
-                            <span class="nb-muted nb-small" th:text="${'글 ' + option.assignedPosts + '개'}">글 0개</span></span>
-                    </label>
-                </fieldset>
-                <p class="nb-muted nb-small">모두 해제하고 저장하면 이 글의 카테고리 지정이 비워집니다.</p>
+
+            <form th:action="@{/admin/posts/{id}/categories(id=${view.postId})}" method="post">
+                <section class="nb-panel" aria-labelledby="tag-section">
+                    <h2 class="nb-panel-title" id="tag-section">태그</h2>
+                    <div class="nb-empty" th:if="${#lists.isEmpty(view.options)}">
+                        <h2>지정할 태그가 없습니다.</h2>
+                        <p><a href="/admin/categories">태그</a> 화면에서 먼저 추가하거나 아래 원문 태그를 옮기세요.</p>
+                    </div>
+                    <fieldset class="nb-fieldset" th:if="${!#lists.isEmpty(view.options)}">
+                        <legend>이 글에 지정할 태그</legend>
+                        <label class="nb-choice" th:each="option : ${view.options}">
+                            <input type="checkbox" name="categoryId" th:value="${option.id}" th:checked="${option.checked}">
+                            <span><span class="nb-choice-label" th:text="${option.name}">태그</span>
+                                <span class="nb-muted nb-small" th:text="${'글 ' + option.assignedPosts + '개'}">글 0개</span></span>
+                        </label>
+                    </fieldset>
+                    <p class="nb-muted nb-small">모두 해제하고 저장하면 이 글의 태그 지정이 비워집니다.</p>
+                </section>
+
+                <section class="nb-panel" aria-labelledby="series-section">
+                    <h2 class="nb-panel-title" id="series-section">시리즈</h2>
+                    <div class="nb-empty" th:if="${#lists.isEmpty(view.series)}">
+                        <h2>지정할 시리즈가 없습니다.</h2>
+                        <p><a href="/admin/series">시리즈</a> 화면에서 먼저 만드세요.</p>
+                    </div>
+                    <fieldset class="nb-fieldset" th:if="${!#lists.isEmpty(view.series)}">
+                        <legend>이 글이 속할 시리즈 (하나만)</legend>
+                        <label class="nb-choice">
+                            <input type="radio" name="seriesId" value="" th:checked="${#lists.isEmpty(view.series.?[selected])}">
+                            <span><span class="nb-choice-label">시리즈 없음</span></span>
+                        </label>
+                        <label class="nb-choice" th:each="option : ${view.series}">
+                            <input type="radio" name="seriesId" th:value="${option.id}" th:checked="${option.selected}">
+                            <span><span class="nb-choice-label" th:text="${option.title}">시리즈</span>
+                                <span class="nb-muted nb-small" th:text="${'글 ' + option.postCount + '개'}">글 0개</span></span>
+                        </label>
+                    </fieldset>
+                    <p class="nb-muted nb-small">시리즈를 바꾸면 새 시리즈의 마지막에 놓입니다. 순서는 시리즈 화면에서 바꿉니다.</p>
+                </section>
+
+                <section class="nb-panel" aria-labelledby="source-section">
+                    <h2 class="nb-panel-title" id="source-section">Notion 원문 태그</h2>
+                    <p class="nb-muted nb-small">Notion 글에 붙은 태그입니다. 고르기 전에는 내 블로그의 태그 탐색에 나타나지 않습니다. 공개 글은 공개 중인 내용, 그 밖의 글은 최신 가져온 내용의 태그를 보여 줍니다. 고른 태그는 위에서 지정한 태그에 더해 이 글에 지정됩니다.</p>
+                    <div class="nb-empty" th:if="${#lists.isEmpty(view.sourceTags)}">
+                        <h2>옮길 원문 태그가 없습니다.</h2>
+                        <p>가져온 내용에 태그가 없거나 아직 가져오지 않았습니다.</p>
+                    </div>
+                    <fieldset class="nb-fieldset" th:if="${!#lists.isEmpty(view.sourceTags)}">
+                        <legend>태그로 옮길 원문 태그</legend>
+                        <label class="nb-choice" th:each="option : ${view.sourceTags}">
+                            <input type="checkbox" name="sourceTag" th:value="${option.name}" th:disabled="${option.tooLong}">
+                            <span><span class="nb-choice-label" th:text="${option.name}">원문 태그</span>
+                                <span class="nb-muted nb-small" th:if="${option.assigned}">이미 이 글에 지정됨</span>
+                                <span class="nb-muted nb-small" th:if="${!option.assigned and !option.tooLong and option.existingName != null}" th:text="${'같은 이름의 태그(' + option.existingName + ')를 재사용해 지정합니다'}">재사용</span>
+                                <span class="nb-muted nb-small" th:if="${option.tooLong}">태그 이름은 50자 이하만 옮길 수 있습니다</span>
+                                <span class="nb-muted nb-small" th:if="${!option.tooLong and option.existingName == null}">새 태그로 만들어 지정합니다</span></span>
+                        </label>
+                    </fieldset>
+                </section>
+
                 <div class="nb-actions">
-                    <button class="nb-button nb-primary" type="submit">저장</button>
+                    <button class="nb-button nb-primary" type="submit">분류 저장</button>
                     <a class="nb-button" th:href="@{/admin/posts/{id}/categories(id=${view.postId})}">변경 취소</a>
                 </div>
             </form>

@@ -7,6 +7,7 @@ import xyz.robinjoon.notionblog.blog.application.port.input.GetMediaUseCase
 import xyz.robinjoon.notionblog.blog.application.port.input.GetPostListUseCase
 import xyz.robinjoon.notionblog.blog.application.port.input.GetPublicFeedUseCase
 import xyz.robinjoon.notionblog.blog.application.port.input.GetPublicPostUseCase
+import xyz.robinjoon.notionblog.blog.application.port.input.GetPublicSeriesUseCase
 import xyz.robinjoon.notionblog.blog.application.port.output.diagnostics.SnapshotFailureReporter
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.CategoryRepository
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.HomeConfigurationRepository
@@ -14,6 +15,8 @@ import xyz.robinjoon.notionblog.blog.application.port.output.persistence.MediaSt
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.PostRepository
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.PresentationProfileRepository
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.PublishedPostStore
+import xyz.robinjoon.notionblog.blog.application.port.output.persistence.PublishedSeriesStore
+import xyz.robinjoon.notionblog.blog.application.port.output.persistence.SeriesRepository
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.SiteConfigurationRepository
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.SyncStateRepository
 import xyz.robinjoon.notionblog.blog.application.port.output.presentation.PresentationAssetCatalog
@@ -25,6 +28,7 @@ import xyz.robinjoon.notionblog.blog.application.service.GetMediaService
 import xyz.robinjoon.notionblog.blog.application.service.GetPostListService
 import xyz.robinjoon.notionblog.blog.application.service.GetPublicFeedService
 import xyz.robinjoon.notionblog.blog.application.service.GetPublicPostService
+import xyz.robinjoon.notionblog.blog.application.service.GetPublicSeriesService
 import xyz.robinjoon.notionblog.blog.application.service.ResolvePostLinksService
 import xyz.robinjoon.notionblog.blog.application.service.SiteChromeService
 import xyz.robinjoon.notionblog.blog.application.service.SynchronizationQueryService
@@ -61,7 +65,16 @@ internal class QueryConfig(
     fun getPublicPostUseCase(
         chromes: SiteChromeService,
         references: ContentReferencesService,
-    ): GetPublicPostUseCase = GetPublicPostService(chromes, references, publishedPosts, snapshotFailures)
+        publishedSeries: PublishedSeriesStore,
+    ): GetPublicPostUseCase = GetPublicPostService(chromes, references, publishedPosts, publishedSeries, snapshotFailures)
+
+    @Bean
+    fun getPublicSeriesUseCase(
+        chromes: SiteChromeService,
+        references: ContentReferencesService,
+        publishedSeries: PublishedSeriesStore,
+        homeConfigurations: HomeConfigurationRepository,
+    ): GetPublicSeriesUseCase = GetPublicSeriesService(chromes, references, publishedSeries, homeConfigurations, snapshotFailures)
 
     @Bean
     fun getPublicFeedUseCase(chromes: SiteChromeService): GetPublicFeedUseCase =
@@ -74,7 +87,9 @@ internal class QueryConfig(
     fun adminPostSummaryService(
         states: SyncStateRepository,
         catalog: PostCatalog,
-    ): AdminPostSummaryService = AdminPostSummaryService(posts, states, catalog)
+        categories: CategoryRepository,
+        series: SeriesRepository,
+    ): AdminPostSummaryService = AdminPostSummaryService(posts, states, catalog, categories, series)
 
     @Bean
     fun adminPostQueryUseCase(

@@ -121,7 +121,7 @@ body.nb-body-root { margin: 0; background: var(--nb-paper); color: var(--nb-ink)
 .nb-choice-label { font-size: 14px; }
 .nb-field { display: grid; gap: 4px; min-width: 0; }
 .nb-field label { font-size: 12px; color: var(--nb-secondary); }
-.nb-field input[type="text"], .nb-field input[type="number"] { min-width: 0; padding: 6px 8px; border: 1px solid var(--nb-line); border-radius: 4px; background: var(--nb-paper); color: var(--nb-ink); font: inherit; }
+.nb-field input[type="text"], .nb-field input[type="number"], .nb-field input[type="search"] { min-width: 0; padding: 6px 8px; border: 1px solid var(--nb-line); border-radius: 4px; background: var(--nb-paper); color: var(--nb-ink); font: inherit; }
 .nb-field-narrow { width: 110px; }
 .nb-preview-box { min-width: 0; padding: 18px 20px; border: 1px solid var(--nb-line); border-radius: 6px; background: var(--nb-paper); }
 .nb-preview-box .nb-home-list { margin-top: 12px; }
@@ -174,3 +174,69 @@ body.nb-body-root { margin: 0; background: var(--nb-paper); color: var(--nb-ink)
 .nb-preview.notion-page { margin: 0; padding: 0; max-width: none; }
 .nb-shell > div { min-width: 0; }
 .nb-property a, .nb-property span { overflow-wrap: anywhere; }
+
+/* 내 블로그 홈 탭, 태그 탐색 2열, 검색. */
+.nb-visually-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+.nb-home-tabs { display: flex; gap: 4px; margin-top: 18px; border-bottom: 1px solid var(--nb-line); }
+.nb-home-tabs .nb-filter { border-radius: 4px 4px 0 0; text-decoration: none; }
+.notion-page .nb-home-tabs .nb-filter { color: var(--nb-secondary); text-decoration: none; }
+.notion-page .nb-home-tabs .nb-filter[aria-current="page"] { background: var(--nb-soft); color: var(--nb-ink); }
+.nb-home-layout { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 28px; align-items: start; margin-top: 8px; }
+.nb-home-layout.nb-home-layout-single { grid-template-columns: minmax(0, 1fr); }
+.nb-home-main { min-width: 0; }
+.nb-tag-nav { flex-direction: column; align-items: stretch; margin-top: 16px; }
+.nb-home-search { margin-top: 16px; }
+.nb-home-search input[type="search"] { flex: 1 1 auto; }
+.nb-home-main .nb-notice { margin-top: 12px; }
+.nb-empty-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.notion-page .nb-empty-actions .nb-button { text-decoration: none; }
+.nb-badge-warn { background: var(--nb-warm); color: var(--nb-warm-ink); }
+
+/* 공개 시리즈 목록, 시리즈 안의 순서 목록, 글 안의 목차와 이전·다음. */
+.nb-series-grid { list-style: none; margin: 18px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+.nb-series-card { margin: 0; padding: 0; border: 1px solid var(--nb-line); border-radius: 6px; overflow: hidden; }
+.nb-series-card > a, .notion-page .nb-series-card > a { display: flex; flex-direction: column; gap: 12px; padding-bottom: 14px; color: inherit; text-decoration: none; }
+.nb-series-card .nb-post-thumb { display: block; aspect-ratio: 16 / 9; overflow: hidden; background: var(--nb-soft); }
+.nb-series-card .nb-post-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; margin: 0; }
+.nb-series-card-body { display: grid; gap: 4px; padding: 0 14px; }
+.nb-series-card a:hover .nb-post-title { text-decoration: underline; text-underline-offset: 4px; }
+.nb-series-posts { list-style: none; margin: 18px 0 0; padding: 0; }
+.nb-series-post { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 12px; padding: 14px 0; border-top: 1px solid var(--nb-line); margin: 0; }
+.nb-series-post:last-child { border-bottom: 1px solid var(--nb-line); }
+.nb-series-ordinal { color: var(--nb-secondary); font-size: 14px; text-align: right; }
+.nb-series-toc { margin: 0 0 18px; padding: 8px 12px; border: 1px solid var(--nb-line); border-radius: 4px; background: var(--nb-sidebar); }
+.nb-series-toc summary { cursor: pointer; font-size: 14px; }
+.nb-series-toc ol { margin: 8px 0; padding-inline-start: 22px; font-size: 14px; }
+.nb-series-toc li[aria-current="page"] { font-weight: 500; }
+.nb-series-pager { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 32px; }
+.nb-series-pager a { display: grid; gap: 2px; padding: 10px 12px; border: 1px solid var(--nb-line); border-radius: 4px; color: inherit; text-decoration: none; overflow-wrap: anywhere; }
+.nb-series-pager a:hover { background: var(--nb-soft); }
+.nb-series-pager .nb-series-next { grid-column: 2; text-align: right; }
+.nb-series-pager .nb-series-prev:only-child { grid-column: 1; }
+
+/* 발행 확인과 시리즈 편집. */
+.nb-review-summary { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 20px; align-items: start; }
+.nb-review-cover { aspect-ratio: 16 / 9; overflow: hidden; border-radius: 4px; background: var(--nb-soft); }
+.nb-review-cover img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.nb-series-editor { margin-top: 8px; }
+.nb-series-list { list-style: none; margin: 12px 0 0; padding: 0; }
+.nb-series-item { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 8px 0; border-top: 1px solid var(--nb-line); }
+.nb-series-item:last-child { border-bottom: 1px solid var(--nb-line); }
+.nb-series-title { flex: 1 1 200px; min-width: 0; overflow-wrap: anywhere; }
+.nb-series-buttons { display: flex; align-items: center; gap: 6px; }
+.nb-series-buttons button:disabled { opacity: .4; cursor: default; }
+[data-series-members] [data-action="add"], [data-series-candidates] [data-action="up"],
+[data-series-candidates] [data-action="down"], [data-series-candidates] [data-action="remove"] { display: none; }
+.nb-shell details > summary { cursor: pointer; font-size: 13px; }
+.nb-search input[type="search"]:focus-visible, .nb-home-layout a:focus-visible, .nb-series-pager a:focus-visible,
+.nb-series-card a:focus-visible, .nb-series-toc summary:focus-visible, .nb-home-tabs a:focus-visible { outline: 2px solid var(--nb-solid); outline-offset: 2px; }
+@media (max-width: 780px) {
+  .nb-home-layout { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .nb-tag-nav { flex-direction: row; flex-wrap: wrap; }
+  .nb-review-summary { grid-template-columns: minmax(0, 1fr); }
+  .nb-series-pager { grid-template-columns: minmax(0, 1fr); }
+  .nb-series-pager .nb-series-next { grid-column: 1; }
+}
+@media (pointer: coarse) {
+  .nb-series-buttons .nb-button, .nb-series-buttons .nb-link-danger, .nb-home-tabs .nb-filter, .nb-home-search .nb-button { min-height: 44px; }
+}

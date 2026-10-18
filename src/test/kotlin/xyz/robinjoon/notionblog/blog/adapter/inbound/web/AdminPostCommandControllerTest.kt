@@ -32,7 +32,7 @@ class AdminPostCommandControllerTest {
     @Test
     fun `refresh returns to the preview and reports whether anything changed`() {
         every { refreshes.refresh(postId) } returns RefreshPostResult.Updated(revisionId)
-        assertThat(notice("/admin/posts/${postId.value}/refresh").error).isFalse()
+        assertThat(notice("/admin/posts/${postId.value}/refresh").text).contains("발행 확인에서")
 
         every { refreshes.refresh(postId) } returns RefreshPostResult.Unchanged
         assertThat(notice("/admin/posts/${postId.value}/refresh").text).contains("바뀐 내용이 없습니다")
@@ -50,20 +50,30 @@ class AdminPostCommandControllerTest {
     }
 
     @Test
-    fun `publish posts the reviewed revision and reports the outcome`() {
+    fun `publish posts the reviewed revision and returns to the detail on success`() {
         every { publications.publish(command) } returns PublishPostResult.Published
-        assertThat(publish().error).isFalse()
+        val published = publish()
+        assertThat(published.error).isFalse()
+        assertThat(published.text).contains("발행했습니다")
 
-        every { publications.publish(command) } returns PublishPostResult.StaleRevision
-        val stale = publish()
-        assertThat(stale.error).isTrue()
-        assertThat(stale.text).contains("다시 확인")
-
-        every { publications.publish(command) } returns PublishPostResult.MediaNotReady
-        assertThat(publish().error).isTrue()
+        every { publications.publish(command) } returns PublishPostResult.AlreadyPublished
+        assertThat(publish().text).contains("이미 발행된 내용")
 
         every { publications.publish(command) } returns PublishPostResult.Archived
-        assertThat(publish().text).contains("복원")
+        val archived = publish()
+        assertThat(archived.error).isTrue()
+        assertThat(archived.text).contains("보관을 해제")
+    }
+
+    @Test
+    fun `a stale or unready publish goes back to the review so the new content is checked again`() {
+        every { publications.publish(command) } returns PublishPostResult.StaleRevision
+        val stale = notice("$detail/publish", revisionId.value.toString(), "7", "$detail/review")
+        assertThat(stale.error).isTrue()
+        assertThat(stale.text).contains("발행하지 않았습니다", "다시 확인")
+
+        every { publications.publish(command) } returns PublishPostResult.MediaNotReady
+        assertThat(notice("$detail/publish", revisionId.value.toString(), "7", "$detail/review").error).isTrue()
     }
 
     @Test
@@ -79,7 +89,7 @@ class AdminPostCommandControllerTest {
     @Test
     fun `unpublish succeeds idempotently and reports unknown posts`() {
         every { publications.unpublish(postId) } returns UnpublishPostResult.Unpublished
-        assertThat(notice("$detail/unpublish").error).isFalse()
+        assertThat(notice("$detail/unpublish").text).contains("비공개로 전환했습니다")
 
         every { publications.unpublish(postId) } returns UnpublishPostResult.AlreadyUnpublished
         assertThat(notice("$detail/unpublish").text).contains("이미")
@@ -106,6 +116,7 @@ class AdminPostCommandControllerTest {
         path: String,
         revision: String? = null,
         generation: String? = null,
+        redirect: String = detail,
     ): NoticeView {
         val request = post(path)
         if (revision != null) request.param("revisionId", revision).param("generation", checkNotNull(generation))
@@ -113,7 +124,7 @@ class AdminPostCommandControllerTest {
             mockMvc
                 .perform(request)
                 .andExpect(status().isSeeOther)
-                .andExpect(redirectedUrl(detail))
+                .andExpect(redirectedUrl(redirect))
                 .andReturn()
         return checkNotNull(result.flashMap["notice"]) as NoticeView
     }

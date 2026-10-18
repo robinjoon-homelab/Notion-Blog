@@ -4,6 +4,7 @@ import xyz.robinjoon.notionblog.blog.domain.category.CategoryId
 import xyz.robinjoon.notionblog.blog.domain.post.PostId
 import xyz.robinjoon.notionblog.blog.domain.post.PostRevisionId
 import xyz.robinjoon.notionblog.blog.domain.post.block.media.MediaKey
+import xyz.robinjoon.notionblog.blog.domain.series.SeriesId
 import java.util.UUID
 
 // 경로·폼 값을 식별자로 해석한다. 형식이 틀리면 null이라 호출자가 404 또는 400으로 응답한다.
@@ -16,6 +17,8 @@ internal object WebIds {
     fun categoryId(value: String): CategoryId? = uuid(value)?.let(::CategoryId)
 
     fun revisionId(value: String): PostRevisionId? = uuid(value)?.let(::PostRevisionId)
+
+    fun seriesId(value: String): SeriesId? = uuid(value)?.let(::SeriesId)
 
     fun mediaKey(value: String): MediaKey? = value.takeIf(mediaKeyPattern::matches)?.let(::MediaKey)
 

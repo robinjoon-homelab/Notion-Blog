@@ -12,10 +12,8 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.view.NoticeView
 import xyz.robinjoon.notionblog.blog.application.model.CategoryChangeResult
-import xyz.robinjoon.notionblog.blog.application.model.PostCategoryChangeResult
 import xyz.robinjoon.notionblog.blog.application.port.input.CategoryManagementUseCase
 import xyz.robinjoon.notionblog.blog.application.port.input.HomeConfigurationUseCase
-import xyz.robinjoon.notionblog.blog.application.port.input.PostCategoriesUseCase
 import xyz.robinjoon.notionblog.blog.domain.category.CategoryId
 import xyz.robinjoon.notionblog.blog.domain.home.HomeConfiguration
 import xyz.robinjoon.notionblog.blog.domain.home.HomeLayout
@@ -26,16 +24,13 @@ import java.util.UUID
 class AdminHomeManagementControllerTest {
     private val homeConfigurations = mockk<HomeConfigurationUseCase>()
     private val categories = mockk<CategoryManagementUseCase>()
-    private val postCategories = mockk<PostCategoriesUseCase>()
     private val mockMvc: MockMvc =
         MockMvcBuilders
             .standaloneSetup(
                 AdminHomeController(homeConfigurations),
                 AdminCategoryController(categories),
-                AdminPostCategoryController(postCategories),
             ).build()
     private val categoryId = CategoryId(UUID.nameUUIDFromBytes("category".toByteArray()))
-    private val postId = WebFixtures.postId
 
     @Test
     fun `home settings are saved from the submitted form and unchecked boxes turn details off`() {
@@ -54,6 +49,7 @@ class AdminHomeManagementControllerTest {
                 .andReturn()
 
         assertThat(result.notice().error).isFalse()
+        assertThat(result.notice().text).isEqualTo("설정을 저장했습니다. 내 블로그에 바로 반영됩니다.")
     }
 
     @Test
@@ -111,7 +107,7 @@ class AdminHomeManagementControllerTest {
         assertThat(categoryNotice("/admin/categories", " Kotlin ", "2").error).isFalse()
 
         every { categories.create("Kotlin", 3) } returns CategoryChangeResult.NameInUse
-        assertThat(categoryNotice("/admin/categories", "Kotlin", "3").text).contains("이미 있습니다")
+        assertThat(categoryNotice("/admin/categories", "Kotlin", "3").text).contains("같은 이름의 태그가 이미 있습니다")
     }
 
     @Test
@@ -129,7 +125,7 @@ class AdminHomeManagementControllerTest {
         assertThat(categoryNotice(path, "Spring", "1").error).isFalse()
 
         every { categories.delete(categoryId) } returns CategoryChangeResult.AssignedToPosts
-        assertThat(categoryNotice("$path/delete", null, null).text).contains("삭제할 수 없습니다")
+        assertThat(categoryNotice("$path/delete", null, null).text).contains("비공개·보관 글을 포함해", "삭제할 수 없습니다")
 
         every { categories.delete(categoryId) } returns CategoryChangeResult.Saved(categoryId)
         assertThat(categoryNotice("$path/delete", null, null).error).isFalse()
@@ -137,42 +133,6 @@ class AdminHomeManagementControllerTest {
         every { categories.update(categoryId, "Spring", 1) } returns CategoryChangeResult.NotFound
         mockMvc.perform(post(path).param("name", "Spring").param("position", "1")).andExpect(status().isNotFound)
         mockMvc.perform(post("/admin/categories/nope/delete")).andExpect(status().isNotFound)
-    }
-
-    @Test
-    fun `post categories replace the selection and an empty submission clears it`() {
-        val path = "/admin/posts/${postId.value}/categories"
-        val secondId = CategoryId(UUID.fromString("00000000-0000-0000-0000-0000000000c2"))
-        every { postCategories.assign(postId, setOf(categoryId, secondId)) } returns PostCategoryChangeResult.Saved
-        every { postCategories.assign(postId, emptySet()) } returns PostCategoryChangeResult.Saved
-
-        val saved =
-            mockMvc
-                .perform(post(path).param("categoryId", categoryId.value.toString(), secondId.value.toString()))
-                .andExpect(redirectedUrl(path))
-                .andReturn()
-        val cleared = mockMvc.perform(post(path)).andExpect(redirectedUrl(path)).andReturn()
-
-        assertThat(saved.notice().error).isFalse()
-        assertThat(cleared.notice().error).isFalse()
-    }
-
-    @Test
-    fun `post categories reject unknown categories, malformed ids and unknown posts`() {
-        val path = "/admin/posts/${postId.value}/categories"
-        every { postCategories.assign(postId, setOf(categoryId)) } returns PostCategoryChangeResult.CategoryNotFound
-        val missing =
-            mockMvc
-                .perform(
-                    post(path).param("categoryId", categoryId.value.toString()),
-                ).andExpect(redirectedUrl(path))
-                .andReturn()
-        assertThat(missing.notice().error).isTrue()
-
-        mockMvc.perform(post(path).param("categoryId", "bad")).andExpect(status().isBadRequest)
-        every { postCategories.assign(postId, emptySet()) } returns PostCategoryChangeResult.PostNotFound
-        mockMvc.perform(post(path)).andExpect(status().isNotFound)
-        mockMvc.perform(post("/admin/posts/nope/categories")).andExpect(status().isNotFound)
     }
 
     private fun categoryNotice(

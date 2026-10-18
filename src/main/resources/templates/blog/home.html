@@ -7,31 +7,48 @@
     <section class="notion-content">
         <h1 class="notion-title" th:text="${page.chrome.siteName}">Blog</h1>
         <p class="nb-muted" th:if="${page.chrome.description != null}" th:text="${page.chrome.description}">설명</p>
-        <nav class="nb-category-nav" aria-label="카테고리" th:if="${page.categories != null}">
-            <a class="nb-filter" th:href="${page.categories.allHref}" th:attr="aria-current=${page.categories.allSelected ? 'true' : null}">전체</a>
-            <a class="nb-filter" th:each="category : ${page.categories.items}" th:href="${category.href}"
-               th:attr="aria-current=${category.selected ? 'true' : null}"><span th:text="${category.name}">분류</span> <span class="nb-count" th:text="${category.count}">3</span></a>
-        </nav>
-        <ul class="nb-post-list nb-home-list" th:classappend="${'nb-home-' + page.layout}" th:if="${!#lists.isEmpty(page.entries)}">
-            <li th:each="entry : ${page.entries}" class="nb-home-post">
-                <a class="nb-post-thumb" th:if="${entry.thumbnailHref != null}" th:href="${entry.href}" tabindex="-1" aria-hidden="true">
-                    <img th:src="${entry.thumbnailHref}" data-fallback-src="/ui/default-post-thumbnail.svg" alt="" loading="lazy" decoding="async">
-                </a>
-                <div class="nb-post-body">
-                    <a class="nb-post-title" th:href="${entry.href}" th:text="${entry.title}">제목</a>
-                    <p class="nb-post-summary" th:if="${entry.summary != null}" th:text="${entry.summary}">요약</p>
-                    <p class="nb-small nb-muted nb-post-meta" th:if="${entry.publishedOn != null or !#lists.isEmpty(entry.categories)}">
-                        <span th:if="${entry.publishedOn != null}" th:text="${entry.publishedOn}">2026. 10. 16.</span>
-                        <a th:each="category : ${entry.categories}" class="nb-badge nb-category-badge" th:href="${category.href}" th:text="${category.name}">분류</a></p>
+        <nav th:replace="~{blog/page-fragments :: homeTabs(${page.tabs})}"></nav>
+        <div class="nb-home-layout" th:classappend="${page.categories == null ? 'nb-home-layout-single' : ''}">
+            <nav class="nb-category-nav nb-tag-nav" aria-label="태그" th:if="${page.categories != null}">
+                <a class="nb-filter" th:href="${page.categories.allHref}" th:attr="aria-current=${page.categories.allSelected ? 'true' : null}">전체 <span class="nb-count" th:text="${page.categories.allCount}">12</span></a>
+                <a class="nb-filter" th:each="category : ${page.categories.items}" th:href="${category.href}"
+                   th:attr="aria-current=${category.selected ? 'true' : null}"><span th:text="${category.name}">태그</span> <span class="nb-count" th:text="${category.count}">3</span></a>
+            </nav>
+            <div class="nb-home-main">
+                <form class="nb-search nb-home-search" action="/" method="get" role="search">
+                    <input type="hidden" name="tag" th:if="${page.search.categoryId != null}" th:value="${page.search.categoryId}">
+                    <label class="nb-visually-hidden" for="home-search">제목·요약 검색</label>
+                    <input id="home-search" type="search" name="q" maxlength="100" th:value="${page.search.query}" placeholder="제목·요약 검색">
+                    <button class="nb-button" type="submit">검색</button>
+                </form>
+                <p class="nb-notice nb-notice-error" role="alert" th:if="${page.search.error != null}" th:text="${page.search.error}">검색어 오류</p>
+                <p class="nb-muted nb-small" role="status" th:if="${page.search.resultLabel != null}" th:text="${page.search.resultLabel}">검색 결과 3개</p>
+                <ul class="nb-post-list nb-home-list" th:classappend="${'nb-home-' + page.list.layout}" th:if="${!#lists.isEmpty(page.list.entries)}">
+                    <li th:each="entry : ${page.list.entries}" class="nb-home-post">
+                        <a class="nb-post-thumb" th:if="${entry.thumbnailHref != null}" th:href="${entry.href}" tabindex="-1" aria-hidden="true">
+                            <img th:src="${entry.thumbnailHref}" data-fallback-src="/ui/default-post-thumbnail.svg" alt="" loading="lazy" decoding="async">
+                        </a>
+                        <div class="nb-post-body">
+                            <a class="nb-post-title" th:href="${entry.href}" th:text="${entry.title}">제목</a>
+                            <p class="nb-post-summary" th:if="${entry.summary != null}" th:text="${entry.summary}">요약</p>
+                            <p class="nb-small nb-muted nb-post-meta" th:if="${entry.publishedOn != null or !#lists.isEmpty(entry.categories)}">
+                                <span th:if="${entry.publishedOn != null}" th:text="${entry.publishedOn}">2026. 10. 16.</span>
+                                <a th:each="category : ${entry.categories}" class="nb-badge nb-category-badge" th:href="${category.href}" th:text="${category.name}">태그</a></p>
+                        </div>
+                    </li>
+                </ul>
+                <div class="nb-empty" th:if="${page.list.empty != null}">
+                    <h2 th:text="${page.list.empty.message}">아직 공개된 글이 없습니다.</h2>
+                    <p class="nb-empty-actions" th:if="${!#lists.isEmpty(page.list.empty.actions)}">
+                        <a th:each="action : ${page.list.empty.actions}" class="nb-button" th:href="${action.href}" th:text="${action.label}">전체 글 보기</a></p>
                 </div>
-            </li>
-        </ul>
-        <div class="nb-empty" th:if="${#lists.isEmpty(page.entries)}"><h2 th:text="${page.emptyMessage}">아직 공개된 글이 없습니다.</h2></div>
-        <nav class="nb-pager" aria-label="쪽 이동" th:if="${page.pagination.totalPages > 1}">
-            <a th:if="${page.pagination.previousHref != null}" th:href="${page.pagination.previousHref}">← 이전</a>
-            <span th:text="${page.pagination.page + ' / ' + page.pagination.totalPages}">1 / 2</span>
-            <a th:if="${page.pagination.nextHref != null}" th:href="${page.pagination.nextHref}">다음 →</a>
-        </nav>
+                <nav class="nb-pager" aria-label="쪽 이동" th:if="${page.list.pagination.totalPages > 1}">
+                    <a th:if="${page.list.pagination.previousHref != null}" th:href="${page.list.pagination.previousHref}">← 이전</a>
+                    <span th:text="${page.list.pagination.page + ' / ' + page.list.pagination.totalPages}">1 / 2</span>
+                    <a th:if="${page.list.pagination.nextHref != null}" th:href="${page.list.pagination.nextHref}">다음 →</a>
+                </nav>
+            </div>
+        </div>
     </section>
     <footer th:replace="~{blog/page-fragments :: footer(${page.chrome})}"></footer>
     <div class="notion-content" th:if="${page.chrome.feedUrl != null}"><p><a th:href="${page.chrome.feedUrl}">RSS 구독</a></p></div>

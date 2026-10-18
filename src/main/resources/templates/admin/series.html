@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{admin/fragments :: head('시리즈')}"></head>
+<body class="nb-body-root">
+<div class="nb-shell">
+    <aside th:replace="~{admin/fragments :: sidebar('series')}"></aside>
+    <div>
+        <button type="button" class="nb-button nb-menu" data-toggle-menu aria-expanded="false" aria-controls="nb-sidebar">메뉴</button>
+        <main class="nb-main">
+            <div class="nb-section-head">
+                <h1 class="nb-heading">시리즈</h1>
+                <p class="nb-muted">순서대로 읽는 글 묶음입니다. 글 하나는 시리즈 하나에만 속하고, 내 블로그에는 공개된 글만 순서대로 보입니다. 시리즈를 삭제해도 글, 태그, 공개 상태는 그대로입니다.</p>
+            </div>
+            <div th:replace="~{admin/fragments :: notice(${view.notice})}"></div>
+            <form class="nb-inline-form" th:action="@{/admin/series}" method="post" aria-label="시리즈 추가">
+                <div class="nb-field">
+                    <label for="new-series-title">새 시리즈 제목</label>
+                    <input id="new-series-title" type="text" name="title" required maxlength="100" autocomplete="off">
+                </div>
+                <div class="nb-field">
+                    <label for="new-series-description">짧은 설명 (선택)</label>
+                    <input id="new-series-description" type="text" name="description" maxlength="300" autocomplete="off">
+                </div>
+                <button class="nb-button nb-primary" type="submit">추가</button>
+            </form>
+            <div class="nb-empty" th:if="${#lists.isEmpty(view.rows)}"><h2>아직 시리즈가 없습니다.</h2><p>제목을 입력해 첫 시리즈를 추가하세요.</p></div>
+            <ul class="nb-category-list" th:if="${!#lists.isEmpty(view.rows)}">
+                <li class="nb-category-row" th:each="row : ${view.rows}">
+                    <a class="nb-post-title" th:href="@{/admin/series/{id}(id=${row.id})}" th:text="${row.title}">시리즈 제목</a>
+                    <p class="nb-post-summary" th:if="${!#strings.isEmpty(row.description)}" th:text="${row.description}">설명</p>
+                    <p class="nb-muted nb-small" th:text="${'글 ' + row.postCount + '개 · 공개 ' + row.publicPostCount + '개'}">글 0개</p>
+                </li>
+            </ul>
+        </main>
+    </div>
+</div>
+</body>
+</html>

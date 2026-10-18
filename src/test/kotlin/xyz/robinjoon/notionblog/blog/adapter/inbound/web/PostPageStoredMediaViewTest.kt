@@ -11,6 +11,7 @@ import xyz.robinjoon.notionblog.blog.adapter.inbound.web.view.TabContainerView
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.view.TableView
 import xyz.robinjoon.notionblog.blog.application.model.AdminPostStatus
 import xyz.robinjoon.notionblog.blog.application.model.ContentReferences
+import xyz.robinjoon.notionblog.blog.application.model.CurrentClassification
 import xyz.robinjoon.notionblog.blog.application.model.RevisionMedia
 import xyz.robinjoon.notionblog.blog.domain.post.PostProperties
 import xyz.robinjoon.notionblog.blog.domain.post.PostRevisionId
@@ -126,6 +127,7 @@ class PostPageStoredMediaViewTest {
         val previewView =
             assembler.assemble(
                 AdminFixtures.preview(AdminPostStatus.DRAFT, AdminFixtures.actions()).copy(revision = revision),
+                CurrentClassification(emptyList(), null),
             )
 
         listOf(publicView, previewView).forEach { view ->

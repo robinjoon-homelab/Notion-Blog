@@ -7,9 +7,11 @@ import xyz.robinjoon.notionblog.blog.application.model.PostListEntry
 import xyz.robinjoon.notionblog.blog.application.model.PostListPage
 import xyz.robinjoon.notionblog.blog.application.model.PresentationAssetDescriptor
 import xyz.robinjoon.notionblog.blog.application.model.PublicPostPage
+import xyz.robinjoon.notionblog.blog.application.model.PublicSeriesNavigation
 import xyz.robinjoon.notionblog.blog.application.model.PublishedPost
 import xyz.robinjoon.notionblog.blog.application.model.ResultPage
 import xyz.robinjoon.notionblog.blog.application.model.RevisionMedia
+import xyz.robinjoon.notionblog.blog.application.model.SeriesPostLink
 import xyz.robinjoon.notionblog.blog.application.model.SiteChrome
 import xyz.robinjoon.notionblog.blog.domain.SourceDocumentRef
 import xyz.robinjoon.notionblog.blog.domain.SourceId
@@ -29,6 +31,7 @@ import xyz.robinjoon.notionblog.blog.domain.presentation.PresentationProfileKey
 import xyz.robinjoon.notionblog.blog.domain.presentation.PresentationProfileRef
 import xyz.robinjoon.notionblog.blog.domain.presentation.PresentationTokens
 import xyz.robinjoon.notionblog.blog.domain.publication.PublicationId
+import xyz.robinjoon.notionblog.blog.domain.series.SeriesId
 import xyz.robinjoon.notionblog.blog.domain.site.SiteConfiguration
 import xyz.robinjoon.notionblog.blog.domain.site.SiteDocuments
 import xyz.robinjoon.notionblog.blog.domain.site.SiteMetadata
@@ -91,6 +94,19 @@ internal object WebFixtures {
 
     fun listPage(entries: List<PostListEntry> = emptyList()): PostListPage =
         PostListPage(chrome(), ResultPage.of(entries, PageQuery(1, 10)), ContentReferences(emptyMap(), RevisionMedia.empty))
+
+    val seriesId = SeriesId(UUID.fromString("00000000-0000-0000-0000-0000000000e1"))
+
+    fun seriesPostId(index: Int): PostId = PostId(UUID.nameUUIDFromBytes("series-post-$index".toByteArray()))
+
+    // 공개 글 3개짜리 시리즈에서 currentIndex번째 글을 보고 있는 탐색 값이다. 제목은 이스케이프 확인을 위해 꺾쇠를 쓴다.
+    fun seriesNavigation(currentIndex: Int): PublicSeriesNavigation =
+        PublicSeriesNavigation(
+            seriesId,
+            "<DDD> 적용기",
+            (0..2).map { SeriesPostLink(seriesPostId(it), "Chapter ${it + 1}") },
+            seriesPostId(currentIndex),
+        )
 
     fun links(resolutions: Map<LinkTarget.SourceDocument, xyz.robinjoon.notionblog.blog.application.model.LinkResolution>) =
         ContentReferences(resolutions, RevisionMedia.empty)

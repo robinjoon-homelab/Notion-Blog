@@ -307,6 +307,8 @@ internal class TargetArchitectureChecks(
                 "GET /posts/{postId}",
                 "GET /feed.xml",
                 "GET /media/{mediaKey}",
+                "GET /series",
+                "GET /series/{seriesId}",
                 "GET /admin/login",
                 "GET /admin/home",
                 "POST /admin/home",
@@ -316,6 +318,7 @@ internal class TargetArchitectureChecks(
                 "POST /admin/categories/{categoryId}/delete",
                 "GET /admin/posts",
                 "GET /admin/posts/{postId}",
+                "GET /admin/posts/{postId}/review",
                 "GET /admin/posts/{postId}/categories",
                 "POST /admin/posts/{postId}/categories",
                 "POST /admin/posts/{postId}/refresh",
@@ -323,6 +326,11 @@ internal class TargetArchitectureChecks(
                 "POST /admin/posts/{postId}/unpublish",
                 "POST /admin/posts/{postId}/archive",
                 "POST /admin/posts/{postId}/restore",
+                "GET /admin/series",
+                "POST /admin/series",
+                "GET /admin/series/{seriesId}",
+                "POST /admin/series/{seriesId}",
+                "POST /admin/series/{seriesId}/delete",
                 "GET /admin/media/{mediaKey}",
             )
     }

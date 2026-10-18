@@ -115,6 +115,21 @@ class GetPostListServiceTest {
     }
 
     @Test
+    fun `검색어로 조회한 공개 글과 함께 검색어와 태그·검색과 무관한 전체 공개 글 수를 반환한다`() {
+        givenChrome()
+        val first = entry(1, PostFixtures.hosted("first.png"))
+        val searched = PublishedListQuery(PageQuery(1, 10), search = "kotlin")
+        every { published.findListPage(excluded, searched) } returns ResultPage(listOf(first), 1, 10, 1)
+        every { references.media(setOf(first.revisionId)) } returns RevisionMedia.empty
+
+        val found = (service.get(HomePageQuery(1, search = "kotlin")) as PostListLookupResult.Found).page
+
+        assertThat(found.entries.items).containsExactly(first)
+        assertThat(found.search).isEqualTo("kotlin")
+        assertThat(found.totalPublished).isEqualTo(7)
+    }
+
+    @Test
     fun `없는 카테고리는 전체 글 목록으로 바꾸지 않고 찾을 수 없음으로 반환한다`() {
         givenChrome()
         val categoryId = CategoryId(PostFixtures.postId(30).value)
@@ -129,5 +144,6 @@ class GetPostListServiceTest {
         every { references.resolve(emptyList()) } returns SiteFixtures.noReferences()
         every { homes.find() } returns null
         every { published.findCategoryCounts(excluded) } returns emptyList()
+        every { published.countListed(excluded) } returns 7
     }
 }

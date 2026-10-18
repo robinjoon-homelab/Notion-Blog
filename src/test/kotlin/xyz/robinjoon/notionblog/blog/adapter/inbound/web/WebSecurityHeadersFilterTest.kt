@@ -23,7 +23,7 @@ class WebSecurityHeadersFilterTest {
     private val mockMvc: MockMvc = createMockMvc()
 
     private fun createMockMvc(): MockMvc {
-        val builder = MockMvcBuilders.standaloneSetup(BlogController(postLists, posts, assembler))
+        val builder = MockMvcBuilders.standaloneSetup(BlogController(postLists, posts, assembler, HomePageViewAssembler(assembler)))
         builder.addFilter<StandaloneMockMvcBuilder>(WebSecurityHeadersFilter())
         return builder.build()
     }

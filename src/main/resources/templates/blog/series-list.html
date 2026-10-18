@@ -1,0 +1,33 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${page.chrome.language}">
+<head th:replace="~{blog/page-fragments :: head(${page.chrome}, '시리즈')}"></head>
+<body>
+<main class="notion-page" th:classappend="${#strings.listJoin(page.chrome.profile.classes, ' ')}">
+    <header th:replace="~{blog/page-fragments :: header(${page.chrome})}"></header>
+    <section class="notion-content">
+        <h1 class="notion-title" th:text="${page.chrome.siteName}">Blog</h1>
+        <p class="nb-muted" th:if="${page.chrome.description != null}" th:text="${page.chrome.description}">설명</p>
+        <nav th:replace="~{blog/page-fragments :: homeTabs(${page.tabs})}"></nav>
+        <ul class="nb-series-grid" th:if="${!#lists.isEmpty(page.cards)}">
+            <li th:each="card : ${page.cards}" class="nb-series-card">
+                <a th:href="${card.href}">
+                    <span class="nb-post-thumb"><img th:src="${card.thumbnailHref}" data-fallback-src="/ui/default-post-thumbnail.svg" alt="" loading="lazy" decoding="async"></span>
+                    <span class="nb-series-card-body">
+                        <span class="nb-post-title" th:text="${card.title}">시리즈 제목</span>
+                        <span class="nb-post-summary" th:if="${card.description != null}" th:text="${card.description}">설명</span>
+                        <span class="nb-small nb-muted" th:text="${'글 ' + card.postCount + '개'}">글 3개</span>
+                    </span>
+                </a>
+            </li>
+        </ul>
+        <div class="nb-empty" th:if="${page.empty != null}">
+            <h2 th:text="${page.empty.message}">아직 공개된 시리즈가 없습니다.</h2>
+            <p class="nb-empty-actions"><a th:each="action : ${page.empty.actions}" class="nb-button" th:href="${action.href}" th:text="${action.label}">전체 글 보기</a></p>
+        </div>
+    </section>
+    <footer th:replace="~{blog/page-fragments :: footer(${page.chrome})}"></footer>
+    <div class="notion-content" th:if="${page.chrome.feedUrl != null}"><p><a th:href="${page.chrome.feedUrl}">RSS 구독</a></p></div>
+</main>
+<script src="/ui/thumbnail-fallback.js" defer></script>
+</body>
+</html>

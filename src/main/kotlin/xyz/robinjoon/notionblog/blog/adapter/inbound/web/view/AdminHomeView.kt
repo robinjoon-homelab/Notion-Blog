@@ -37,9 +37,27 @@ data class CategoryOptionView(
     val checked: Boolean,
 )
 
+data class SeriesOptionView(
+    val id: String,
+    val title: String,
+    val postCount: Int,
+    val selected: Boolean,
+)
+
+// existingName은 이름이 같은 기존 태그가 있을 때 그 이름이다. 전환하면 새로 만들지 않고 재사용한다.
+// tooLong은 태그 이름 길이 제한을 넘어 옮길 수 없는 후보다.
+data class SourceTagOptionView(
+    val name: String,
+    val existingName: String?,
+    val assigned: Boolean,
+    val tooLong: Boolean,
+)
+
 data class AdminPostCategoriesView(
     val postId: String,
     val title: String,
     val options: List<CategoryOptionView>,
+    val series: List<SeriesOptionView>,
+    val sourceTags: List<SourceTagOptionView>,
     val notice: NoticeView?,
 )

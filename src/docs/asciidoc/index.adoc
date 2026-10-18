@@ -21,24 +21,35 @@
 |===
 |상태 |의미
 |`200 OK` |HTML, RSS 또는 파일을 제공합니다.
-|`303 See Other` |관리 명령 뒤 미리보기나 목록으로 돌아갑니다.
-|`400 Bad Request` |관리 명령의 식별자 형식이 잘못되었습니다.
+|`303 See Other` |관리 명령 뒤 상세·발행 확인·목록으로 돌아갑니다.
+|`400 Bad Request` |관리 명령의 식별자 형식이 잘못되었거나 검색어가 너무 깁니다.
 |`404 Not Found` |대상이 없거나 공개 상태가 아닙니다. 형식이 잘못된 ID도 포함합니다.
 |`503 Service Unavailable` |필요한 저장본·설정을 사용할 수 없습니다.
 |===
 
 == 글 목록
 
-`GET /`는 관리자 홈 설정에 따른 공개 글 목록을 반환합니다. `page`로 쪽을 선택하고 `category`에 카테고리 UUID를 보내 필터링합니다. 잘못되었거나 없는 카테고리는 `404`입니다. 쪽 크기·정렬·표시 항목은 관리자 설정을 따르며 공개 요청으로 바꾸지 않습니다.
+`GET /`는 관리자 설정에 따른 공개 글 목록을 반환합니다. 응답에는 글·시리즈 탭, 태그 탐색(설정에서 켠 경우), 검색 폼이 함께 들어 있습니다.
+
+[options="header,autowidth"]
+|===
+|파라미터 |설명
+|`page` |쪽 번호입니다. 1 미만은 1쪽으로 봅니다.
+|`tag` |태그 UUID로 글을 필터링합니다. 잘못되었거나 없는 태그는 `404`입니다.
+|`category` |옛 태그 필터 주소입니다. `tag`와 같은 응답이며 둘 다 있으면 `tag`를 따릅니다. 북마크가 계속 유효하도록 유지합니다.
+|`q` |공개된 글의 제목·요약에서 대소문자를 구분하지 않고 찾습니다. 선택한 태그 하나와 함께 적용합니다.
+|===
+
+* 쪽 크기·정렬·표시 항목은 관리자 설정을 따르며 공개 요청으로 바꾸지 않습니다.
+* 검색은 공개된 내용만 대상으로 합니다. 비공개·보관 글과 아직 발행하지 않은 가져온 변경은 검색되지 않습니다.
+* 쪽 이동 링크는 선택한 태그와 검색어를 유지하고, 태그나 검색어를 바꾸면 1쪽으로 돌아갑니다. 검색어는 앞뒤 공백을 지우며 100자 이하여야 합니다. 더 길면 자르지 않고 검색을 적용하지 않은 채 `400`과 안내를 표시하고 입력한 값을 그대로 남깁니다.
+* 결과가 없으면 검색어 지우기와 전체 글 보기 링크를 보여 줍니다.
+* 글마다 태그가 여러 개일 수 있어 태그별 글 수의 합은 전체 글 수와 다를 수 있습니다.
 
 === 목록 조회
 
 include::{snippets}/root-found/http-request.adoc[]
 include::{snippets}/root-found/response-headers.adoc[]
-
-카테고리를 선택한 목록:
-
-include::{snippets}/root-category/http-request.adoc[]
 
 [%collapsible]
 .정상 HTML 응답 예시
@@ -46,20 +57,73 @@ include::{snippets}/root-category/http-request.adoc[]
 include::{snippets}/root-found/http-response.adoc[]
 ====
 
+=== 태그로 찾기
+
+include::{snippets}/root-tag/http-request.adoc[]
+include::{snippets}/root-tag/query-parameters.adoc[]
+
+옛 `category` 주소:
+
+include::{snippets}/root-category-alias/http-request.adoc[]
+
+=== 검색
+
+include::{snippets}/root-search/http-request.adoc[]
+
+결과가 없는 검색:
+
+include::{snippets}/root-search-empty/http-request.adoc[]
+
+너무 긴 검색어는 `400`이며 검색을 적용하지 않은 목록과 안내를 돌려줍니다.
+
+include::{snippets}/root-search-too-long/http-response.adoc[]
+
 === 오류
 
-==== 없는 카테고리
+==== 없는 태그
 
-include::{snippets}/root-category-missing/http-response.adoc[]
+include::{snippets}/root-tag-missing/http-response.adoc[]
 
 ==== 초기화되지 않은 경우
 
 include::{snippets}/root-unavailable/http-response.adoc[]
 
+== 시리즈
+
+* 시리즈는 순서대로 읽는 글 묶음입니다. 공개된 글이 1개 이상인 시리즈만 보이며, 순번·글 수·이동 대상은 공개된 글만으로 계산합니다. 비공개 글의 제목·개수·순번은 드러나지 않습니다.
+* `GET /series`는 시리즈 카드 목록입니다. 대표 이미지는 첫 번째 공개 글의 표지이고 없거나 보관 사본이 없으면 내장 썸네일입니다.
+* `GET /series/{seriesId}`는 시리즈 안의 공개 글을 시리즈 순서대로 보여 줍니다. 없는 시리즈, 형식이 잘못된 ID, 공개 글이 하나도 없는 시리즈는 모두 `404`입니다.
+
+=== 시리즈 목록
+
+include::{snippets}/series-list-found/http-request.adoc[]
+include::{snippets}/series-list-found/http-response.adoc[]
+
+공개된 시리즈가 없으면 안내 문구를 보여 줍니다.
+
+include::{snippets}/series-list-empty/http-response.adoc[]
+
+include::{snippets}/series-list-unavailable/http-response.adoc[]
+
+=== 시리즈 조회
+
+include::{snippets}/series-found/http-request.adoc[]
+include::{snippets}/series-found/path-parameters.adoc[]
+
+=== 오류
+
+include::{snippets}/series-not-found/http-response.adoc[]
+
+include::{snippets}/series-invalid-id/http-response.adoc[]
+
+include::{snippets}/series-unavailable/http-response.adoc[]
+
 == 개별 게시글
 
 * `postId`는 블로그가 저장한 내부 UUID입니다. Notion 페이지 ID나 제목으로 대신 조회할 수 없습니다.
 * 공개하지 않은 글과 보관한 글은 `404`입니다.
+* 글 화면의 태그는 관리자가 지정한 태그이며 해당 태그의 글 목록으로 이동합니다. Notion 원문 태그는 공개 화면에 표시하지 않습니다.
+* 시리즈에 속한 글에는 본문 위에 접을 수 있는 시리즈 목차, 본문 아래에 이전 글·다음 글 링크가 있습니다. 목차는 공개된 글만 순서대로 보여 줍니다.
 
 === 게시글 조회
 
@@ -72,6 +136,11 @@ include::{snippets}/post-found/response-headers.adoc[]
 ====
 include::{snippets}/post-found/http-response.adoc[]
 ====
+
+시리즈에 속한 글(목차와 이전·다음, 태그 링크):
+
+include::{snippets}/post-series/http-request.adoc[]
+include::{snippets}/post-series/http-response.adoc[]
 
 === 오류
 
@@ -151,7 +220,7 @@ include::{snippets}/media-invalid-key/http-response.adoc[]
 
 * `/admin/**`은 `BLOG_ADMIN_USERNAME`·`BLOG_ADMIN_PASSWORD`로 설정한 단일 운영자만 쓰며, 둘 중 하나라도 비어 있으면 로그인 화면을 포함해 `403`으로 닫힙니다. 로그인되지 않은 요청은 `/admin/login`으로 이동합니다. 로그인 제출(`POST /admin/login`)과 로그아웃(`POST /admin/logout`)은 보안 필터가 처리하며 이 문서의 예시에 없습니다. 로그인 성공은 `/admin/posts`로 이동하고, 실패는 이유를 구분하지 않고 `/admin/login?error`로 이동합니다. 모든 `POST`는 로그인·로그아웃을 포함해 CSRF 토큰이 필요합니다. 아래 예시는 인증을 통과한 요청에 컨트롤러가 답하는 내용이며 보안 필터는 포함하지 않습니다.
 * 관리 응답은 `Cache-Control: no-store`입니다.
-* 발행은 미리보기가 준 `revisionId`와 `generation`을 함께 보냅니다. 그 사이 새 변경이 생기면 발행하지 않고 미리보기로 돌아가 안내합니다. 발행 취소·보관·복원은 Notion 없이 처리합니다.
+* 발행은 발행 확인 화면이 준 `revisionId`와 `generation`을 함께 보냅니다. 그 사이 새 변경이 생기면 발행하지 않고 발행 확인 화면으로 돌아가 안내합니다. 비공개로 전환·보관·보관 해제는 Notion 없이 처리합니다.
 
 === 로그인 화면
 
@@ -167,21 +236,26 @@ include::{snippets}/admin-login-failed/http-response.adoc[]
 
 === 글 관리 목록
 
+`status`로 공개(`public`)·비공개(`private`)·보관(`archived`)을 고르며, 없으면 보관한 글을 뺀 모든 글입니다. "전체"는 보관한 글을 포함하지 않으므로 보관한 글은 보관 필터에서 확인합니다. 옛 상태 값(`published`·`changes_pending`·`draft`·`unpublished`)은 같은 묶음으로 읽습니다. `q`는 제목 검색입니다.
+
+* 공개는 발행된 글(가져온 변경이 있어도 포함)이고 비공개는 아직 발행하지 않았거나 비공개로 전환한 글입니다. 저장된 상태 값은 바꾸지 않았습니다.
+* 가져온 변경이 있는 공개 글은 `공개` 배지와 `가져온 변경 있음` 배지가 함께 보입니다. 가져오기 실패는 `가져오기 문제` 배지와 설명으로 따로 보이며 공개 상태를 바꾸지 않습니다.
+
 include::{snippets}/admin-posts-list/http-request.adoc[]
 include::{snippets}/admin-posts-list/http-response.adoc[]
 
-=== 홈 꾸미기
+=== 설정
 
-`GET /admin/home`에서 표시 형태·정렬·쪽 크기·요약/날짜/카테고리 표시를 확인하고 `POST /admin/home`으로 저장합니다. 저장 전 화면의 예시는 공개 홈을 바꾸지 않습니다. 입력이 잘못되면 저장하지 않고 알림과 함께 설정 화면으로 돌아갑니다.
+`GET /admin/home`에서 표시 형태·정렬·쪽 크기·요약/발행일/태그 표시를 확인하고 `POST /admin/home`으로 저장합니다. 저장 전 화면의 예시는 내 블로그를 바꾸지 않습니다. 입력이 잘못되면 저장하지 않고 알림과 함께 설정 화면으로 돌아갑니다. `태그 표시`를 끄면 홈의 태그 탐색과 글별 태그를 함께 숨기지만 태그 주소의 조회는 유지합니다.
 
 include::{snippets}/admin-home/http-request.adoc[]
 include::{snippets}/admin-home-save/http-request.adoc[]
 include::{snippets}/admin-home-save/http-response.adoc[]
 include::{snippets}/admin-home-save-invalid/http-response.adoc[]
 
-=== 카테고리 관리
+=== 태그 관리
 
-카테고리는 앱에서 관리합니다. 삭제는 초안·보관 글을 포함해 배정된 글이 없을 때만 허용합니다.
+태그는 앱에서 관리합니다(경로는 `/admin/categories`). 기존 카테고리의 ID·이름·표시 순서·글과의 연결이 그대로 태그가 됩니다. 삭제는 비공개·보관 글을 포함해 지정된 글이 없을 때만 허용합니다.
 
 include::{snippets}/admin-categories/http-request.adoc[]
 include::{snippets}/admin-category-create/http-request.adoc[]
@@ -191,16 +265,47 @@ include::{snippets}/admin-category-update/path-parameters.adoc[]
 include::{snippets}/admin-category-delete-assigned/http-request.adoc[]
 include::{snippets}/admin-category-delete-assigned/http-response.adoc[]
 
-=== 글의 카테고리 지정
+=== 시리즈 관리
 
-`categoryId`를 여러 번 보내 글에 카테고리를 여러 개 지정합니다. 생략하면 모든 지정을 해제합니다. 저장한 분류는 공개 목록에 바로 반영되며 본문·발행 상태·Notion 태그는 바뀌지 않습니다.
+시리즈는 제목(1~100자)·짧은 설명(300자 이하)과 순서 있는 글 목록입니다. 글 하나는 시리즈 하나에만 속하며 새로 넣은 글은 마지막에 놓입니다. 시리즈를 삭제하거나 글을 빼도 글·태그·공개 상태는 바뀌지 않습니다.
+
+* `GET /admin/series`는 목록과 생성 폼, `POST /admin/series`는 생성(성공하면 편집 화면으로 이동)입니다.
+* `GET /admin/series/{seriesId}`는 편집 화면입니다. 소속 글은 위로·아래로·제외 버튼으로, 후보 글은 추가 버튼으로 바꾸며 저장하기 전에는 서버에 보내지 않습니다. 다른 시리즈에 속한 후보는 현재 시리즈를 함께 보이고 저장하면 이 시리즈로 옮겨집니다.
+* `POST /admin/series/{seriesId}`는 제목·설명과 `postId`(최종 소속과 순서)를 한 번에 저장합니다. 없는 글이 있으면 아무것도 저장하지 않고 오류 알림으로 돌아갑니다.
+* `POST /admin/series/{seriesId}/delete`는 시리즈만 삭제합니다.
+
+include::{snippets}/admin-series/http-request.adoc[]
+include::{snippets}/admin-series-create/http-request.adoc[]
+include::{snippets}/admin-series-create/http-response.adoc[]
+include::{snippets}/admin-series-edit/http-request.adoc[]
+include::{snippets}/admin-series-edit/path-parameters.adoc[]
+include::{snippets}/admin-series-save/http-request.adoc[]
+include::{snippets}/admin-series-save/http-response.adoc[]
+include::{snippets}/admin-series-save-rejected/http-response.adoc[]
+include::{snippets}/admin-series-delete/http-response.adoc[]
+
+없는 시리즈:
+
+include::{snippets}/admin-series-missing/http-response.adoc[]
+
+=== 글의 분류 편집
+
+`GET /admin/posts/{postId}/categories`에서 태그(여러 개)·시리즈(0개 또는 1개)·Notion 원문 태그를 한 화면에서 고르고, `POST`로 한 번에 저장합니다. `categoryId`를 여러 번, `seriesId`를 최대 한 번(비우면 해제), `sourceTag`를 여러 번 보냅니다.
+
+* 태그는 보낸 목록 전체로 바꾸며 생략하면 모든 지정을 해제합니다. 시리즈를 바꾸면 새 시리즈의 마지막에 놓입니다.
+* 원문 태그는 공개 글이면 공개 중인 내용, 그 밖의 글이면 최신 가져온 내용의 태그가 후보입니다. 고르면 같은 이름의 태그를 재사용하거나 새로 만들어 이 글에 추가로 지정하며, 고르기 전에는 공개 탐색에 나타나지 않습니다. 이후 Notion 가져오기가 지정한 태그와 시리즈를 덮어쓰지 않습니다.
+* 저장은 모두 성공하거나 아무것도 바뀌지 않습니다. 본문·발행 상태·Notion 원문은 바뀌지 않으며, 공개 중인 글의 태그와 시리즈는 저장 즉시 반영됩니다.
+* 없는 태그·시리즈, 후보가 아니거나 이름 규칙(1~50자)에 맞지 않는 원문 태그는 저장하지 않고 오류 알림으로 돌아갑니다. 폼 값의 UUID 형식이 틀리면 `400`입니다.
 
 include::{snippets}/admin-post-categories/http-request.adoc[]
 include::{snippets}/admin-post-categories/path-parameters.adoc[]
 include::{snippets}/admin-post-categories-save/http-request.adoc[]
 include::{snippets}/admin-post-categories-save/http-response.adoc[]
+include::{snippets}/admin-post-categories-save-rejected/http-response.adoc[]
 
 === 미리보기
+
+관리 화면은 가져온 내용과 공개 중인 내용을 `version`(`latest`·`published`)으로 전환해 보여 줍니다. 상세 화면의 패널에는 현재 태그, 시리즈 위치, 읽기 전용 Notion 원문 태그가 보이며 발행은 발행 확인 화면에서만 합니다.
 
 include::{snippets}/admin-post-preview/http-request.adoc[]
 include::{snippets}/admin-post-preview/path-parameters.adoc[]
@@ -219,10 +324,39 @@ include::{snippets}/admin-post-invalid-id/http-response.adoc[]
 
 include::{snippets}/admin-post-unavailable/http-response.adoc[]
 
-=== 가져오기·발행·발행 취소·보관·복원
+=== 발행 확인
+
+`GET /admin/posts/{postId}/review`는 읽기 전용 발행 확인 화면입니다. 제목·표지(없으면 내장 썸네일)·요약, 현재 태그와 시리즈, 가져온 내용 미리보기, 이번에 공개할 가져온 내용의 시각, `Notion에서 수정`·`최신 내용 가져오기`·`분류 편집` 링크를 보여 줍니다.
+
+* 발행 버튼은 확인 화면이 보여 준 `revisionId`와 `generation`만 보냅니다. 그 사이 새 변경이 생기면 발행하지 않고 이 확인 화면으로 돌아와 다시 확인하게 합니다.
+* `version=published`는 공개 중인 내용을 비교하는 화면이며 발행 폼 없이 `200`으로 열립니다. 발행할 가져온 내용이 없거나 보관된 글이어도 화면은 열리고 이유만 안내합니다.
+* 가져온 내용이 아직 없을 때만 상세 화면으로 `303`으로 돌려보냅니다.
+* 확인을 취소하거나 발행에 실패해도 공개 중인 내용과 공개 상태, 앞서 저장한 분류는 바뀌지 않습니다. Notion의 웹 공개 설정은 이 앱의 공개 상태에 영향을 주지 않습니다.
+
+include::{snippets}/admin-post-review/http-request.adoc[]
+include::{snippets}/admin-post-review/path-parameters.adoc[]
+
+공개 중인 내용 비교:
+
+include::{snippets}/admin-post-review-published/http-request.adoc[]
+
+가져온 내용이 없는 글과 없는 글:
+
+include::{snippets}/admin-post-review-not-imported/http-response.adoc[]
+
+include::{snippets}/admin-post-review-missing/http-response.adoc[]
+
+=== 가져오기·발행·비공개 전환·보관·복원
+
+`발행하기`(처음 공개)와 `변경 발행`(공개 중인 글의 새 내용)은 같은 `POST …/publish`입니다. 비공개로 전환하면 공개만 중지되고 원문과 가져온 내용은 남습니다.
 
 include::{snippets}/admin-post-refresh/http-request.adoc[]
 include::{snippets}/admin-post-refresh/http-response.adoc[]
+
+include::{snippets}/admin-post-publish/http-request.adoc[]
+include::{snippets}/admin-post-publish/http-response.adoc[]
+
+새 변경이 있어 발행하지 않으면 발행 확인 화면으로 돌아갑니다.
 
 include::{snippets}/admin-post-publish-stale/http-request.adoc[]
 include::{snippets}/admin-post-publish-stale/http-response.adoc[]

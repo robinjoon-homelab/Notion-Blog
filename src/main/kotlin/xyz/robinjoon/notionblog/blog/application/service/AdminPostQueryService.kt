@@ -61,7 +61,8 @@ class AdminPostQueryService(
         val shown = references.resolve(listOfNotNull(revision, chrome.header, chrome.footer))
         val history = AdminPostHistory(post.publication.publishedRevisionId, post.firstPublishedAt)
         val actions = summaries.actions(post, revision.id)
-        return AdminPostLookupResult.Found(AdminPostPreview(summary, chrome, revision, shown, actions, history))
+        val preview = AdminPostPreview(summary, chrome, revision, shown, actions, history)
+        return AdminPostLookupResult.Found(preview, summaries.classification(post))
     }
 
     private fun load(
@@ -76,7 +77,7 @@ class AdminPostQueryService(
         }
 
     private fun AdminPostListQuery.matches(summary: AdminPostSummary): Boolean {
-        val statusMatches = if (status == null) summary.status != AdminPostStatus.ARCHIVED else summary.status == status
+        val statusMatches = if (statuses.isEmpty()) summary.status != AdminPostStatus.ARCHIVED else summary.status in statuses
         return statusMatches && summary.title.contains(title.trim(), ignoreCase = true)
     }
 

@@ -10,16 +10,22 @@ import xyz.robinjoon.notionblog.blog.application.model.AdminPostListQuery
 import xyz.robinjoon.notionblog.blog.application.model.AdminPostLookupResult
 import xyz.robinjoon.notionblog.blog.application.model.AdminPostStatus
 import xyz.robinjoon.notionblog.blog.application.model.AdminPostSummary
+import xyz.robinjoon.notionblog.blog.application.model.CurrentClassification
+import xyz.robinjoon.notionblog.blog.application.model.ListedCategory
 import xyz.robinjoon.notionblog.blog.application.model.PageQuery
 import xyz.robinjoon.notionblog.blog.application.model.PreviewVersion
+import xyz.robinjoon.notionblog.blog.application.model.SeriesMembership
 import xyz.robinjoon.notionblog.blog.application.model.SourceHealth
 import xyz.robinjoon.notionblog.blog.application.port.output.diagnostics.SnapshotFailureReporter
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.PostRepository
+import xyz.robinjoon.notionblog.blog.domain.category.CategoryId
 import xyz.robinjoon.notionblog.blog.domain.post.PostId
+import xyz.robinjoon.notionblog.blog.domain.series.SeriesId
 import xyz.robinjoon.notionblog.support.fixture.PostFixtures
 import xyz.robinjoon.notionblog.support.fixture.SiteFixtures
 import java.net.URI
 import java.time.Instant
+import java.util.UUID
 
 class AdminPostQueryServiceTest {
     private val summaries = mockk<AdminPostSummaryService>()
@@ -29,9 +35,14 @@ class AdminPostQueryServiceTest {
     private val failures = mockk<SnapshotFailureReporter>()
     private val service = AdminPostQueryService(summaries, posts, chromes, references, failures)
     private val noActions = AdminPostActions(null, false, true, false)
+    private val classification =
+        CurrentClassification(
+            listOf(ListedCategory(CategoryId(UUID.fromString("00000000-0000-0000-0000-000000000009")), "Kotlin")),
+            SeriesMembership(SeriesId(UUID.fromString("00000000-0000-0000-0001-000000000001")), "DDD", 2, 3),
+        )
 
     @Test
-    fun `the list hides archived posts by default and filters by status and title`() {
+    fun `the list hides archived posts by default and filters by any of the chosen statuses and title`() {
         val all =
             listOf(
                 summary(1, "Kotlin notes", AdminPostStatus.PUBLISHED, Instant.parse("2026-10-02T00:00:00Z")),
@@ -43,22 +54,25 @@ class AdminPostQueryServiceTest {
 
         val everything =
             service
-                .list(AdminPostListQuery(null, "", PageQuery(1, 10)))
+                .list(AdminPostListQuery(emptySet(), "", PageQuery(1, 10)))
                 .posts.items
                 .map { it.postId }
-        val kotlinDrafts = service.list(AdminPostListQuery(AdminPostStatus.DRAFT, "KOTLIN", PageQuery(1, 10))).posts.items
-        val archived = service.list(AdminPostListQuery(AdminPostStatus.ARCHIVED, "", PageQuery(1, 10))).posts.items
+        val kotlinDrafts = service.list(AdminPostListQuery(setOf(AdminPostStatus.DRAFT), "KOTLIN", PageQuery(1, 10))).posts.items
+        val archived = service.list(AdminPostListQuery(setOf(AdminPostStatus.ARCHIVED), "", PageQuery(1, 10))).posts.items
+        val publicOrArchived =
+            service.list(AdminPostListQuery(setOf(AdminPostStatus.PUBLISHED, AdminPostStatus.ARCHIVED), "", PageQuery(1, 10))).posts.items
 
         assertThat(everything).containsExactly(id(3), id(4), id(1))
         assertThat(kotlinDrafts.map { it.postId }).containsExactly(id(4))
         assertThat(archived.map { it.postId }).containsExactly(id(2))
+        assertThat(publicOrArchived.map { it.postId }).containsExactly(id(2), id(1))
     }
 
     @Test
     fun `the list is paged after filtering`() {
         givenList((1..5).map { summary(it, "Post $it", AdminPostStatus.DRAFT, Instant.parse("2026-10-0${it}T00:00:00Z")) })
 
-        val page = service.list(AdminPostListQuery(null, "post", PageQuery(2, 2))).posts
+        val page = service.list(AdminPostListQuery(emptySet(), "post", PageQuery(2, 2))).posts
 
         assertThat(page.items.map { it.postId }).containsExactly(id(3), id(2))
         assertThat(page.totalItems).isEqualTo(5)
@@ -91,12 +105,14 @@ class AdminPostQueryServiceTest {
         every { chromes.load() } returns chrome
         every { references.resolve(listOf(revision)) } returns SiteFixtures.noReferences()
         every { summaries.actions(post, published) } returns noActions
+        every { summaries.classification(post) } returns classification
 
         val result = service.get(id(1), PreviewVersion.PUBLISHED) as AdminPostLookupResult.Found
 
         assertThat(result.preview.revision).isEqualTo(revision)
         assertThat(result.preview.history).isEqualTo(AdminPostHistory(published, PostFixtures.capturedAt))
         assertThat(result.preview.actions).isEqualTo(noActions)
+        assertThat(result.classification).isEqualTo(classification)
     }
 
     private fun givenList(all: List<AdminPostSummary>) {

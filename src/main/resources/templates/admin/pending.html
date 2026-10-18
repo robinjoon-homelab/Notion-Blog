@@ -7,17 +7,17 @@
     <div>
         <button type="button" class="nb-button nb-menu" data-toggle-menu aria-expanded="false" aria-controls="nb-sidebar">메뉴</button>
         <main class="nb-main">
-            <a class="nb-muted nb-small" href="/admin/posts">← 게시글</a>
+            <a class="nb-muted nb-small" href="/admin/posts">← 글 관리</a>
             <div class="nb-section-head"><h1 class="nb-heading" th:text="${view.title}">제목</h1></div>
             <div th:replace="~{admin/fragments :: notice(${view.notice})}"></div>
             <p>아직 Notion에서 가져온 내용이 없습니다. Notion에서 글을 쓴 뒤 가져오세요.</p>
             <p class="nb-muted nb-small" th:if="${view.source.problem != null}" th:text="${view.source.problem}">문제</p>
             <div class="nb-actions">
-                <a class="nb-button" th:href="${view.source.editUrl}" target="_blank" rel="noopener noreferrer">Notion에서 작성 ↗</a>
+                <a class="nb-button" th:href="${view.source.editUrl}" target="_blank" rel="noopener noreferrer">Notion에서 수정 ↗</a>
                 <form th:action="@{/admin/posts/{id}/refresh(id=${view.postId})}" method="post">
                     <button class="nb-button nb-primary" type="submit">최신 내용 가져오기</button>
                 </form>
-                <a class="nb-button" th:href="@{/admin/posts/{id}/categories(id=${view.postId})}">카테고리 지정</a>
+                <a class="nb-button" th:href="@{/admin/posts/{id}/categories(id=${view.postId})}">분류 편집</a>
                 <form th:if="${view.actions.canArchive}" th:action="@{/admin/posts/{id}/archive(id=${view.postId})}" method="post">
                     <button class="nb-link-danger" type="submit">보관</button>
                 </form>

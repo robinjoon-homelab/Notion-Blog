@@ -15,7 +15,7 @@ import xyz.robinjoon.notionblog.blog.application.model.CategoryOverview
 import xyz.robinjoon.notionblog.blog.application.port.input.CategoryManagementUseCase
 import xyz.robinjoon.notionblog.blog.domain.category.CategoryId
 
-// 카테고리 생성·이름과 표시 순서 변경·삭제. 글이 지정된 카테고리의 삭제 거절은 입력 포트의 결과를 그대로 따른다.
+// 태그(코드명 카테고리) 생성·이름과 표시 순서 변경·삭제. 글이 지정된 태그의 삭제 거절은 입력 포트의 결과를 그대로 따른다.
 @Controller
 internal class AdminCategoryController(
     private val categories: CategoryManagementUseCase,
@@ -32,7 +32,7 @@ internal class AdminCategoryController(
     ): ModelAndView {
         val input = form.toInput() ?: return redirect(CATEGORIES_PATH, attributes, INVALID_INPUT, true)
         return when (categories.create(input.name, input.position)) {
-            is CategoryChangeResult.Saved -> redirect(CATEGORIES_PATH, attributes, "카테고리를 추가했습니다. 글에는 아직 지정되지 않았습니다.")
+            is CategoryChangeResult.Saved -> redirect(CATEGORIES_PATH, attributes, "태그를 추가했습니다. 글에는 아직 지정되지 않았습니다.")
             else -> redirect(CATEGORIES_PATH, attributes, NAME_IN_USE, true)
         }
     }
@@ -46,7 +46,7 @@ internal class AdminCategoryController(
         val id = WebIds.categoryId(categoryId) ?: return notFound()
         val input = form.toInput() ?: return redirect(CATEGORIES_PATH, attributes, INVALID_INPUT, true)
         return when (categories.update(id, input.name, input.position)) {
-            is CategoryChangeResult.Saved -> redirect(CATEGORIES_PATH, attributes, "카테고리를 저장했습니다.")
+            is CategoryChangeResult.Saved -> redirect(CATEGORIES_PATH, attributes, "태그를 저장했습니다. 내 블로그에 바로 반영됩니다.")
             CategoryChangeResult.NameInUse -> redirect(CATEGORIES_PATH, attributes, NAME_IN_USE, true)
             CategoryChangeResult.NotFound -> notFound()
             CategoryChangeResult.AssignedToPosts -> redirect(CATEGORIES_PATH, attributes, NAME_IN_USE, true)
@@ -60,10 +60,26 @@ internal class AdminCategoryController(
     ): ModelAndView {
         val id: CategoryId = WebIds.categoryId(categoryId) ?: return notFound()
         return when (categories.delete(id)) {
-            is CategoryChangeResult.Saved -> redirect(CATEGORIES_PATH, attributes, "카테고리를 삭제했습니다.")
-            CategoryChangeResult.AssignedToPosts -> redirect(CATEGORIES_PATH, attributes, "글이 지정된 카테고리는 삭제할 수 없습니다. 먼저 글의 지정을 해제하세요.", true)
-            CategoryChangeResult.NotFound -> notFound()
-            CategoryChangeResult.NameInUse -> redirect(CATEGORIES_PATH, attributes, NAME_IN_USE, true)
+            is CategoryChangeResult.Saved -> {
+                redirect(CATEGORIES_PATH, attributes, "태그를 삭제했습니다.")
+            }
+
+            CategoryChangeResult.AssignedToPosts -> {
+                redirect(
+                    CATEGORIES_PATH,
+                    attributes,
+                    "비공개·보관 글을 포함해 글이 지정된 태그는 삭제할 수 없습니다. 먼저 글의 지정을 해제하세요.",
+                    true,
+                )
+            }
+
+            CategoryChangeResult.NotFound -> {
+                notFound()
+            }
+
+            CategoryChangeResult.NameInUse -> {
+                redirect(CATEGORIES_PATH, attributes, NAME_IN_USE, true)
+            }
         }
     }
 
@@ -81,7 +97,7 @@ internal class AdminCategoryController(
     private companion object {
         const val CATEGORIES_PATH = "/admin/categories"
         const val INVALID_INPUT = "이름은 1~50자로, 표시 순서는 0 이상의 정수로 입력하세요."
-        const val NAME_IN_USE = "같은 이름의 카테고리가 이미 있습니다. 대소문자는 구분하지 않습니다."
+        const val NAME_IN_USE = "같은 이름의 태그가 이미 있습니다. 대소문자는 구분하지 않습니다."
     }
 }
 

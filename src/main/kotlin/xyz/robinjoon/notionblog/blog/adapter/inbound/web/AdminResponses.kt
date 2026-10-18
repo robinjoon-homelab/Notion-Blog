@@ -25,5 +25,7 @@ internal fun errorView(
 
 internal fun postPath(postId: PostId): String = "/admin/posts/${postId.value}"
 
+internal fun reviewPath(postId: PostId): String = "${postPath(postId)}/review"
+
 // 리다이렉트 직후 한 번만 보이는 플래시 알림을 꺼낸다.
 internal fun Model.notice(): NoticeView? = asMap()["notice"] as? NoticeView

@@ -72,6 +72,7 @@ class HexagonalArchitectureTest {
                         "sync.SyncState",
                         "home.HomeConfiguration",
                         "category.Category",
+                        "series.Series",
                     ),
             )
         private val aggregateRoots =

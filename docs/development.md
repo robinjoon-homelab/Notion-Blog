@@ -50,7 +50,7 @@
 
 ## API 변경
 
-- `BlogHttpDocumentationTest`에서 입력 포트를 MockK로 대체하고 MockMvc로 실제 컨트롤러·예외 변환·보안 헤더 필터·Thymeleaf·RSS 렌더링의 요청·응답·상태 코드와 404·503·조건부 요청 응답을 검증한다. 관리 화면·관리 명령·공개/관리 파일 경로는 `AdminHttpDocumentationTest`에서 입력 포트를 MockK로 대체하고 MockMvc로 실제 컨트롤러·예외 변환·보안 헤더 필터·Thymeleaf 렌더링을 검증한다. 두 테스트 모두 DB와 서비스 구현을 연결하지 않는다.
+- `BlogHttpDocumentationTest`(홈·글·RSS·루트오류)와 `BlogDiscoveryHttpDocumentationTest`(태그·검색·시리즈)에서 입력 포트를 MockK로 대체하고 MockMvc로 실제 컨트롤러·예외 변환·보안 헤더 필터·Thymeleaf·RSS 렌더링의 요청·응답·상태 코드와 404·503·조건부 요청 응답을 검증한다. 관리 화면·관리 명령·공개/관리 파일 경로는 `AdminHttpDocumentationTest`(로그인·글관리·미리보기·발행확인·명령·미디어)와 `AdminManagementHttpDocumentationTest`(홈설정·태그·분류·시리즈관리)에서 입력 포트를 MockK로 대체하고 MockMvc로 실제 컨트롤러·예외 변환·보안 헤더 필터·Thymeleaf 렌더링을 검증한다. 네 테스트 모두 DB와 서비스 구현을 연결하지 않는다.
 - 관리 경로의 인증·권한·CSRF·로그아웃은 보안 설정과 탐침 컨트롤러만 연결한 `AdminSecurityFilterChainTest`·`AdminSecurityClosedChainTest`에서 검증한다.
 - API 변경과 함께 REST Docs 설명을 수정하고 `src/docs/asciidoc/index.adoc`에 생성 스니펫을 연결한다. 문서는 같은 출처 스타일만 쓰므로 외부 글꼴·스크립트를 불러오는 Asciidoctor 속성을 켜지 않는다.
 - HTTP 상세를 README·개발 가이드에 재작성하지 않는다. 업무 규칙은 [아키텍처 문서](ddd-architecture.md#현재-업무-규칙)에서 관리한다.

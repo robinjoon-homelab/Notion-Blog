@@ -41,4 +41,9 @@ class CategoryTest {
         assertThatIllegalArgumentException().isThrownBy { category.update("", 0) }
         assertThatIllegalArgumentException().isThrownBy { category.update("Kotlin", -1) }
     }
+
+    @Test
+    fun `names that differ only in case or surrounding spaces normalize to the same name`() {
+        assertThat(Category.normalize(" KOTLIN ")).isEqualTo(Category.create(id, "Kotlin", 0).normalizedName)
+    }
 }

@@ -14,6 +14,9 @@ import xyz.robinjoon.notionblog.blog.application.model.RevisionMedia
 import xyz.robinjoon.notionblog.blog.application.model.SourceHealth
 import xyz.robinjoon.notionblog.blog.domain.post.PostId
 import xyz.robinjoon.notionblog.blog.domain.post.PostProperties
+import xyz.robinjoon.notionblog.blog.domain.post.block.content.TextBlockContent
+import xyz.robinjoon.notionblog.blog.domain.post.block.inline.InlineContent
+import xyz.robinjoon.notionblog.blog.domain.sync.SyncFailureKind
 import java.net.URI
 import java.time.Instant
 import java.util.UUID
@@ -27,12 +30,13 @@ internal object AdminFixtures {
         title: String,
         status: AdminPostStatus,
         missingMedia: Int = 0,
+        failureKind: SyncFailureKind? = null,
     ) = AdminPostSummary(
         PostId(UUID.nameUUIDFromBytes(title.toByteArray())),
         title,
         status,
         Instant.parse("2026-10-16T05:00:00Z"),
-        SourceHealth(URI("https://www.notion.so/page"), null, null),
+        SourceHealth(URI("https://www.notion.so/page"), null, failureKind),
         missingMedia,
     )
 
@@ -55,7 +59,12 @@ internal object AdminFixtures {
     ) = AdminPostPreview(
         summary = summary("Hello", status).copy(postId = WebFixtures.postId),
         chrome = WebFixtures.chrome(),
-        revision = WebFixtures.revision(properties = PostProperties("Hello", "A summary", listOf("kotlin"), null)),
+        revision =
+            WebFixtures.revision(
+                title = "Hello",
+                nodes = listOf(PostPageViewFixtures.node("body", TextBlockContent.Paragraph(listOf(InlineContent.Text("Imported body"))))),
+                properties = PostProperties("Hello", "A summary", listOf("kotlin"), null),
+            ),
         references = ContentReferences(emptyMap(), RevisionMedia.empty),
         actions = actions,
         history = history,
