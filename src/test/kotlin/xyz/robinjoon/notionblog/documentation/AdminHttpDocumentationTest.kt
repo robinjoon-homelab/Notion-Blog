@@ -25,11 +25,8 @@ import org.thymeleaf.spring6.SpringTemplateEngine
 import org.thymeleaf.spring6.view.ThymeleafViewResolver
 import org.thymeleaf.templatemode.TemplateMode
 import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver
-import xyz.robinjoon.notionblog.blog.adapter.inbound.web.AdminCategoryController
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.AdminFixtures
-import xyz.robinjoon.notionblog.blog.adapter.inbound.web.AdminHomeController
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.AdminLoginController
-import xyz.robinjoon.notionblog.blog.adapter.inbound.web.AdminPostCategoryController
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.AdminPostCommandController
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.AdminPostController
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.AdminViewAssembler
@@ -42,28 +39,18 @@ import xyz.robinjoon.notionblog.blog.application.model.AdminPostListQuery
 import xyz.robinjoon.notionblog.blog.application.model.AdminPostLookupResult
 import xyz.robinjoon.notionblog.blog.application.model.AdminPostStatus
 import xyz.robinjoon.notionblog.blog.application.model.ArchivePostResult
-import xyz.robinjoon.notionblog.blog.application.model.CategoryChangeResult
-import xyz.robinjoon.notionblog.blog.application.model.CategoryOverview
 import xyz.robinjoon.notionblog.blog.application.model.MediaContent
 import xyz.robinjoon.notionblog.blog.application.model.MediaLookupResult
 import xyz.robinjoon.notionblog.blog.application.model.PageQuery
-import xyz.robinjoon.notionblog.blog.application.model.PostCategoryChangeResult
-import xyz.robinjoon.notionblog.blog.application.model.PostCategoryLookupResult
-import xyz.robinjoon.notionblog.blog.application.model.PostCategorySelection
 import xyz.robinjoon.notionblog.blog.application.model.PreviewVersion
 import xyz.robinjoon.notionblog.blog.application.model.PublishPostResult
 import xyz.robinjoon.notionblog.blog.application.model.RefreshPostResult
 import xyz.robinjoon.notionblog.blog.application.model.RestorePostResult
 import xyz.robinjoon.notionblog.blog.application.model.UnpublishPostResult
 import xyz.robinjoon.notionblog.blog.application.port.input.AdminPostQueryUseCase
-import xyz.robinjoon.notionblog.blog.application.port.input.CategoryManagementUseCase
 import xyz.robinjoon.notionblog.blog.application.port.input.GetMediaUseCase
-import xyz.robinjoon.notionblog.blog.application.port.input.HomeConfigurationUseCase
-import xyz.robinjoon.notionblog.blog.application.port.input.PostCategoriesUseCase
 import xyz.robinjoon.notionblog.blog.application.port.input.PostPublicationUseCase
 import xyz.robinjoon.notionblog.blog.application.port.input.RefreshPostUseCase
-import xyz.robinjoon.notionblog.blog.domain.category.CategoryId
-import xyz.robinjoon.notionblog.blog.domain.home.HomeConfiguration
 import xyz.robinjoon.notionblog.blog.domain.post.block.media.MediaKey
 import java.time.Clock
 import java.time.Instant
@@ -80,9 +67,6 @@ class AdminHttpDocumentationTest {
     private val refreshes = mockk<RefreshPostUseCase>()
     private val publications = mockk<PostPublicationUseCase>()
     private val media = mockk<GetMediaUseCase>()
-    private val homeConfigurations = mockk<HomeConfigurationUseCase>()
-    private val categories = mockk<CategoryManagementUseCase>()
-    private val postCategories = mockk<PostCategoriesUseCase>()
     private val clock = Clock.fixed(Instant.parse("2026-10-16T05:20:00Z"), ZoneOffset.UTC)
     private val postId = WebFixtures.postId
     private val mediaKey = MediaKey("a".repeat(KEY_LENGTH))
@@ -92,9 +76,6 @@ class AdminHttpDocumentationTest {
                 AdminLoginController(),
                 AdminPostController(queries, AdminViewAssembler(clock, PostPageViewAssembler(clock))),
                 AdminPostCommandController(refreshes, publications),
-                AdminHomeController(homeConfigurations),
-                AdminCategoryController(categories),
-                AdminPostCategoryController(postCategories),
                 MediaController(media),
             ).setControllerAdvice(WebExceptionHandler())
             .setViewResolvers(thymeleafViewResolver())
@@ -134,11 +115,15 @@ class AdminHttpDocumentationTest {
 
     @Test
     fun `admin list documents the filtered post table`() {
-        every { queries.list(AdminPostListQuery(AdminPostStatus.PUBLISHED, "kotlin", PageQuery(1, PAGE_SIZE))) } returns
+        every {
+            queries.list(
+                AdminPostListQuery(setOf(AdminPostStatus.PUBLISHED, AdminPostStatus.CHANGES_PENDING), "kotlin", PageQuery(1, PAGE_SIZE)),
+            )
+        } returns
             AdminFixtures.list(listOf(AdminFixtures.summary("Kotlin tips", AdminPostStatus.PUBLISHED)))
 
         mvc
-            .perform(get("/admin/posts").param("status", "published").param("q", "kotlin"))
+            .perform(get("/admin/posts").param("status", "public").param("q", "kotlin"))
             .andExpect(status().isOk)
             .andExpect(content().string(containsString("Kotlin tips")))
             .andExpect(header().string("Cache-Control", "no-store"))
@@ -202,11 +187,71 @@ class AdminHttpDocumentationTest {
                     "$preview/publish",
                 ).param("revisionId", command.revisionId.value.toString()).param("generation", command.generation.toString()),
             ).andExpect(status().isSeeOther)
-            .andExpect(redirectedUrl(preview))
+            .andExpect(redirectedUrl("$preview/review"))
             .andDo(document("admin-post-publish-stale"))
         mvc.perform(post("$preview/unpublish")).andExpect(status().isSeeOther).andDo(document("admin-post-unpublish"))
         mvc.perform(post("$preview/archive")).andExpect(status().isSeeOther).andDo(document("admin-post-archive"))
         mvc.perform(post("$preview/restore")).andExpect(status().isSeeOther).andDo(document("admin-post-restore"))
+    }
+
+    @Test
+    fun `publishing the reviewed revision answers with a redirect back to the detail`() {
+        val command = AdminFixtures.publishCommand
+        every { publications.publish(command) } returns PublishPostResult.Published
+
+        mvc
+            .perform(
+                post("/admin/posts/{postId}/publish", postId.value.toString())
+                    .param("revisionId", command.revisionId.value.toString())
+                    .param("generation", command.generation.toString()),
+            ).andExpect(status().isSeeOther)
+            .andExpect(redirectedUrl("/admin/posts/${postId.value}"))
+            .andDo(document("admin-post-publish", postIdParameter()))
+    }
+
+    @Test
+    fun `review documents the confirmation page, the comparison and the missing import`() {
+        every { queries.get(postId, PreviewVersion.LATEST) } returns
+            AdminPostLookupResult.Found(
+                AdminFixtures.preview(AdminPostStatus.CHANGES_PENDING, AdminFixtures.actions(), AdminFixtures.publishedHistory),
+            )
+        every { queries.get(postId, PreviewVersion.PUBLISHED) } returns
+            AdminPostLookupResult.Found(
+                AdminFixtures.preview(
+                    AdminPostStatus.CHANGES_PENDING,
+                    AdminFixtures.actions(publish = null),
+                    AdminFixtures.publishedHistory,
+                ),
+            )
+
+        mvc
+            .perform(get("/admin/posts/{postId}/review", postId.value.toString()))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString("변경 발행")))
+            .andDo(document("admin-post-review", postIdParameter()))
+        mvc
+            .perform(get("/admin/posts/{postId}/review", postId.value.toString()).param("version", "published"))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString("공개 중인 내용을 비교하는 화면입니다")))
+            .andDo(document("admin-post-review-published", postIdParameter()))
+    }
+
+    @Test
+    fun `review of a post without an import goes back to the detail and unknown posts are not found`() {
+        every { queries.get(postId, PreviewVersion.LATEST) } returns
+            AdminPostLookupResult.NotImported(AdminFixtures.summary("Empty", AdminPostStatus.DRAFT), AdminFixtures.actions(publish = null))
+
+        mvc
+            .perform(get("/admin/posts/{postId}/review", postId.value.toString()))
+            .andExpect(status().isSeeOther)
+            .andExpect(redirectedUrl("/admin/posts/${postId.value}"))
+            .andDo(document("admin-post-review-not-imported", postIdParameter()))
+
+        every { queries.get(postId, PreviewVersion.LATEST) } returns AdminPostLookupResult.NotFound
+        mvc
+            .perform(get("/admin/posts/{postId}/review", postId.value.toString()))
+            .andExpect(status().isNotFound)
+            .andDo(document("admin-post-review-missing", postIdParameter()))
     }
 
     @Test
@@ -218,85 +263,6 @@ class AdminHttpDocumentationTest {
                 post("/admin/posts/{postId}/archive", postId.value.toString()),
             ).andExpect(status().isNotFound)
             .andDo(document("admin-post-archive-missing", postIdParameter()))
-    }
-
-    @Test
-    fun `home editor documents the saved settings and the rejected form`() {
-        every { homeConfigurations.get() } returns HomeConfiguration.defaults()
-        every { homeConfigurations.update(any()) } returns Unit
-
-        mvc
-            .perform(get("/admin/home"))
-            .andExpect(status().isOk)
-            .andExpect(content().string(containsString("예시")))
-            .andDo(document("admin-home"))
-        mvc
-            .perform(
-                post(
-                    "/admin/home",
-                ).param("layout", "CARDS").param("order", "OLDEST_FIRST").param("pageSize", "12").param("showDate", "true"),
-            ).andExpect(status().isSeeOther)
-            .andExpect(redirectedUrl("/admin/home"))
-            .andDo(document("admin-home-save"))
-        mvc
-            .perform(post("/admin/home").param("layout", "CARDS").param("order", "OLDEST_FIRST").param("pageSize", "99"))
-            .andExpect(status().isSeeOther)
-            .andDo(document("admin-home-save-invalid"))
-    }
-
-    @Test
-    fun `categories document listing, creation, update and the delete guard`() {
-        val id = CategoryId(UUID.fromString("00000000-0000-0000-0000-0000000000c1"))
-        every { categories.list() } returns listOf(CategoryOverview(id, "Kotlin", 0, 2))
-        every { categories.create("Spring", 1) } returns CategoryChangeResult.Saved(id)
-        every { categories.update(id, "Kotlin", 3) } returns CategoryChangeResult.Saved(id)
-        every { categories.delete(id) } returns CategoryChangeResult.AssignedToPosts
-
-        mvc
-            .perform(
-                get("/admin/categories"),
-            ).andExpect(status().isOk)
-            .andExpect(content().string(containsString("Kotlin")))
-            .andDo(document("admin-categories"))
-        mvc
-            .perform(post("/admin/categories").param("name", "Spring").param("position", "1"))
-            .andExpect(status().isSeeOther)
-            .andDo(document("admin-category-create"))
-        mvc
-            .perform(post("/admin/categories/{categoryId}", id.value.toString()).param("name", "Kotlin").param("position", "3"))
-            .andExpect(status().isSeeOther)
-            .andDo(document("admin-category-update", categoryIdParameter()))
-        mvc
-            .perform(post("/admin/categories/{categoryId}/delete", id.value.toString()))
-            .andExpect(status().isSeeOther)
-            .andDo(document("admin-category-delete-assigned", categoryIdParameter()))
-    }
-
-    @Test
-    fun `post categories document the multi select form and the replace command`() {
-        val id = CategoryId(UUID.fromString("00000000-0000-0000-0000-0000000000c1"))
-        val secondId = CategoryId(UUID.fromString("00000000-0000-0000-0000-0000000000c2"))
-        val selection =
-            PostCategorySelection(
-                postId,
-                "Post",
-                listOf(CategoryOverview(id, "Kotlin", 0, 1), CategoryOverview(secondId, "개발 기록", 1, 1)),
-                setOf(id, secondId),
-            )
-        every { postCategories.get(postId) } returns PostCategoryLookupResult.Found(selection)
-        every { postCategories.assign(postId, setOf(id, secondId)) } returns PostCategoryChangeResult.Saved
-
-        mvc
-            .perform(get("/admin/posts/{postId}/categories", postId.value.toString()))
-            .andExpect(status().isOk)
-            .andExpect(content().string(containsString("checked")))
-            .andDo(document("admin-post-categories", postIdParameter()))
-        mvc
-            .perform(
-                post("/admin/posts/{postId}/categories", postId.value.toString())
-                    .param("categoryId", id.value.toString(), secondId.value.toString()),
-            ).andExpect(status().isSeeOther)
-            .andDo(document("admin-post-categories-save", postIdParameter()))
     }
 
     @Test
@@ -342,8 +308,6 @@ class AdminHttpDocumentationTest {
     }
 
     private fun postIdParameter() = pathParameters(parameterWithName("postId").description("블로그가 저장한 게시글 UUID"))
-
-    private fun categoryIdParameter() = pathParameters(parameterWithName("categoryId").description("분류 UUID"))
 
     private fun mediaKeyParameter() = pathParameters(parameterWithName("mediaKey").description("파일 내용의 SHA-256 소문자 16진수 64자"))
 

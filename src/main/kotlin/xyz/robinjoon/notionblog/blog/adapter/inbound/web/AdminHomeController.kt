@@ -15,7 +15,7 @@ import xyz.robinjoon.notionblog.blog.domain.home.HomeLayout
 import xyz.robinjoon.notionblog.blog.domain.home.HomePostDetails
 import xyz.robinjoon.notionblog.blog.domain.home.HomePostOrder
 
-// 공개 홈 표시 설정. 명시적으로 저장하기 전까지 공개 화면은 바뀌지 않는다.
+// 내 블로그 홈 표시 설정. 명시적으로 저장하기 전까지 공개 화면은 바뀌지 않는다.
 @Controller
 internal class AdminHomeController(
     private val homeConfigurations: HomeConfigurationUseCase,
@@ -31,7 +31,7 @@ internal class AdminHomeController(
     ): ModelAndView {
         val configuration = form.toConfiguration() ?: return redirect(HOME_PATH, attributes, "입력한 값을 확인하세요. 설정을 저장하지 않았습니다.", true)
         homeConfigurations.update(configuration)
-        return redirect(HOME_PATH, attributes, "홈 화면 설정을 저장했습니다. 공개 홈에 바로 반영됩니다.")
+        return redirect(HOME_PATH, attributes, "설정을 저장했습니다. 내 블로그에 바로 반영됩니다.")
     }
 
     private fun editorView(
@@ -62,8 +62,8 @@ internal class AdminHomeController(
             )
         val orderText =
             mapOf(
-                HomePostOrder.NEWEST_FIRST to ("최신 글 먼저" to "처음 게시한 시각이 늦은 글부터 보여 줍니다."),
-                HomePostOrder.OLDEST_FIRST to ("오래된 글 먼저" to "처음 게시한 시각이 이른 글부터 보여 줍니다."),
+                HomePostOrder.NEWEST_FIRST to ("최신 글 먼저" to "처음 발행한 시각이 늦은 글부터 보여 줍니다."),
+                HomePostOrder.OLDEST_FIRST to ("오래된 글 먼저" to "처음 발행한 시각이 이른 글부터 보여 줍니다."),
             )
     }
 }

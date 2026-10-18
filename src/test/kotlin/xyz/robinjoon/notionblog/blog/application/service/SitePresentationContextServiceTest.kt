@@ -27,14 +27,14 @@ import xyz.robinjoon.notionblog.blog.domain.site.SiteMetadata
 import xyz.robinjoon.notionblog.support.fixture.PostFixtures
 import xyz.robinjoon.notionblog.support.fixture.SiteFixtures
 
-class SiteChromeServiceTest {
+class SitePresentationContextServiceTest {
     private val sites = mockk<SiteConfigurationRepository>()
     private val profiles = mockk<PresentationProfileRepository>()
     private val assets = mockk<PresentationAssetCatalog>()
     private val posts = mockk<PostRepository>()
     private val published = mockk<PublishedPostStore>()
     private val failures = mockk<SnapshotFailureReporter>()
-    private val service = SiteChromeService(sites, profiles, assets, posts, published, failures)
+    private val service = SitePresentationContextService(sites, profiles, assets, posts, published, failures)
     private val root = PostFixtures.document("root")
     private val header = PostFixtures.document("header")
     private val footer = PostFixtures.document("footer")

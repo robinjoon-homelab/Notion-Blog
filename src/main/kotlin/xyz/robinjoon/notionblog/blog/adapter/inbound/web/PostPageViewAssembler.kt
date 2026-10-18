@@ -1,27 +1,23 @@
 package xyz.robinjoon.notionblog.blog.adapter.inbound.web
 
-import org.springframework.web.util.UriComponentsBuilder
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.view.CategoryLinkView
-import xyz.robinjoon.notionblog.blog.adapter.inbound.web.view.CategoryNavView
-import xyz.robinjoon.notionblog.blog.adapter.inbound.web.view.HomePageView
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.view.PageChromeView
-import xyz.robinjoon.notionblog.blog.adapter.inbound.web.view.PaginationView
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.view.PostDocumentView
-import xyz.robinjoon.notionblog.blog.adapter.inbound.web.view.PostListEntryView
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.view.PostPageView
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.view.PostPropertiesView
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.view.PresentationAssetView
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.view.PresentationProfileView
+import xyz.robinjoon.notionblog.blog.adapter.inbound.web.view.SeriesNavEntryView
+import xyz.robinjoon.notionblog.blog.adapter.inbound.web.view.SeriesNavView
 import xyz.robinjoon.notionblog.blog.application.model.AdminPostPreview
 import xyz.robinjoon.notionblog.blog.application.model.ContentReferences
+import xyz.robinjoon.notionblog.blog.application.model.CurrentClassification
+import xyz.robinjoon.notionblog.blog.application.model.ListedCategory
 import xyz.robinjoon.notionblog.blog.application.model.PostListEntry
-import xyz.robinjoon.notionblog.blog.application.model.PostListPage
 import xyz.robinjoon.notionblog.blog.application.model.PresentationAssetDescriptor
 import xyz.robinjoon.notionblog.blog.application.model.PublicPostPage
-import xyz.robinjoon.notionblog.blog.application.model.SiteChrome
-import xyz.robinjoon.notionblog.blog.domain.category.CategoryId
-import xyz.robinjoon.notionblog.blog.domain.home.HomeConfiguration
-import xyz.robinjoon.notionblog.blog.domain.home.HomeLayout
+import xyz.robinjoon.notionblog.blog.application.model.PublicSeriesNavigation
+import xyz.robinjoon.notionblog.blog.application.model.SitePresentationContext
 import xyz.robinjoon.notionblog.blog.domain.post.PostProperties
 import xyz.robinjoon.notionblog.blog.domain.post.PostRevision
 import xyz.robinjoon.notionblog.blog.domain.post.PostRevisionId
@@ -32,86 +28,69 @@ import java.time.Instant
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Locale
-import java.util.Optional
 
 class PostPageViewAssembler(
     private val clock: Clock,
     private val feedUrl: String? = null,
 ) {
-    fun assemble(page: PublicPostPage): PostPageView =
-        postView(page.chrome, page.post.revision, page.post.firstPublishedAt, mappers(page.references, PUBLIC_MEDIA_PATH))
+    fun assemble(page: PublicPostPage): PostPageView {
+        val view = postView(page.chrome, page.post.revision, page.post.firstPublishedAt, mappers(page.references, PUBLIC_MEDIA_PATH))
+        return view.copy(
+            properties = view.properties.copy(categories = categoryLinks(page.categories)),
+            series = page.series?.let(::seriesNav),
+        )
+    }
 
     // 관리자 미리보기는 공개본과 같은 렌더링을 쓰되 파일은 공개 여부와 무관한 관리자 경로에서 읽는다.
-    fun assemble(preview: AdminPostPreview): PostPageView =
-        postView(preview.chrome, preview.revision, preview.history.firstPublishedAt, mappers(preview.references, ADMIN_MEDIA_PATH))
-
-    fun assemble(page: PostListPage): HomePageView {
-        val locale = Locale.forLanguageTag(page.chrome.site.metadata.languageTag)
-        val mappers = mappers(page.references, PUBLIC_MEDIA_PATH)
-        val entries = page.entries
-        val selected = page.selectedCategoryId
-        return HomePageView(
-            chrome = chromeView(page.chrome, mappers),
-            entries = entries.items.map { entryView(it, page.configuration, locale, mappers(it.revisionId)) },
-            pagination =
-                PaginationView(
-                    entries.number,
-                    entries.totalPages,
-                    homeHref(entries.number - 1, selected).takeIf { entries.hasPrevious },
-                    homeHref(entries.number + 1, selected).takeIf { entries.hasNext },
-                ),
-            layout = layoutClass(page.configuration.layout),
-            categories = categoryNav(page),
-            emptyMessage = if (selected == null) "아직 공개된 글이 없습니다." else "이 카테고리에는 아직 공개된 글이 없습니다.",
-        )
+    fun assemble(
+        preview: AdminPostPreview,
+        current: CurrentClassification,
+    ): PostPageView {
+        val view =
+            postView(preview.chrome, preview.revision, preview.history.firstPublishedAt, mappers(preview.references, ADMIN_MEDIA_PATH))
+        return view.copy(properties = view.properties.copy(categories = categoryLinks(current.categories)))
     }
 
-    // 요약·날짜·분류는 설정에서 숨기면 값을 비워 템플릿이 그리지 않게 한다. 홈에는 Notion 태그 대신 앱 카테고리만 보인다.
-    private fun entryView(
-        entry: PostListEntry,
-        configuration: HomeConfiguration,
+    internal fun publicChrome(
+        chrome: SitePresentationContext,
+        references: ContentReferences,
+    ): PageChromeView = chromeView(chrome, mappers(references, PUBLIC_MEDIA_PATH))
+
+    internal fun locale(chrome: SitePresentationContext): Locale = Locale.forLanguageTag(chrome.site.metadata.languageTag)
+
+    internal fun date(
+        instant: Instant,
         locale: Locale,
-        mapper: PostContentViewMapper,
-    ): PostListEntryView {
-        val details = configuration.details
-        return PostListEntryView(
-            href = "/posts/${entry.postId.value}",
-            title = entry.properties.title,
-            summary = entry.properties.summary.takeIf { details.showSummary },
-            publishedOn = date(entry.firstPublishedAt, locale).takeIf { details.showDate },
-            categories = categoryBadges(entry).takeIf { details.showCategories }.orEmpty(),
-            thumbnailHref = thumbnail(entry, mapper).takeIf { configuration.layout != HomeLayout.LIST },
-        )
-    }
-
-    private fun categoryBadges(entry: PostListEntry): List<CategoryLinkView> =
-        entry.categories.map { CategoryLinkView(it.name, categoryHref(it.id), null, false) }
+    ): String = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale).format(instant.atZone(clock.zone))
 
     // 보관된 사본이 있는 커버만 쓴다. 원격 주소나 사본이 없는 커버는 기본 이미지로 대신해 외부 호출과 서명 URL 노출을 피한다.
-    private fun thumbnail(
+    internal fun thumbnail(
         entry: PostListEntry,
-        mapper: PostContentViewMapper,
-    ): String = (entry.properties.cover as? MediaSource.SourceHosted)?.let(mapper::mediaUrl) ?: DEFAULT_THUMBNAIL
-
-    private fun categoryNav(page: PostListPage): CategoryNavView? {
-        if (!page.configuration.details.showCategories || page.categories.isEmpty()) return null
-        val selected = page.selectedCategoryId
-        return CategoryNavView(
-            allHref = "/",
-            allSelected = selected == null,
-            items =
-                page.categories.map {
-                    CategoryLinkView(it.category.name, categoryHref(it.category.id), it.count, it.category.id == selected)
-                },
-        )
+        references: ContentReferences,
+    ): String {
+        val mapper = mappers(references, PUBLIC_MEDIA_PATH)(entry.revisionId)
+        return (entry.properties.cover as? MediaSource.SourceHosted)?.let(mapper::mediaUrl) ?: DEFAULT_THUMBNAIL
     }
 
-    private fun layoutClass(layout: HomeLayout): String =
-        when (layout) {
-            HomeLayout.LIST -> "plain"
-            HomeLayout.THUMBNAIL_LIST -> "thumbnails"
-            HomeLayout.CARDS -> "cards"
-        }
+    private fun categoryLinks(categories: List<ListedCategory>): List<CategoryLinkView> =
+        categories.map { CategoryLinkView(it.name, HomeLinks.category(it.id), null, false) }
+
+    // 순번과 이전·다음은 공개 글만 담은 목록의 위치에서 얻는다.
+    private fun seriesNav(navigation: PublicSeriesNavigation): SeriesNavView {
+        val entries =
+            navigation.posts.mapIndexed { index, link ->
+                SeriesNavEntryView(index + 1, HomeLinks.post(link.postId), link.title, link.postId == navigation.currentPostId)
+            }
+        val index = navigation.currentIndex
+        return SeriesNavView(
+            title = navigation.title,
+            href = HomeLinks.series(navigation.seriesId),
+            position = index + 1,
+            entries = entries,
+            previous = entries.getOrNull(index - 1),
+            next = entries.getOrNull(index + 1),
+        )
+    }
 
     // 파일은 그리는 리비전 기준으로만 찾으므로 본문·머리글·바닥글마다 자기 리비전의 매퍼를 만든다.
     private fun mappers(
@@ -119,27 +98,13 @@ class PostPageViewAssembler(
         mediaPath: String,
     ): (PostRevisionId) -> PostContentViewMapper = { revisionId -> PostContentViewMapper(references, revisionId, mediaPath) }
 
-    private fun categoryHref(id: CategoryId): String = homeHref(1, id)
-
-    private fun homeHref(
-        page: Int,
-        categoryId: CategoryId?,
-    ): String =
-        UriComponentsBuilder
-            .fromPath("/")
-            .queryParamIfPresent("category", Optional.ofNullable(categoryId?.value?.toString()))
-            .queryParamIfPresent("page", Optional.ofNullable(page.takeIf { it > 1 }))
-            .build()
-            .encode()
-            .toUriString()
-
     private fun postView(
-        chrome: SiteChrome,
+        chrome: SitePresentationContext,
         revision: PostRevision,
         publishedAt: Instant?,
         mappers: (PostRevisionId) -> PostContentViewMapper,
     ): PostPageView {
-        val locale = Locale.forLanguageTag(chrome.site.metadata.languageTag)
+        val locale = locale(chrome)
         val mapper = mappers(revision.id)
         return PostPageView(
             chrome = chromeView(chrome, mappers),
@@ -153,10 +118,10 @@ class PostPageViewAssembler(
         properties: PostProperties,
         publishedOn: String?,
         mapper: PostContentViewMapper,
-    ): PostPropertiesView = PostPropertiesView(properties.summary, properties.tags, publishedOn, properties.cover?.let(mapper::mediaUrl))
+    ): PostPropertiesView = PostPropertiesView(properties.summary, emptyList(), publishedOn, properties.cover?.let(mapper::mediaUrl))
 
     private fun chromeView(
-        chrome: SiteChrome,
+        chrome: SitePresentationContext,
         mappers: (PostRevisionId) -> PostContentViewMapper,
     ): PageChromeView {
         val metadata = chrome.site.metadata
@@ -189,12 +154,7 @@ class PostPageViewAssembler(
         idPrefix: String,
     ): PostDocumentView = PostDocumentViewAssembler(revision, mapper, idPrefix).assemble()
 
-    private fun date(
-        instant: Instant,
-        locale: Locale,
-    ): String = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale).format(instant.atZone(clock.zone))
-
-    private fun profileView(chrome: SiteChrome): PresentationProfileView =
+    private fun profileView(chrome: SitePresentationContext): PresentationProfileView =
         PresentationProfileView(
             listOf(
                 "notion-color-mode-${chrome.presentation.tokens.colorMode.name.lowercase()}",

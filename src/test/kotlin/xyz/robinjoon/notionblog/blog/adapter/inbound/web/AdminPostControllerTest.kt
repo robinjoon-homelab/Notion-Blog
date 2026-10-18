@@ -4,7 +4,10 @@ import io.mockk.every
 import io.mockk.mockk
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.CsvSource
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.view
@@ -17,6 +20,7 @@ import xyz.robinjoon.notionblog.blog.application.model.AdminPostStatus
 import xyz.robinjoon.notionblog.blog.application.model.PageQuery
 import xyz.robinjoon.notionblog.blog.application.model.PreviewVersion
 import xyz.robinjoon.notionblog.blog.application.port.input.AdminPostQueryUseCase
+import xyz.robinjoon.notionblog.blog.domain.sync.SyncFailureKind
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
@@ -29,44 +33,115 @@ class AdminPostControllerTest {
     private val postId = WebFixtures.postId
 
     @Test
-    fun `list shows every status with a state badge and Notion link`() {
+    fun `list shows public and private posts with separate state and notice badges and a Notion link`() {
         every { queries.list(query()) } returns
             AdminFixtures.list(
-                listOf(summary("Draft one", AdminPostStatus.DRAFT), summary("Live one", AdminPostStatus.CHANGES_PENDING)),
+                listOf(
+                    summary("Draft one", AdminPostStatus.DRAFT),
+                    summary("Live one", AdminPostStatus.CHANGES_PENDING),
+                    summary("Live two", AdminPostStatus.PUBLISHED),
+                    summary("Stopped", AdminPostStatus.UNPUBLISHED),
+                ),
             )
 
         val page = listPage("/admin/posts")
 
-        assertThat(page.rows.map { it.title }).containsExactly("Draft one", "Live one")
-        assertThat(page.rows[1].badges.map { it.label }).containsExactly("발행 중", "수정사항 있음")
+        assertThat(page.rows.map { it.title }).containsExactly("Draft one", "Live one", "Live two", "Stopped")
+        assertThat(page.rows.map { row -> row.badges.map { it.label } })
+            .containsExactly(listOf("비공개"), listOf("공개", "가져온 변경 있음"), listOf("공개"), listOf("비공개"))
+        assertThat(page.rows[1].badges.map { it.tone }).containsExactly("live", "change")
         assertThat(page.rows[0].source.editUrl).isEqualTo("https://www.notion.so/page")
     }
 
     @Test
-    fun `list passes the status filter and title search and marks the selected filter`() {
-        every { queries.list(query(AdminPostStatus.PUBLISHED, "KOTLIN")) } returns
-            AdminFixtures.list(listOf(summary("Kotlin tips", AdminPostStatus.PUBLISHED)))
+    fun `an archived post is labelled as archived`() {
+        every { queries.list(query(AdminPostVisibility.ARCHIVED)) } returns
+            AdminFixtures.list(listOf(summary("Old", AdminPostStatus.ARCHIVED)))
 
-        val page = listPage("/admin/posts?status=published&q=KOTLIN")
-
-        assertThat(page.rows.map { it.title }).containsExactly("Kotlin tips")
-        assertThat(page.search.total).isEqualTo(1)
-        assertThat(page.filters.single { it.current }.label).isEqualTo("발행 중")
-        assertThat(page.filters.map { it.label }).contains("보관됨")
-        assertThat(page.filters.map { it.href }).contains("/admin/posts?q=KOTLIN")
+        assertThat(
+            listPage("/admin/posts?status=archived")
+                .rows
+                .single()
+                .badges
+                .map { it.label },
+        ).containsExactly("보관")
     }
 
     @Test
-    fun `list pages keep the filters in their links`() {
-        val query = query(AdminPostStatus.DRAFT, page = 2)
+    fun `a failed import is a separate warning badge and does not change the public state badge`() {
+        every { queries.list(query()) } returns
+            AdminFixtures.list(listOf(AdminFixtures.summary("Live", AdminPostStatus.PUBLISHED, failureKind = SyncFailureKind.ACCESS)))
+
+        val row = listPage("/admin/posts").rows.single()
+
+        assertThat(row.badges.map { it.label to it.tone }).containsExactly("공개" to "live", "가져오기 문제" to "warn")
+        assertThat(row.source.problem).contains("공개된 글은 그대로")
+    }
+
+    @ParameterizedTest
+    @CsvSource(
+        "public, PUBLIC",
+        "published, PUBLIC",
+        "changes_pending, PUBLIC",
+        "private, PRIVATE",
+        "draft, PRIVATE",
+        "unpublished, PRIVATE",
+        "archived, ARCHIVED",
+        "PUBLIC, PUBLIC",
+    )
+    fun `current and legacy status values select the matching visibility group`(
+        value: String,
+        groupName: String,
+    ) {
+        val group = AdminPostVisibility.valueOf(groupName)
+        every { queries.list(query(group)) } returns AdminFixtures.list(emptyList())
+
+        val page = listPage("/admin/posts?status=$value")
+
+        assertThat(page.filters.single { it.current }.label).isEqualTo(group.label)
+        assertThat(page.search.status).isEqualTo(group.param)
+    }
+
+    @Test
+    fun `an unknown status falls back to every post except archived ones`() {
+        every { queries.list(query()) } returns AdminFixtures.list(emptyList())
+
+        val page = listPage("/admin/posts?status=bogus")
+
+        assertThat(page.filters.single { it.current }.label).isEqualTo("전체 (보관 제외)")
+        assertThat(page.search.status).isEmpty()
+    }
+
+    @Test
+    fun `list passes the search and keeps it in the filter links while explaining that all excludes archived posts`() {
+        every { queries.list(query(AdminPostVisibility.PUBLIC, "c++")) } returns
+            AdminFixtures.list(listOf(summary("c++ tips", AdminPostStatus.PUBLISHED)))
+
+        val page = listPage(get("/admin/posts").param("status", "public").param("q", "c++"))
+
+        assertThat(page.rows.map { it.title }).containsExactly("c++ tips")
+        assertThat(page.search.total).isEqualTo(1)
+        assertThat(page.filters.map { it.label }).containsExactly("전체 (보관 제외)", "공개", "비공개", "보관")
+        assertThat(page.filters.map { it.href }).containsExactly(
+            "/admin/posts?q=c%2B%2B",
+            "/admin/posts?status=public&q=c%2B%2B",
+            "/admin/posts?status=private&q=c%2B%2B",
+            "/admin/posts?status=archived&q=c%2B%2B",
+        )
+        assertThat(page.allNote).contains("보관한 글이 들어 있지 않습니다")
+    }
+
+    @Test
+    fun `list pages keep the filters in their links and legacy values become canonical links`() {
+        val query = query(AdminPostVisibility.PRIVATE, page = 2)
         every { queries.list(query) } returns
             AdminFixtures.list((1..45).map { summary("Post $it", AdminPostStatus.DRAFT) }, query = query.page)
 
         val page = listPage("/admin/posts?status=draft&page=2")
 
         assertThat(page.rows).hasSize(20)
-        assertThat(page.pagination.previousHref).isEqualTo("/admin/posts?status=draft")
-        assertThat(page.pagination.nextHref).isEqualTo("/admin/posts?status=draft&page=3")
+        assertThat(page.pagination.previousHref).isEqualTo("/admin/posts?status=private")
+        assertThat(page.pagination.nextHref).isEqualTo("/admin/posts?status=private&page=3")
     }
 
     @Test
@@ -135,19 +210,21 @@ class AdminPostControllerTest {
         mockMvc.perform(get("/admin/posts/${postId.value}")).andExpect(status().isServiceUnavailable)
     }
 
-    private fun listPage(url: String): AdminPostsView =
+    private fun listPage(url: String): AdminPostsView = listPage(get(url))
+
+    private fun listPage(request: MockHttpServletRequestBuilder): AdminPostsView =
         mockMvc
-            .perform(get(url))
+            .perform(request)
             .andExpect(status().isOk)
             .andExpect(view().name("admin/posts"))
             .andReturn()
             .modelOf("page")
 
     private fun query(
-        status: AdminPostStatus? = null,
+        group: AdminPostVisibility? = null,
         title: String = "",
         page: Int = 1,
-    ) = AdminPostListQuery(status, title, PageQuery(page, 20))
+    ) = AdminPostListQuery(group?.statuses.orEmpty(), title, PageQuery(page, 20))
 
     private fun summary(
         title: String,

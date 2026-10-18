@@ -29,6 +29,7 @@ import org.thymeleaf.spring6.view.ThymeleafViewResolver
 import org.thymeleaf.templatemode.TemplateMode
 import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.BlogController
+import xyz.robinjoon.notionblog.blog.adapter.inbound.web.HomePageViewAssembler
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.PostPageViewAssembler
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.PublicBlogUrls
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.RssFeedController
@@ -37,14 +38,11 @@ import xyz.robinjoon.notionblog.blog.adapter.inbound.web.RssSummaryExtractor
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.WebExceptionHandler
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.WebSecurityHeadersFilter
 import xyz.robinjoon.notionblog.blog.application.model.ContentReferences
-import xyz.robinjoon.notionblog.blog.application.model.HomePageQuery
-import xyz.robinjoon.notionblog.blog.application.model.ListedCategory
 import xyz.robinjoon.notionblog.blog.application.model.PageQuery
 import xyz.robinjoon.notionblog.blog.application.model.PostListEntry
 import xyz.robinjoon.notionblog.blog.application.model.PostListLookupResult
 import xyz.robinjoon.notionblog.blog.application.model.PostListPage
 import xyz.robinjoon.notionblog.blog.application.model.PresentationAssetDescriptor
-import xyz.robinjoon.notionblog.blog.application.model.PublicCategoryCount
 import xyz.robinjoon.notionblog.blog.application.model.PublicFeed
 import xyz.robinjoon.notionblog.blog.application.model.PublicFeedLookupResult
 import xyz.robinjoon.notionblog.blog.application.model.PublicPostLookupResult
@@ -52,18 +50,13 @@ import xyz.robinjoon.notionblog.blog.application.model.PublicPostPage
 import xyz.robinjoon.notionblog.blog.application.model.PublishedPost
 import xyz.robinjoon.notionblog.blog.application.model.ResultPage
 import xyz.robinjoon.notionblog.blog.application.model.RevisionMedia
-import xyz.robinjoon.notionblog.blog.application.model.SiteChrome
+import xyz.robinjoon.notionblog.blog.application.model.SitePresentationContext
 import xyz.robinjoon.notionblog.blog.application.port.input.GetPostListUseCase
 import xyz.robinjoon.notionblog.blog.application.port.input.GetPublicFeedUseCase
 import xyz.robinjoon.notionblog.blog.application.port.input.GetPublicPostUseCase
 import xyz.robinjoon.notionblog.blog.domain.SourceDocumentRef
 import xyz.robinjoon.notionblog.blog.domain.SourceId
 import xyz.robinjoon.notionblog.blog.domain.SourceRevision
-import xyz.robinjoon.notionblog.blog.domain.category.CategoryId
-import xyz.robinjoon.notionblog.blog.domain.home.HomeConfiguration
-import xyz.robinjoon.notionblog.blog.domain.home.HomeLayout
-import xyz.robinjoon.notionblog.blog.domain.home.HomePostDetails
-import xyz.robinjoon.notionblog.blog.domain.home.HomePostOrder
 import xyz.robinjoon.notionblog.blog.domain.post.PostId
 import xyz.robinjoon.notionblog.blog.domain.post.PostProperties
 import xyz.robinjoon.notionblog.blog.domain.post.PostRevision
@@ -101,10 +94,11 @@ class BlogHttpDocumentationTest {
     private val feeds = mockk<GetPublicFeedUseCase>()
     private val urls = PublicBlogUrls(URI("https://blog.example"))
     private val articleId = PostId(UUID.fromString("5b0f8e2a-3c41-4d6b-9a57-2f1d7c9e8b14"))
+    private val pages = PostPageViewAssembler(Clock.fixed(now, ZoneOffset.UTC), urls.feedUrl)
     private val mvc: MockMvc =
         MockMvcBuilders
             .standaloneSetup(
-                BlogController(postLists, publicPosts, PostPageViewAssembler(Clock.fixed(now, ZoneOffset.UTC), urls.feedUrl)),
+                BlogController(postLists, publicPosts, pages, HomePageViewAssembler(pages)),
                 RssFeedController(feeds, RssFeedRenderer(RssSummaryExtractor()), urls),
             ).setControllerAdvice(WebExceptionHandler())
             .setViewResolvers(thymeleafViewResolver())
@@ -176,36 +170,6 @@ class BlogHttpDocumentationTest {
             .perform(get("/posts/{postId}", "not-a-uuid"))
             .andExpect(status().isNotFound)
             .andDo(document("post-invalid-id", postIdParameter(), htmlHeaders()))
-    }
-
-    @Test
-    fun `category filter documents the filtered home and the unknown category`() {
-        val category = CategoryId(UUID.fromString("00000000-0000-0000-0000-0000000000c1"))
-        val missing = CategoryId(UUID.fromString("00000000-0000-0000-0000-0000000000c2"))
-        val listed = ListedCategory(category, "Kotlin")
-        val base = listPage()
-        val filtered =
-            base.copy(
-                entries = base.entries.copy(items = base.entries.items.map { it.copy(categories = listOf(listed)) }),
-                configuration = HomeConfiguration.create(HomeLayout.CARDS, HomePostOrder.NEWEST_FIRST, 10, HomePostDetails()),
-                categories = listOf(PublicCategoryCount(listed, 1)),
-                selectedCategoryId = category,
-            )
-        every { postLists.get(HomePageQuery(1, category)) } returns
-            PostListLookupResult.Found(filtered)
-        every { postLists.get(HomePageQuery(1, missing)) } returns PostListLookupResult.NotFound
-
-        mvc
-            .perform(get("/").param("category", category.value.toString()))
-            .andExpect(status().isOk)
-            .andExpect(content().string(containsString("aria-current=\"true\"")))
-            .andExpect(content().string(containsString("/ui/default-post-thumbnail.svg")))
-            .andExpect(content().string(containsString("nb-home-cards")))
-            .andDo(document("root-category", htmlHeaders()))
-        mvc
-            .perform(get("/").param("category", missing.value.toString()))
-            .andExpect(status().isNotFound)
-            .andDo(document("root-category-missing", htmlHeaders()))
     }
 
     @Test
@@ -301,7 +265,7 @@ class BlogHttpDocumentationTest {
             headerWithName("ETag").description("피드 본문이 같으면 유지되는 캐시 검증값"),
         )
 
-    private fun chrome(): SiteChrome {
+    private fun chrome(): SitePresentationContext {
         val profile =
             PresentationProfile.restore(
                 reference = PresentationProfileRef(PresentationProfileId(UUID.fromString("0f3c3a52-6c55-4f4c-8f43-6f0b3c8e2d11")), 1),
@@ -309,7 +273,7 @@ class BlogHttpDocumentationTest {
                 tokens = PresentationTokens(),
                 assets = PresentationAssets(styleSheets = listOf(style), scripts = emptyList()),
             )
-        return SiteChrome(
+        return SitePresentationContext(
             site =
                 SiteConfiguration.restore(
                     publicationId = PublicationId(UUID.fromString("7d2c9b40-1e8f-4a35-b6d7-0c5e4f3a2b19")),

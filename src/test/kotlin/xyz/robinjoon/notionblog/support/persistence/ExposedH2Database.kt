@@ -22,6 +22,8 @@ import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.PublicationMemberTable
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.PublicationRevisionTable
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.PublicationTable
+import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.SeriesPostTable
+import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.SeriesTable
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.SiteConfigurationTable
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.SyncStateTable
 import java.sql.DriverManager
@@ -62,6 +64,8 @@ class ExposedH2Database : AutoCloseable {
                 HomeConfigurationTable,
                 CategoryTable,
                 PostCategoryTable,
+                SeriesTable,
+                SeriesPostTable,
             )
         }
     }

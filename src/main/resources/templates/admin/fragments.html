@@ -12,15 +12,42 @@
 <aside th:fragment="sidebar(current)" class="nb-sidebar" id="nb-sidebar" aria-label="관리 메뉴">
     <div class="nb-workspace-name"><span aria-hidden="true">🗂️</span>블로그 관리</div>
     <div class="nb-side-heading">블로그</div>
-    <a class="nb-side-link" href="/admin/posts" th:attr="aria-current=${current == 'posts' ? 'page' : null}"><span aria-hidden="true">📄</span>게시글</a>
-    <a class="nb-side-link" href="/admin/categories" th:attr="aria-current=${current == 'categories' ? 'page' : null}"><span aria-hidden="true">🏷️</span>카테고리</a>
-    <a class="nb-side-link" href="/admin/home" th:attr="aria-current=${current == 'home' ? 'page' : null}"><span aria-hidden="true">🧩</span>홈 화면</a>
-    <a class="nb-side-link" href="/"><span aria-hidden="true">🏠</span>공개 홈</a>
+    <a class="nb-side-link" href="/admin/posts" th:attr="aria-current=${current == 'posts' ? 'page' : null}"><span aria-hidden="true">📄</span>글 관리</a>
+    <a class="nb-side-link" href="/admin/categories" th:attr="aria-current=${current == 'categories' ? 'page' : null}"><span aria-hidden="true">🏷️</span>태그</a>
+    <a class="nb-side-link" href="/admin/series" th:attr="aria-current=${current == 'series' ? 'page' : null}"><span aria-hidden="true">📚</span>시리즈</a>
+    <a class="nb-side-link" href="/admin/home" th:attr="aria-current=${current == 'home' ? 'page' : null}"><span aria-hidden="true">⚙️</span>설정</a>
+    <div class="nb-side-heading">바로가기</div>
+    <a class="nb-side-link" href="/"><span aria-hidden="true">🏠</span>내 블로그</a>
     <form class="nb-side-form" th:action="@{/admin/logout}" method="post">
         <button class="nb-side-link" type="submit"><span aria-hidden="true">↩</span>로그아웃</button>
     </form>
 </aside>
 <div th:fragment="notice(notice)" th:if="${notice != null}" class="nb-notice" th:classappend="${notice.error ? 'nb-notice-error' : ''}" role="status" aria-live="polite" th:text="${notice.text}">알림</div>
+<div th:fragment="panelInfo(panel)">
+    <p><span th:replace="~{admin/fragments :: badges(${panel.badges})}"></span></p>
+    <div class="nb-property"><span>공개 주소</span>
+        <span><a th:if="${panel.publicHref != null}" th:href="${panel.publicHref}" th:text="${panel.publicHref}">/posts/…</a>
+            <span th:if="${panel.publicHref == null}" class="nb-muted">공개되지 않음</span></span></div>
+    <div class="nb-property"><span>최근 가져옴</span><span th:text="${panel.source.capturedAt}">2026-10-16 14:20</span></div>
+    <div class="nb-property"><span>태그</span>
+        <span><span th:each="name : ${panel.classification.categories}" class="nb-badge" th:text="${name}">태그</span>
+            <span th:if="${#lists.isEmpty(panel.classification.categories)}" class="nb-muted">지정된 태그 없음</span></span></div>
+    <div class="nb-property"><span>시리즈</span>
+        <span><a th:if="${panel.classification.series != null}" th:href="${panel.classification.series.href}" th:text="${panel.classification.series.title + ' (' + panel.classification.series.position + ' / ' + panel.classification.series.size + ')'}">시리즈</a>
+            <span th:if="${panel.classification.series == null}" class="nb-muted">속한 시리즈 없음</span></span></div>
+    <div class="nb-property"><span>Notion 원문 태그</span>
+        <span><span th:each="name : ${panel.classification.sourceTags}" class="nb-badge" th:text="${name}">원문 태그</span>
+            <span th:if="${#lists.isEmpty(panel.classification.sourceTags)}" class="nb-muted">없음</span></span></div>
+    <p class="nb-muted nb-small" th:if="${panel.source.problem != null}" th:text="${panel.source.problem}">문제</p>
+    <p class="nb-muted nb-small" th:if="${panel.source.mediaNotice != null}" th:text="${panel.source.mediaNotice}">파일</p>
+</div>
 <span th:fragment="badges(badges)" class="nb-status-stack"><span th:each="badge : ${badges}" class="nb-badge" th:classappend="${'nb-badge-' + badge.tone}" th:text="${badge.label}">상태</span></span>
+<!-- 글이 소속 목록에 있으면 위로·아래로·제외, 후보 목록에 있으면 추가만 CSS로 보여 준다. -->
+<span th:fragment="seriesButtons(title)" class="nb-series-buttons">
+    <button type="button" class="nb-button" data-action="up" th:attr="aria-label=${title + ' 위로 이동'}">위로</button>
+    <button type="button" class="nb-button" data-action="down" th:attr="aria-label=${title + ' 아래로 이동'}">아래로</button>
+    <button type="button" class="nb-link-danger" data-action="remove" th:attr="aria-label=${title + ' 시리즈에서 제외'}">제외</button>
+    <button type="button" class="nb-button" data-action="add" th:attr="aria-label=${title + ' 시리즈에 추가'}">추가</button>
+</span>
 </body>
 </html>

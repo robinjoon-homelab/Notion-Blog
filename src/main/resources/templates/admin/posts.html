@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{admin/fragments :: head('게시글')}"></head>
+<head th:replace="~{admin/fragments :: head('글 관리')}"></head>
 <body class="nb-body-root">
 <div class="nb-shell">
     <aside th:replace="~{admin/fragments :: sidebar('posts')}"></aside>
@@ -8,8 +8,8 @@
         <button type="button" class="nb-button nb-menu" data-toggle-menu aria-expanded="false" aria-controls="nb-sidebar">메뉴</button>
         <main class="nb-main">
             <div class="nb-section-head">
-                <h1 class="nb-heading">게시글</h1>
-                <p class="nb-muted">본문은 Notion에서, 발행은 여기에서.</p>
+                <h1 class="nb-heading">글 관리</h1>
+                <p class="nb-muted">본문은 Notion에서 작성하고, 발행은 여기에서 확인합니다. 새 글은 연결된 Notion 글 데이터베이스에서 작성하세요.</p>
             </div>
             <div th:replace="~{admin/fragments :: notice(${page.notice})}"></div>
             <div class="nb-toolbar">
@@ -18,12 +18,13 @@
                        th:attr="aria-current=${filter.current ? 'true' : null}">전체</a>
                 </nav>
             </div>
+            <p class="nb-muted nb-small" th:text="${page.allNote}">전체에는 보관한 글이 들어 있지 않습니다.</p>
             <form class="nb-search" action="/admin/posts" method="get" role="search">
                 <input type="hidden" name="status" th:value="${page.search.status}" th:disabled="${#strings.isEmpty(page.search.status)}">
                 <input type="search" name="q" th:value="${page.search.query}" placeholder="제목 검색" aria-label="제목 검색">
                 <button class="nb-button" type="submit">검색</button>
             </form>
-            <table class="nb-database" aria-label="게시글 목록" th:if="${!#lists.isEmpty(page.rows)}">
+            <table class="nb-database" aria-label="글 목록" th:if="${!#lists.isEmpty(page.rows)}">
                 <thead><tr><th scope="col">Aa 이름</th><th scope="col">상태</th></tr></thead>
                 <tbody>
                 <tr th:each="row : ${page.rows}">
@@ -40,7 +41,7 @@
             </table>
             <div class="nb-empty" th:if="${#lists.isEmpty(page.rows)}">
                 <h2 th:text="${#strings.isEmpty(page.search.query) and #strings.isEmpty(page.search.status) ? '아직 글이 없습니다' : '조건에 맞는 글이 없습니다'}">글 없음</h2>
-                <p th:text="${#strings.isEmpty(page.search.query) and #strings.isEmpty(page.search.status) ? '연결된 Notion 데이터베이스에 글을 쓰면 가져온 뒤 여기에 나타납니다. 잠시 기다려 주세요.' : '검색어나 상태 필터를 바꿔 보세요.'}">안내</p>
+                <p th:text="${#strings.isEmpty(page.search.query) and #strings.isEmpty(page.search.status) ? '연결된 Notion 데이터베이스에 글을 쓰면 가져온 뒤 여기에 나타납니다. 잠시 기다려 주세요.' : '검색어나 필터를 바꿔 보세요.'}">안내</p>
             </div>
             <nav class="nb-pager" aria-label="쪽 이동" th:if="${page.pagination.totalPages > 1}">
                 <a th:if="${page.pagination.previousHref != null}" th:href="${page.pagination.previousHref}">← 이전</a>

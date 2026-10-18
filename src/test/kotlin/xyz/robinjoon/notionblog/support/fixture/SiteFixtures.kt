@@ -3,7 +3,7 @@ package xyz.robinjoon.notionblog.support.fixture
 import xyz.robinjoon.notionblog.blog.application.model.ContentReferences
 import xyz.robinjoon.notionblog.blog.application.model.PresentationAssetDescriptor
 import xyz.robinjoon.notionblog.blog.application.model.RevisionMedia
-import xyz.robinjoon.notionblog.blog.application.model.SiteChrome
+import xyz.robinjoon.notionblog.blog.application.model.SitePresentationContext
 import xyz.robinjoon.notionblog.blog.domain.SourceDocumentRef
 import xyz.robinjoon.notionblog.blog.domain.post.PostRevision
 import xyz.robinjoon.notionblog.blog.domain.presentation.PresentationAssetRef
@@ -46,7 +46,8 @@ object SiteFixtures {
         footer: SourceDocumentRef? = null,
     ) = SiteDocuments(root, header, footer)
 
-    fun chrome(header: PostRevision? = null): SiteChrome = SiteChrome(site(), profile, mapOf(style to descriptor), header, null)
+    fun chrome(header: PostRevision? = null): SitePresentationContext =
+        SitePresentationContext(site(), profile, mapOf(style to descriptor), header, null)
 
     fun noReferences(): ContentReferences = ContentReferences(emptyMap(), RevisionMedia.empty)
 }

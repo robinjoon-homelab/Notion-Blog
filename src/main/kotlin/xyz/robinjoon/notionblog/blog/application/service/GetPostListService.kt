@@ -20,7 +20,7 @@ import xyz.robinjoon.notionblog.blog.domain.post.PostId
 
 @Transactional(readOnly = true)
 class GetPostListService(
-    private val chromes: SiteChromeService,
+    private val chromes: SitePresentationContextService,
     private val references: ContentReferencesService,
     private val publishedPosts: PublishedPostStore,
     private val snapshotFailures: SnapshotFailureReporter,
@@ -38,12 +38,14 @@ class GetPostListService(
         val covers = references.media(entries.items.mapTo(linkedSetOf(), PostListEntry::revisionId))
         return PostListLookupResult.Found(
             PostListPage(
-                chrome,
-                entries,
-                layout.copy(media = layout.media + covers),
-                configuration,
-                publishedPosts.findCategoryCounts(excluded),
-                query.categoryId,
+                chrome = chrome,
+                entries = entries,
+                references = layout.copy(media = layout.media + covers),
+                configuration = configuration,
+                categories = publishedPosts.findCategoryCounts(excluded),
+                selectedCategoryId = query.categoryId,
+                search = query.search,
+                totalPublished = publishedPosts.countListed(excluded),
             ),
         )
     }
@@ -56,7 +58,7 @@ class GetPostListService(
         try {
             publishedPosts.findListPage(
                 excluded,
-                PublishedListQuery(PageQuery(query.page, configuration.pageSize), configuration.order, query.categoryId),
+                PublishedListQuery(PageQuery(query.page, configuration.pageSize), configuration.order, query.categoryId, query.search),
             )
         } catch (failure: SnapshotContentException) {
             snapshotFailures.report(failure, SnapshotFailureOperation.FEED_LOOKUP, null)

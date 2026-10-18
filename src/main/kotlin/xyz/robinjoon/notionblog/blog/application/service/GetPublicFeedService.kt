@@ -15,7 +15,7 @@ import xyz.robinjoon.notionblog.blog.application.port.output.persistence.Snapsho
 @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
 class GetPublicFeedService(
     private val siteConfigurations: SiteConfigurationRepository,
-    private val chromes: SiteChromeService,
+    private val chromes: SitePresentationContextService,
     private val publishedPosts: PublishedPostStore,
     private val snapshotFailures: SnapshotFailureReporter,
 ) : GetPublicFeedUseCase {

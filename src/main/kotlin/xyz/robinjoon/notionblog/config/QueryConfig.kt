@@ -7,6 +7,7 @@ import xyz.robinjoon.notionblog.blog.application.port.input.GetMediaUseCase
 import xyz.robinjoon.notionblog.blog.application.port.input.GetPostListUseCase
 import xyz.robinjoon.notionblog.blog.application.port.input.GetPublicFeedUseCase
 import xyz.robinjoon.notionblog.blog.application.port.input.GetPublicPostUseCase
+import xyz.robinjoon.notionblog.blog.application.port.input.GetPublicSeriesUseCase
 import xyz.robinjoon.notionblog.blog.application.port.output.diagnostics.SnapshotFailureReporter
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.CategoryRepository
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.HomeConfigurationRepository
@@ -14,6 +15,8 @@ import xyz.robinjoon.notionblog.blog.application.port.output.persistence.MediaSt
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.PostRepository
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.PresentationProfileRepository
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.PublishedPostStore
+import xyz.robinjoon.notionblog.blog.application.port.output.persistence.PublishedSeriesStore
+import xyz.robinjoon.notionblog.blog.application.port.output.persistence.SeriesRepository
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.SiteConfigurationRepository
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.SyncStateRepository
 import xyz.robinjoon.notionblog.blog.application.port.output.presentation.PresentationAssetCatalog
@@ -25,8 +28,9 @@ import xyz.robinjoon.notionblog.blog.application.service.GetMediaService
 import xyz.robinjoon.notionblog.blog.application.service.GetPostListService
 import xyz.robinjoon.notionblog.blog.application.service.GetPublicFeedService
 import xyz.robinjoon.notionblog.blog.application.service.GetPublicPostService
+import xyz.robinjoon.notionblog.blog.application.service.GetPublicSeriesService
 import xyz.robinjoon.notionblog.blog.application.service.ResolvePostLinksService
-import xyz.robinjoon.notionblog.blog.application.service.SiteChromeService
+import xyz.robinjoon.notionblog.blog.application.service.SitePresentationContextService
 import xyz.robinjoon.notionblog.blog.application.service.SynchronizationQueryService
 
 // 읽기 전용 서비스다. 공개용 서비스는 애플리케이션의 게시 상태만 읽는다.
@@ -38,10 +42,11 @@ internal class QueryConfig(
     private val snapshotFailures: SnapshotFailureReporter,
 ) {
     @Bean
-    fun siteChromeService(
+    fun sitePresentationContextService(
         profiles: PresentationProfileRepository,
         assets: PresentationAssetCatalog,
-    ): SiteChromeService = SiteChromeService(siteConfigurations, profiles, assets, posts, publishedPosts, snapshotFailures)
+    ): SitePresentationContextService =
+        SitePresentationContextService(siteConfigurations, profiles, assets, posts, publishedPosts, snapshotFailures)
 
     @Bean
     fun resolvePostLinksService(): ResolvePostLinksService = ResolvePostLinksService(posts, publishedPosts)
@@ -51,7 +56,7 @@ internal class QueryConfig(
 
     @Bean
     fun getPostListUseCase(
-        chromes: SiteChromeService,
+        chromes: SitePresentationContextService,
         references: ContentReferencesService,
         homeConfigurations: HomeConfigurationRepository,
         categories: CategoryRepository,
@@ -59,12 +64,21 @@ internal class QueryConfig(
 
     @Bean
     fun getPublicPostUseCase(
-        chromes: SiteChromeService,
+        chromes: SitePresentationContextService,
         references: ContentReferencesService,
-    ): GetPublicPostUseCase = GetPublicPostService(chromes, references, publishedPosts, snapshotFailures)
+        publishedSeries: PublishedSeriesStore,
+    ): GetPublicPostUseCase = GetPublicPostService(chromes, references, publishedPosts, publishedSeries, snapshotFailures)
 
     @Bean
-    fun getPublicFeedUseCase(chromes: SiteChromeService): GetPublicFeedUseCase =
+    fun getPublicSeriesUseCase(
+        chromes: SitePresentationContextService,
+        references: ContentReferencesService,
+        publishedSeries: PublishedSeriesStore,
+        homeConfigurations: HomeConfigurationRepository,
+    ): GetPublicSeriesUseCase = GetPublicSeriesService(chromes, references, publishedSeries, homeConfigurations, snapshotFailures)
+
+    @Bean
+    fun getPublicFeedUseCase(chromes: SitePresentationContextService): GetPublicFeedUseCase =
         GetPublicFeedService(siteConfigurations, chromes, publishedPosts, snapshotFailures)
 
     @Bean
@@ -74,12 +88,14 @@ internal class QueryConfig(
     fun adminPostSummaryService(
         states: SyncStateRepository,
         catalog: PostCatalog,
-    ): AdminPostSummaryService = AdminPostSummaryService(posts, states, catalog)
+        categories: CategoryRepository,
+        series: SeriesRepository,
+    ): AdminPostSummaryService = AdminPostSummaryService(posts, states, catalog, categories, series)
 
     @Bean
     fun adminPostQueryUseCase(
         summaries: AdminPostSummaryService,
-        chromes: SiteChromeService,
+        chromes: SitePresentationContextService,
         references: ContentReferencesService,
     ): AdminPostQueryUseCase = AdminPostQueryService(summaries, posts, chromes, references, snapshotFailures)
 

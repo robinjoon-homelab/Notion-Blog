@@ -1,0 +1,27 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${page.chrome.language}">
+<head th:replace="~{blog/page-fragments :: head(${page.chrome}, ${page.title})}"></head>
+<body>
+<main class="notion-page" th:classappend="${#strings.listJoin(page.chrome.profile.classes, ' ')}">
+    <header th:replace="~{blog/page-fragments :: header(${page.chrome})}"></header>
+    <section class="notion-content">
+        <nav th:replace="~{blog/page-fragments :: homeTabs(${page.tabs})}"></nav>
+        <p class="nb-small"><a href="/series">← 모든 시리즈</a></p>
+        <h1 class="notion-title" th:text="${page.title}">시리즈 제목</h1>
+        <p class="nb-muted" th:if="${page.description != null}" th:text="${page.description}">설명</p>
+        <ol class="nb-series-posts">
+            <li th:each="entry : ${page.entries}" class="nb-series-post">
+                <span class="nb-series-ordinal" th:text="${entry.ordinal}" aria-hidden="true">1</span>
+                <div class="nb-post-body">
+                    <a class="nb-post-title" th:href="${entry.href}" th:text="${entry.title}">글 제목</a>
+                    <p class="nb-post-summary" th:if="${entry.summary != null}" th:text="${entry.summary}">요약</p>
+                    <p class="nb-small nb-muted" th:if="${entry.publishedOn != null}" th:text="${entry.publishedOn}">2026. 10. 16.</p>
+                </div>
+            </li>
+        </ol>
+    </section>
+    <footer th:replace="~{blog/page-fragments :: footer(${page.chrome})}"></footer>
+    <div class="notion-content" th:if="${page.chrome.feedUrl != null}"><p><a th:href="${page.chrome.feedUrl}">RSS 구독</a></p></div>
+</main>
+</body>
+</html>

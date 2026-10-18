@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{admin/fragments :: head(${view.title})}"></head>
+<body class="nb-body-root">
+<div class="nb-shell">
+    <aside th:replace="~{admin/fragments :: sidebar('series')}"></aside>
+    <div>
+        <button type="button" class="nb-button nb-menu" data-toggle-menu aria-expanded="false" aria-controls="nb-sidebar">메뉴</button>
+        <main class="nb-main nb-main-wide">
+            <a class="nb-muted nb-small" href="/admin/series">← 시리즈</a>
+            <div class="nb-section-head">
+                <h1 class="nb-heading" th:text="${view.title}">시리즈 제목</h1>
+                <p class="nb-muted">제목, 설명, 글 목록과 순서를 한 번에 저장합니다. 글을 빼도 글은 삭제되지 않습니다.</p>
+            </div>
+            <div th:replace="~{admin/fragments :: notice(${view.notice})}"></div>
+
+            <form class="nb-series-editor" th:action="@{/admin/series/{id}(id=${view.id})}" method="post" data-series-editor>
+                <div class="nb-inline-form">
+                    <div class="nb-field">
+                        <label for="series-title">제목</label>
+                        <input id="series-title" type="text" name="title" required maxlength="100" autocomplete="off" th:value="${view.title}">
+                    </div>
+                    <div class="nb-field">
+                        <label for="series-description">짧은 설명</label>
+                        <input id="series-description" type="text" name="description" maxlength="300" autocomplete="off" th:value="${view.description}">
+                    </div>
+                </div>
+                <section class="nb-panel" aria-labelledby="series-members-title">
+                    <h2 class="nb-panel-title" id="series-members-title">시리즈의 글 (읽는 순서)</h2>
+                    <p class="nb-muted nb-small">위로·아래로 버튼으로 순서를 바꾸고, 새로 넣은 글은 마지막에 놓입니다. 아래 저장 버튼을 눌러야 반영됩니다.</p>
+                    <noscript><p class="nb-notice nb-notice-error">순서와 소속 변경에는 JavaScript가 필요합니다.</p></noscript>
+                    <p class="nb-muted" data-series-empty th:hidden="${!#lists.isEmpty(view.members)}">아직 글이 없습니다. 아래 후보에서 추가하세요.</p>
+                    <ol class="nb-series-list" data-series-members>
+                        <li th:each="member : ${view.members}" class="nb-series-item">
+                            <input type="hidden" name="postId" th:value="${member.postId}">
+                            <span class="nb-series-title" th:text="${member.title}">글 제목</span>
+                            <span th:replace="~{admin/fragments :: badges(${member.badges})}"></span>
+                            <span th:replace="~{admin/fragments :: seriesButtons(${member.title})}"></span>
+                        </li>
+                    </ol>
+                </section>
+                <section class="nb-panel" aria-labelledby="series-candidates-title">
+                    <h2 class="nb-panel-title" id="series-candidates-title">추가할 수 있는 글</h2>
+                    <p class="nb-muted nb-small">보관하지 않은 글입니다. 다른 시리즈에 속한 글을 추가하고 저장하면 이 시리즈로 옮겨지며, 글 하나는 시리즈 하나에만 속합니다.</p>
+                    <p class="nb-muted" data-candidates-empty th:hidden="${!#lists.isEmpty(view.candidates)}">추가할 수 있는 글이 없습니다.</p>
+                    <div class="nb-field" th:if="${!#lists.isEmpty(view.candidates)}">
+                        <label for="candidate-filter">글 제목 찾기</label>
+                        <input id="candidate-filter" type="search" data-candidate-filter autocomplete="off">
+                    </div>
+                    <ul class="nb-series-list" data-series-candidates>
+                        <li th:each="candidate : ${view.candidates}" class="nb-series-item">
+                            <input type="hidden" name="postId" th:value="${candidate.postId}" disabled>
+                            <span class="nb-series-title" th:text="${candidate.title}">글 제목</span>
+                            <span th:replace="~{admin/fragments :: badges(${candidate.badges})}"></span>
+                            <span class="nb-muted nb-small" th:if="${candidate.currentSeries != null}" th:text="${'현재: ' + candidate.currentSeries + ' → 저장하면 이 시리즈로 옮겨집니다'}">현재 시리즈</span>
+                            <span th:replace="~{admin/fragments :: seriesButtons(${candidate.title})}"></span>
+                        </li>
+                    </ul>
+                </section>
+                <p class="nb-muted nb-small" role="status" aria-live="polite" data-series-status></p>
+                <div class="nb-actions">
+                    <button class="nb-button nb-primary" type="submit">시리즈 저장</button>
+                    <a class="nb-button" th:href="@{/admin/series/{id}(id=${view.id})}">변경 취소</a>
+                </div>
+            </form>
+
+            <details class="nb-panel">
+                <summary>시리즈 삭제</summary>
+                <p class="nb-muted nb-small">이 시리즈만 삭제합니다. 글, 태그, 공개 상태는 그대로입니다.</p>
+                <form th:action="@{/admin/series/{id}/delete(id=${view.id})}" method="post">
+                    <button class="nb-link-danger" type="submit">시리즈 삭제</button>
+                </form>
+            </details>
+        </main>
+    </div>
+</div>
+<script src="/ui/series-editor.js" defer></script>
+</body>
+</html>

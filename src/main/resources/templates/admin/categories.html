@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{admin/fragments :: head('카테고리')}"></head>
+<head th:replace="~{admin/fragments :: head('태그')}"></head>
 <body class="nb-body-root">
 <div class="nb-shell">
     <aside th:replace="~{admin/fragments :: sidebar('categories')}"></aside>
@@ -8,13 +8,13 @@
         <button type="button" class="nb-button nb-menu" data-toggle-menu aria-expanded="false" aria-controls="nb-sidebar">메뉴</button>
         <main class="nb-main">
             <div class="nb-section-head">
-                <h1 class="nb-heading">카테고리</h1>
-                <p class="nb-muted">글을 묶는 분류입니다. 한 글에 여러 카테고리를 지정할 수 있고, Notion 태그와는 별개입니다. 이름이나 순서를 저장하면 공개 홈 목록에 바로 반영됩니다.</p>
+                <h1 class="nb-heading">태그</h1>
+                <p class="nb-muted">주제로 글을 찾는 분류입니다. 한 글에 여러 태그를 지정할 수 있고 Notion 원문 태그와는 별개입니다. 필요한 원문 태그는 글의 분류 편집에서 골라 옮깁니다. 이름이나 순서를 저장하면 내 블로그에 바로 반영됩니다.</p>
             </div>
             <div th:replace="~{admin/fragments :: notice(${view.notice})}"></div>
-            <form class="nb-inline-form" th:action="@{/admin/categories}" method="post" aria-label="카테고리 추가">
+            <form class="nb-inline-form" th:action="@{/admin/categories}" method="post" aria-label="태그 추가">
                 <div class="nb-field">
-                    <label for="new-category-name">새 카테고리 이름</label>
+                    <label for="new-category-name">새 태그 이름</label>
                     <input id="new-category-name" type="text" name="name" required maxlength="50" autocomplete="off">
                 </div>
                 <div class="nb-field nb-field-narrow">
@@ -23,7 +23,7 @@
                 </div>
                 <button class="nb-button nb-primary" type="submit">추가</button>
             </form>
-            <div class="nb-empty" th:if="${#lists.isEmpty(view.rows)}"><h2>아직 카테고리가 없습니다.</h2><p>이름을 입력해 첫 카테고리를 추가하세요.</p></div>
+            <div class="nb-empty" th:if="${#lists.isEmpty(view.rows)}"><h2>아직 태그가 없습니다.</h2><p>이름을 입력해 첫 태그를 추가하세요.</p></div>
             <ul class="nb-category-list" th:if="${!#lists.isEmpty(view.rows)}">
                 <li class="nb-category-row" th:each="row, state : ${view.rows}">
                     <form class="nb-inline-form" th:action="@{/admin/categories/{id}(id=${row.id})}" method="post" th:attr="aria-label=${row.name + ' 수정'}">
@@ -40,7 +40,7 @@
                     <form class="nb-category-delete" th:action="@{/admin/categories/{id}/delete(id=${row.id})}" method="post">
                         <span class="nb-muted nb-small" th:text="${'글 ' + row.assignedPosts + '개'}">글 0개</span>
                         <button class="nb-link-danger" type="submit" th:if="${row.deletable}" th:attr="aria-label=${row.name + ' 삭제'}">삭제</button>
-                        <span class="nb-muted nb-small" th:unless="${row.deletable}">글이 지정되어 삭제할 수 없음</span>
+                        <span class="nb-muted nb-small" th:unless="${row.deletable}">글이 지정되어 삭제할 수 없음 (비공개·보관 글 포함)</span>
                     </form>
                 </li>
             </ul>

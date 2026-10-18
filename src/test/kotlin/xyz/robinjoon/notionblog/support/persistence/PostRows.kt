@@ -9,12 +9,15 @@ import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.PostRevisionTable
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.PostSourceBindingTable
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.PostTable
+import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.SeriesPostTable
+import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.SeriesTable
 import xyz.robinjoon.notionblog.blog.domain.SourceDocumentRef
 import xyz.robinjoon.notionblog.blog.domain.category.CategoryId
 import xyz.robinjoon.notionblog.blog.domain.post.PostId
 import xyz.robinjoon.notionblog.blog.domain.post.PostRevisionId
 import xyz.robinjoon.notionblog.blog.domain.post.PostVisibility
 import xyz.robinjoon.notionblog.blog.domain.post.block.media.MediaKey
+import xyz.robinjoon.notionblog.blog.domain.series.SeriesId
 import java.time.Instant
 import java.time.ZoneOffset
 
@@ -124,6 +127,29 @@ object PostRows {
         PostCategoryTable.insert {
             it[PostCategoryTable.postId] = postId.value
             it[PostCategoryTable.categoryId] = categoryId.value
+        }
+    }
+
+    fun series(
+        seriesId: SeriesId,
+        title: String,
+    ) {
+        SeriesTable.insert {
+            it[SeriesTable.seriesId] = seriesId.value
+            it[SeriesTable.title] = title
+            it[description] = "$title 설명"
+        }
+    }
+
+    fun seriesMember(
+        seriesId: SeriesId,
+        postId: PostId,
+        position: Int,
+    ) {
+        SeriesPostTable.insert {
+            it[SeriesPostTable.seriesId] = seriesId.value
+            it[SeriesPostTable.postId] = postId.value
+            it[SeriesPostTable.position] = position
         }
     }
 }

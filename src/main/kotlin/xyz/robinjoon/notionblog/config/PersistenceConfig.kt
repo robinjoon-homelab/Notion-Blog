@@ -10,7 +10,9 @@ import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.Expose
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.ExposedPresentationProfileRepository
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.ExposedPublicationRepository
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.ExposedPublishedPostStore
+import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.ExposedPublishedSeriesStore
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.ExposedRevisionMapper
+import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.ExposedSeriesRepository
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.ExposedSiteConfigurationRepository
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.ExposedSyncStateRepository
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.snapshot.JsonBlockTreeSnapshotCodec
@@ -23,6 +25,8 @@ import xyz.robinjoon.notionblog.blog.application.port.output.persistence.PostRep
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.PresentationProfileRepository
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.PublicationRepository
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.PublishedPostStore
+import xyz.robinjoon.notionblog.blog.application.port.output.persistence.PublishedSeriesStore
+import xyz.robinjoon.notionblog.blog.application.port.output.persistence.SeriesRepository
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.SiteConfigurationRepository
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.SyncStateRepository
 
@@ -54,6 +58,12 @@ internal class PersistenceConfig {
         revisions: ExposedRevisionMapper,
         propertiesCodec: JsonPostPropertiesCodec,
     ): PublishedPostStore = ExposedPublishedPostStore(revisions, propertiesCodec)
+
+    @Bean
+    fun seriesRepository(): SeriesRepository = ExposedSeriesRepository()
+
+    @Bean
+    fun publishedSeriesStore(propertiesCodec: JsonPostPropertiesCodec): PublishedSeriesStore = ExposedPublishedSeriesStore(propertiesCodec)
 
     @Bean
     fun mediaStorage(): MediaStoragePort = ExposedMediaStorage()

@@ -27,6 +27,12 @@ class DeclaredRoutes {
     @GetMapping("/media/{mediaKey}")
     fun media() = Unit
 
+    @GetMapping("/series")
+    fun seriesList() = Unit
+
+    @GetMapping("/series/{seriesId}")
+    fun series() = Unit
+
     @GetMapping("/admin/login")
     fun login() = Unit
 
@@ -54,6 +60,9 @@ class DeclaredRoutes {
     @GetMapping("/admin/posts/{postId}")
     fun preview() = Unit
 
+    @GetMapping("/admin/posts/{postId}/review")
+    fun review() = Unit
+
     @GetMapping("/admin/posts/{postId}/categories")
     fun postCategories() = Unit
 
@@ -71,6 +80,21 @@ class DeclaredRoutes {
 
     @PostMapping("/admin/posts/{postId}/restore")
     fun restore() = Unit
+
+    @GetMapping("/admin/series")
+    fun adminSeries() = Unit
+
+    @PostMapping("/admin/series")
+    fun createSeries() = Unit
+
+    @GetMapping("/admin/series/{seriesId}")
+    fun editSeries() = Unit
+
+    @PostMapping("/admin/series/{seriesId}")
+    fun saveSeries() = Unit
+
+    @PostMapping("/admin/series/{seriesId}/delete")
+    fun deleteSeries() = Unit
 
     @GetMapping("/admin/media/{mediaKey}")
     fun adminMedia() = Unit

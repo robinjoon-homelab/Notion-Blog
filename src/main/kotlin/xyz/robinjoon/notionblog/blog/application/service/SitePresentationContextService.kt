@@ -2,7 +2,7 @@ package xyz.robinjoon.notionblog.blog.application.service
 
 import org.springframework.transaction.annotation.Transactional
 import xyz.robinjoon.notionblog.blog.application.model.PresentationAssetDescriptor
-import xyz.robinjoon.notionblog.blog.application.model.SiteChrome
+import xyz.robinjoon.notionblog.blog.application.model.SitePresentationContext
 import xyz.robinjoon.notionblog.blog.application.port.output.diagnostics.SnapshotFailureOperation
 import xyz.robinjoon.notionblog.blog.application.port.output.diagnostics.SnapshotFailureReporter
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.PostRepository
@@ -20,7 +20,7 @@ import xyz.robinjoon.notionblog.blog.domain.site.SiteConfiguration
 
 // 모든 페이지를 감싸는 사이트 틀이다. 헤더·푸터는 해당 글이 공개일 때만 나타난다.
 @Transactional(readOnly = true)
-class SiteChromeService(
+class SitePresentationContextService(
     private val siteConfigurations: SiteConfigurationRepository,
     private val profiles: PresentationProfileRepository,
     private val assets: PresentationAssetCatalog,
@@ -30,12 +30,12 @@ class SiteChromeService(
 ) {
     // 사이트 설정, 그 표현 프로필, 자산 가운데 하나라도 사용할 수 없으면 null이다.
     @Transactional(readOnly = true)
-    fun load(): SiteChrome? {
+    fun load(): SitePresentationContext? {
         val site = siteConfigurations.findCurrent() ?: return null
         val profile = profiles.findProfile(site.presentationProfile) ?: return null
         val resolved = resolveAssets(site, profile.assets.styleSheets + profile.assets.scripts) ?: return null
         val bindings = posts.findBindingsBySourceDocuments(site.documents.all)
-        return SiteChrome(
+        return SitePresentationContext(
             site = site,
             presentation = profile,
             presentationAssets = resolved,
