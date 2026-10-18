@@ -12,7 +12,7 @@ import xyz.robinjoon.notionblog.blog.application.model.PublishedPost
 import xyz.robinjoon.notionblog.blog.application.model.ResultPage
 import xyz.robinjoon.notionblog.blog.application.model.RevisionMedia
 import xyz.robinjoon.notionblog.blog.application.model.SeriesPostLink
-import xyz.robinjoon.notionblog.blog.application.model.SiteChrome
+import xyz.robinjoon.notionblog.blog.application.model.SitePresentationContext
 import xyz.robinjoon.notionblog.blog.domain.SourceDocumentRef
 import xyz.robinjoon.notionblog.blog.domain.SourceId
 import xyz.robinjoon.notionblog.blog.domain.SourceRevision
@@ -62,7 +62,7 @@ internal object WebFixtures {
     fun chrome(
         header: PostRevision? = null,
         footer: PostRevision? = null,
-    ): SiteChrome {
+    ): SitePresentationContext {
         val style = PresentationAssetRef("style", 1, "sha256-style")
         val profile =
             PresentationProfile.restore(
@@ -71,7 +71,7 @@ internal object WebFixtures {
                 tokens = PresentationTokens(),
                 assets = PresentationAssets(styleSheets = listOf(style), scripts = emptyList()),
             )
-        return SiteChrome(
+        return SitePresentationContext(
             site =
                 SiteConfiguration.restore(
                     publicationId = PublicationId(UUID.fromString("00000000-0000-0000-0000-000000000002")),
@@ -89,7 +89,7 @@ internal object WebFixtures {
     fun publicPage(
         revision: PostRevision,
         references: ContentReferences = ContentReferences(emptyMap(), RevisionMedia.empty),
-        chrome: SiteChrome = chrome(),
+        chrome: SitePresentationContext = chrome(),
     ): PublicPostPage = PublicPostPage(chrome, PublishedPost(revision, capturedAt), references)
 
     fun listPage(entries: List<PostListEntry> = emptyList()): PostListPage =

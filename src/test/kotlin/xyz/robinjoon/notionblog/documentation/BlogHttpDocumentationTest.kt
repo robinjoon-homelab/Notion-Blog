@@ -50,7 +50,7 @@ import xyz.robinjoon.notionblog.blog.application.model.PublicPostPage
 import xyz.robinjoon.notionblog.blog.application.model.PublishedPost
 import xyz.robinjoon.notionblog.blog.application.model.ResultPage
 import xyz.robinjoon.notionblog.blog.application.model.RevisionMedia
-import xyz.robinjoon.notionblog.blog.application.model.SiteChrome
+import xyz.robinjoon.notionblog.blog.application.model.SitePresentationContext
 import xyz.robinjoon.notionblog.blog.application.port.input.GetPostListUseCase
 import xyz.robinjoon.notionblog.blog.application.port.input.GetPublicFeedUseCase
 import xyz.robinjoon.notionblog.blog.application.port.input.GetPublicPostUseCase
@@ -265,7 +265,7 @@ class BlogHttpDocumentationTest {
             headerWithName("ETag").description("피드 본문이 같으면 유지되는 캐시 검증값"),
         )
 
-    private fun chrome(): SiteChrome {
+    private fun chrome(): SitePresentationContext {
         val profile =
             PresentationProfile.restore(
                 reference = PresentationProfileRef(PresentationProfileId(UUID.fromString("0f3c3a52-6c55-4f4c-8f43-6f0b3c8e2d11")), 1),
@@ -273,7 +273,7 @@ class BlogHttpDocumentationTest {
                 tokens = PresentationTokens(),
                 assets = PresentationAssets(styleSheets = listOf(style), scripts = emptyList()),
             )
-        return SiteChrome(
+        return SitePresentationContext(
             site =
                 SiteConfiguration.restore(
                     publicationId = PublicationId(UUID.fromString("7d2c9b40-1e8f-4a35-b6d7-0c5e4f3a2b19")),

@@ -54,13 +54,13 @@ data class PublicSeriesNavigation(
 }
 
 data class PublicSeriesListPage(
-    val chrome: SiteChrome,
+    val chrome: SitePresentationContext,
     val series: List<PublicSeriesSummary>,
     val references: ContentReferences,
 )
 
 data class PublicSeriesPage(
-    val chrome: SiteChrome,
+    val chrome: SitePresentationContext,
     val series: PublicSeries,
     val references: ContentReferences,
     val configuration: HomeConfiguration,

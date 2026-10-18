@@ -30,7 +30,7 @@ import java.util.UUID
 class AdminPostQueryServiceTest {
     private val summaries = mockk<AdminPostSummaryService>()
     private val posts = mockk<PostRepository>()
-    private val chromes = mockk<SiteChromeService>()
+    private val chromes = mockk<SitePresentationContextService>()
     private val references = mockk<ContentReferencesService>()
     private val failures = mockk<SnapshotFailureReporter>()
     private val service = AdminPostQueryService(summaries, posts, chromes, references, failures)

@@ -20,7 +20,7 @@ import xyz.robinjoon.notionblog.blog.domain.post.PostId
 
 @Transactional(readOnly = true)
 class GetPostListService(
-    private val chromes: SiteChromeService,
+    private val chromes: SitePresentationContextService,
     private val references: ContentReferencesService,
     private val publishedPosts: PublishedPostStore,
     private val snapshotFailures: SnapshotFailureReporter,

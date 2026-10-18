@@ -25,7 +25,7 @@ import xyz.robinjoon.notionblog.support.fixture.SiteFixtures
 import java.util.UUID
 
 class GetPublicSeriesServiceTest {
-    private val chromes = mockk<SiteChromeService>()
+    private val chromes = mockk<SitePresentationContextService>()
     private val references = mockk<ContentReferencesService>()
     private val published = mockk<PublishedSeriesStore>()
     private val homes = mockk<HomeConfigurationRepository>()

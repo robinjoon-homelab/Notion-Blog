@@ -60,7 +60,7 @@ data class AdminPostHistory(
 
 data class AdminPostPreview(
     val summary: AdminPostSummary,
-    val chrome: SiteChrome,
+    val chrome: SitePresentationContext,
     val revision: PostRevision,
     val references: ContentReferences,
     val actions: AdminPostActions,

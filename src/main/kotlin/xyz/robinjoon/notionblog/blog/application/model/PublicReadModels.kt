@@ -30,7 +30,7 @@ data class PostListEntry(
     val categories: List<ListedCategory> = emptyList(),
 )
 
-data class SiteChrome(
+data class SitePresentationContext(
     val site: SiteConfiguration,
     val presentation: PresentationProfile,
     val presentationAssets: Map<PresentationAssetRef, PresentationAssetDescriptor>,
@@ -63,7 +63,7 @@ data class RevisionMedia(
 
 // categories는 글에 배정된 앱 태그이며 홈의 태그 표시 설정과 무관하다. Notion 원문 태그는 리비전에 남지만 공개 화면에 쓰지 않는다.
 data class PublicPostPage(
-    val chrome: SiteChrome,
+    val chrome: SitePresentationContext,
     val post: PublishedPost,
     val references: ContentReferences,
     val categories: List<ListedCategory> = emptyList(),
@@ -75,7 +75,7 @@ data class PostListPage
     // quality-exception: 홈 목록·태그 탐색·검색어·전체 글 수를 한 화면 계약으로 보존하는 조회 결과 8개 필드다.
     @Suppress("LongParameterList")
     constructor(
-        val chrome: SiteChrome,
+        val chrome: SitePresentationContext,
         val entries: ResultPage<PostListEntry>,
         val references: ContentReferences,
         val configuration: HomeConfiguration = HomeConfiguration.defaults(),

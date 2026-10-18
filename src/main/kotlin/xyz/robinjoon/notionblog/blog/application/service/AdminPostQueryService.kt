@@ -25,7 +25,7 @@ import java.time.Instant
 class AdminPostQueryService(
     private val summaries: AdminPostSummaryService,
     private val posts: PostRepository,
-    private val chromes: SiteChromeService,
+    private val chromes: SitePresentationContextService,
     private val references: ContentReferencesService,
     private val snapshotFailures: SnapshotFailureReporter,
 ) : AdminPostQueryUseCase {

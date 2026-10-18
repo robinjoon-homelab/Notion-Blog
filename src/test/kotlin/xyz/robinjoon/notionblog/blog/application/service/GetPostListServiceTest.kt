@@ -33,7 +33,7 @@ import xyz.robinjoon.notionblog.support.fixture.PostFixtures
 import xyz.robinjoon.notionblog.support.fixture.SiteFixtures
 
 class GetPostListServiceTest {
-    private val chromes = mockk<SiteChromeService>()
+    private val chromes = mockk<SitePresentationContextService>()
     private val references = mockk<ContentReferencesService>()
     private val published = mockk<PublishedPostStore>()
     private val failures = mockk<SnapshotFailureReporter>()

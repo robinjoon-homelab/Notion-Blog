@@ -15,7 +15,7 @@ import xyz.robinjoon.notionblog.blog.domain.post.PostId
 // 처리한다.
 @Transactional(readOnly = true)
 class GetPublicPostService(
-    private val chromes: SiteChromeService,
+    private val chromes: SitePresentationContextService,
     private val references: ContentReferencesService,
     private val publishedPosts: PublishedPostStore,
     private val publishedSeries: PublishedSeriesStore,

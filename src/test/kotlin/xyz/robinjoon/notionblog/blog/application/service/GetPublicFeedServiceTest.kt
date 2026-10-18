@@ -18,7 +18,7 @@ import xyz.robinjoon.notionblog.support.fixture.SiteFixtures
 
 class GetPublicFeedServiceTest {
     private val sites = mockk<SiteConfigurationRepository>()
-    private val chromes = mockk<SiteChromeService>()
+    private val chromes = mockk<SitePresentationContextService>()
     private val published = mockk<PublishedPostStore>()
     private val failures = mockk<SnapshotFailureReporter>()
     private val service = GetPublicFeedService(sites, chromes, published, failures)

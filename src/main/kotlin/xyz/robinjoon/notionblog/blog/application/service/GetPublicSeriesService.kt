@@ -8,7 +8,7 @@ import xyz.robinjoon.notionblog.blog.application.model.PublicSeriesListPage
 import xyz.robinjoon.notionblog.blog.application.model.PublicSeriesLookupResult
 import xyz.robinjoon.notionblog.blog.application.model.PublicSeriesPage
 import xyz.robinjoon.notionblog.blog.application.model.RevisionMedia
-import xyz.robinjoon.notionblog.blog.application.model.SiteChrome
+import xyz.robinjoon.notionblog.blog.application.model.SitePresentationContext
 import xyz.robinjoon.notionblog.blog.application.port.input.GetPublicSeriesUseCase
 import xyz.robinjoon.notionblog.blog.application.port.output.diagnostics.SnapshotFailureOperation
 import xyz.robinjoon.notionblog.blog.application.port.output.diagnostics.SnapshotFailureReporter
@@ -21,7 +21,7 @@ import xyz.robinjoon.notionblog.blog.domain.series.SeriesId
 // 공개 글이 있는 시리즈와 그 공개 글만 보여 준다. 사이트 문서는 공개 글이어도 빼며, 표지는 목록 항목의 공개본 리비전에서만 찾는다.
 @Transactional(readOnly = true)
 class GetPublicSeriesService(
-    private val chromes: SiteChromeService,
+    private val chromes: SitePresentationContextService,
     private val references: ContentReferencesService,
     private val publishedSeries: PublishedSeriesStore,
     private val homeConfigurations: HomeConfigurationRepository,
@@ -57,7 +57,7 @@ class GetPublicSeriesService(
     }
 
     private fun layoutWith(
-        chrome: SiteChrome,
+        chrome: SitePresentationContext,
         covers: RevisionMedia,
     ): ContentReferences {
         val layout = references.resolve(listOfNotNull(chrome.header, chrome.footer))

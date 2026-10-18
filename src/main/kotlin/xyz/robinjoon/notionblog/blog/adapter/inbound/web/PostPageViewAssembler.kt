@@ -17,7 +17,7 @@ import xyz.robinjoon.notionblog.blog.application.model.PostListEntry
 import xyz.robinjoon.notionblog.blog.application.model.PresentationAssetDescriptor
 import xyz.robinjoon.notionblog.blog.application.model.PublicPostPage
 import xyz.robinjoon.notionblog.blog.application.model.PublicSeriesNavigation
-import xyz.robinjoon.notionblog.blog.application.model.SiteChrome
+import xyz.robinjoon.notionblog.blog.application.model.SitePresentationContext
 import xyz.robinjoon.notionblog.blog.domain.post.PostProperties
 import xyz.robinjoon.notionblog.blog.domain.post.PostRevision
 import xyz.robinjoon.notionblog.blog.domain.post.PostRevisionId
@@ -52,11 +52,11 @@ class PostPageViewAssembler(
     }
 
     internal fun publicChrome(
-        chrome: SiteChrome,
+        chrome: SitePresentationContext,
         references: ContentReferences,
     ): PageChromeView = chromeView(chrome, mappers(references, PUBLIC_MEDIA_PATH))
 
-    internal fun locale(chrome: SiteChrome): Locale = Locale.forLanguageTag(chrome.site.metadata.languageTag)
+    internal fun locale(chrome: SitePresentationContext): Locale = Locale.forLanguageTag(chrome.site.metadata.languageTag)
 
     internal fun date(
         instant: Instant,
@@ -99,7 +99,7 @@ class PostPageViewAssembler(
     ): (PostRevisionId) -> PostContentViewMapper = { revisionId -> PostContentViewMapper(references, revisionId, mediaPath) }
 
     private fun postView(
-        chrome: SiteChrome,
+        chrome: SitePresentationContext,
         revision: PostRevision,
         publishedAt: Instant?,
         mappers: (PostRevisionId) -> PostContentViewMapper,
@@ -121,7 +121,7 @@ class PostPageViewAssembler(
     ): PostPropertiesView = PostPropertiesView(properties.summary, emptyList(), publishedOn, properties.cover?.let(mapper::mediaUrl))
 
     private fun chromeView(
-        chrome: SiteChrome,
+        chrome: SitePresentationContext,
         mappers: (PostRevisionId) -> PostContentViewMapper,
     ): PageChromeView {
         val metadata = chrome.site.metadata
@@ -154,7 +154,7 @@ class PostPageViewAssembler(
         idPrefix: String,
     ): PostDocumentView = PostDocumentViewAssembler(revision, mapper, idPrefix).assemble()
 
-    private fun profileView(chrome: SiteChrome): PresentationProfileView =
+    private fun profileView(chrome: SitePresentationContext): PresentationProfileView =
         PresentationProfileView(
             listOf(
                 "notion-color-mode-${chrome.presentation.tokens.colorMode.name.lowercase()}",
