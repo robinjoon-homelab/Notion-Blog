@@ -19,7 +19,8 @@ class RepositoryBoundaryTest {
         assertThat(dockerfile).contains("FROM eclipse-temurin:25-jre-noble")
         assertThat(dockerfile).contains("COPY --chown=10001:10001 build/libs/application.jar application.jar")
         assertThat(dockerfile).contains("USER 10001:10001", "ENTRYPOINT [\"java\", \"-jar\", \"/app/application.jar\"]")
-        assertThat(dockerfile).doesNotContain("25-jdk", "./gradlew", "bootJar")
+        assertThat(dockerfile.substringAfter("FROM eclipse-temurin:25-jre-noble")).doesNotContain("25-jdk", "./gradlew", "bootJar")
+        assertThat(dockerfile).contains("RuntimeTrust sanitize", "RuntimeTrust roots")
         assertThat(dockerfile).doesNotContain(
             "JAVA_TOOL_OPTIONS",
             "JDK_JAVA_OPTIONS",
@@ -48,7 +49,7 @@ class RepositoryBoundaryTest {
             "REGISTRY_IMAGE: \${{ vars.HOMELAB_REGISTRY_IMAGE }}",
             "run: python3 scripts/deploy.py metadata",
         )
-        assertThat(workflow).contains("push: true")
+        assertThat(workflow).contains("run: docker push \"\$IMAGE\"")
         assertThat(workflow).contains("github.ref == 'refs/heads/master'")
         assertThat(workflow).contains("username: \${{ env.REGISTRY_USERNAME }}")
         assertThat(workflow).contains("password: \${{ env.REGISTRY_PASSWORD }}")
@@ -61,26 +62,28 @@ class RepositoryBoundaryTest {
     fun `ci verifies the target image on harness main after publishing the tested artifact`() {
         val workflow = Files.readString(Path.of(".github/workflows/ci.yml"))
         val deployJob = workflow.substringAfter("  deploy:")
-        val artifactDownload = deployJob.indexOf("- name: Download the tested application")
-        val imagePushStep = deployJob.indexOf("docker/build-push-action@")
+        val artifactDownload = deployJob.indexOf("- name: Download the verified application image")
+        val imagePushStep = deployJob.indexOf("run: docker push")
         val releaseRequestStep = deployJob.indexOf("run: python3 scripts/deploy.py apply")
 
         assertThat(artifactDownload).isGreaterThanOrEqualTo(0)
-        assertThat(deployJob.indexOf("docker/build-push-action@")).isGreaterThan(artifactDownload)
+        assertThat(deployJob.indexOf("docker load -i build/application-image.tar")).isGreaterThan(artifactDownload)
         assertThat(imagePushStep).isGreaterThanOrEqualTo(0)
         assertThat(releaseRequestStep).isGreaterThan(imagePushStep)
         assertThat(workflow).contains(
             "group: homelab-deploy",
             "cancel-in-progress: false",
             "GH_TOKEN: \${{ github.token }}",
-            "tags: \${{ steps.metadata.outputs.image }}",
+            "IMAGE: \${{ steps.metadata.outputs.image }}",
             "IMAGE_TAG: \${{ steps.metadata.outputs.tag }}",
             "run: python3 scripts/deploy.py apply",
-            "path: build/libs/application.jar",
-            "path: build/libs/",
-            "name: application-\${{ github.sha }}",
+            "path: build/application-image.tar",
+            "path: build/",
+            "name: application-image-\${{ github.sha }}",
+            "test \"\$revision\" = \"\$GITHUB_SHA\"",
+            "bash scripts/verify-runtime-image.sh",
         )
-        assertThat(deployJob).doesNotContain(":latest", "if: always()", "continue-on-error: true", "./gradlew")
+        assertThat(deployJob).doesNotContain(":latest", "if: always()", "continue-on-error: true", "./gradlew", "docker/build-push-action@")
         assertThat(workflow.split("docker/build-push-action@")).hasSize(2)
     }
 

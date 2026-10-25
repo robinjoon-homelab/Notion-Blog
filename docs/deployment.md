@@ -2,7 +2,7 @@
 
 ## 공용 파일 사용
 
-- [.github/workflows/ci.yml](../.github/workflows/ci.yml), [scripts/deploy.py](../scripts/deploy.py), `scripts/tests`, [Dockerfile](../Dockerfile), `.dockerignore`, Gradle 빌드 구성을 템플릿과 공통으로 유지한다.
+- [.github/workflows/ci.yml](../.github/workflows/ci.yml), [scripts/deploy.py](../scripts/deploy.py), `scripts/tests`, [런타임 신뢰 검증](../scripts/security/README.md)의 `scripts/security`와 `scripts/verify-runtime-image.sh`, [Dockerfile](../Dockerfile), `.dockerignore`, Gradle 빌드 구성을 템플릿과 공통으로 유지한다.
 - 앱별 값은 아래 변수와 [최초 워크로드 생성 설정](#최초-워크로드-생성-설정)으로 지정한다. 기능 추가를 위해 공용 배포 파일을 개별 수정하지 않는다.
 - 이 앱은 Notion 런타임 환경변수와 기존 DB·도메인 때문에 `.github/deployment.json`을 유지한다. `scripts/tests/test_notion_blog_deployment.py`가 이 설정의 내용을 검증한다.
 - CI 변경 시 PR 소스 커밋 검사를 유지한다. 신뢰하지 않는 PR에 배포 자격 증명을 제공하거나 `pull_request_target`으로 실행하지 않는다.
@@ -36,6 +36,8 @@ GitHub Actions Variables에 다음 값을 설정한다.
 - liveness는 `/actuator/health/liveness`, readiness는 `/actuator/health/readiness`(애플리케이션 준비 상태와 DB)다. Notion 장애를 readiness에 연결하지 않는다. Kubernetes 프로브 연결을 보고할 때는 실제 워크로드 설정을 확인한다.
 - 스케줄러는 다중 인스턴스 조정을 하지 않는다. 스케줄러를 활성화한 인스턴스는 하나만 둔다.
 - 공개 범위는 [사용 범위](../README.md#사용-범위)를 따른다.
+- 이미지 빌드에서 eMudhra 관련 루트 4종을 JVM·OS 신뢰 저장소에서 제거하고 [런타임 신뢰 검증](../scripts/security/README.md)을 통과시킨다. 사용자 지정 신뢰 저장소나 인증서 마운트는 별도로 검증하며 TLS·호스트명 검증을 끄지 않는다.
+- CI는 PR에서도 `linux/amd64` 앱 이미지를 빌드·검증한다. 배포 작업은 검증된 이미지 아티팩트의 커밋 SHA를 확인한 뒤 같은 이미지를 게시하며 다시 빌드하지 않는다. 템플릿 저장소의 배포 생략과 PR 자격 증명 격리를 유지한다.
 
 ## 배포 없이 검증
 
@@ -46,7 +48,8 @@ APP_NAME=notion-blog REGISTRY_HOST=registry.homelab.robinjoon.xyz \
   REGISTRY_IMAGE=apps/notion-blog python3 scripts/deploy.py plan
 python3 -m unittest discover -s scripts/tests -v
 ./gradlew build
-docker build -t notion-blog:local .
+docker build --platform linux/amd64 --pull -t notion-blog:local .
+bash scripts/verify-runtime-image.sh notion-blog:local
 ```
 
 ## 배포 실행과 확인
