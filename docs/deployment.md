@@ -52,6 +52,13 @@ docker build --platform linux/amd64 --pull -t notion-blog:local .
 bash scripts/verify-runtime-image.sh notion-blog:local
 ```
 
+## 공통 HTTPS 프록시
+
+- Notion API와 미디어 다운로드는 JVM 기본 프록시 선택과 TLS 신뢰 설정을 따른다. 플랫폼이 `JAVA_TOOL_OPTIONS`로 주입하는 표준 HTTPS 프록시·`http.nonProxyHosts`·신뢰 저장소를 사용하며 앱별 프록시 주소·CA 번들·TLS 검증 우회를 추가하지 않는다. 설정이 없으면 직접 연결한다. 프록시 실패 후 직접 연결로 재시도하지 않는다.
+- 미디어는 각 리다이렉트에서 HTTPS·허용 호스트·기본 포트·로컬 DNS의 공인 주소 검사를 유지한다. 이 검사는 직접 연결의 DNS도 고정하지 않으며, 프록시의 upstream DNS 해석이나 연결 주소를 고정하지 않는다. 프록시 모드의 최종 DNS·사설/loopback/metadata 주소 차단과 upstream TLS 검증은 신뢰하는 중앙 프록시가 책임진다. 앱은 검사 CA의 체인과 요청 호스트 이름을 계속 검증한다.
+- 미디어 전용 클라이언트는 Notion 토큰·쿠키 저장소·인증기를 공유하지 않는다. 수동 리다이렉트, 전체 다운로드 기한·취소·본문 크기 제한을 유지한다. `NO_PROXY` 강제는 공통 정책을 가로막으므로 사용하지 않는다.
+- 코드·PR CI 검증만으로 운영 프록시 전환이 완료된 것으로 보지 않는다. 검증된 이미지 배포와 하네스의 `platform.egress.excludedApps` 예외 제거 후 실제 통신을 별도로 확인한다. DB·내부 서비스 통신은 플랫폼의 직접 연결 정책을 유지한다.
+
 ## 배포 실행과 확인
 
 - 검증만 필요하면 PR을 사용한다. 실제 배포에는 `master` 푸시 또는 해당 브랜치의 수동 실행을 사용한다.

@@ -18,7 +18,8 @@ internal fun interface MediaHostResolver {
 // HTTPS 기본 포트의 Notion 파일 저장소 호스트만 허용하고, 해석된 주소가 모두 공인 유니캐스트일 때만 연결한다.
 // JDK HttpClient는 연결할 주소를 지정할 수 없어 검사와 연결 사이의 DNS 재바인딩을 주소 고정으로 막지 못한다.
 // 그래서 공격자가 DNS를 바꿀 수 없는 고정 호스트 목록을 1차 방어로 두고, 주소 검사는 내부망 해석·잘못된 목록을 막는다.
-// 시스템 resolver를 쓰므로 HTTP 클라이언트도 직후 같은 JVM 주소 캐시를 읽는다.
+// 직접 연결은 같은 JVM 주소 캐시를 쓰지만 주소 고정은 아니다. 프록시의 upstream DNS는 이 검사로 고정되지 않는다.
+// 프록시 모드에서는 신뢰하는 플랫폼 프록시가 최종 DNS·주소 차단과 upstream TLS 검증을 책임진다.
 internal class PublicAddressPolicy(
     allowedHosts: Collection<String> = notionFileHosts,
     private val resolver: MediaHostResolver = MediaHostResolver { host -> InetAddress.getAllByName(host).toList() },

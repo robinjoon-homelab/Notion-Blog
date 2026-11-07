@@ -41,7 +41,8 @@ internal class MediaHttpTransport(
             contentType = headers.firstValue(CONTENT_TYPE).orElse(null),
             contentEncoding = headers.firstValue(CONTENT_ENCODING).orElse(null),
             location = headers.firstValue(LOCATION).orElse(null),
-            body = response.body(),
+            // CONNECT 거부 응답은 JDK가 BodyHandler를 거치지 않아 본문이 null일 수 있다.
+            body = response.body() ?: MediaResponseBody.Skipped,
         )
     }
 
