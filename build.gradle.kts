@@ -62,6 +62,7 @@ dependencies {
     testImplementation("io.mockk:mockk:1.14.11")
     testRuntimeOnly("com.h2database:h2")
     testImplementation("com.squareup.okhttp3:mockwebserver:5.5.0")
+    testImplementation("com.squareup.okhttp3:okhttp-tls:5.5.0")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
     detektPlugins(project(":quality-rules"))

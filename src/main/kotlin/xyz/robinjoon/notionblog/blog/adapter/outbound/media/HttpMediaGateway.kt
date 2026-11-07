@@ -106,13 +106,13 @@ internal class HttpMediaGateway(
         private val redirectStatuses = setOf(301, 302, 303, 307, 308)
         private val addressCheckThreads = Executor { task -> Thread.ofVirtual().name("media-address-check").start(task) }
 
-        // Notion API 클라이언트와 공유하지 않는 전용 클라이언트다. 쿠키 저장소·인증기·프록시·자동 리다이렉트를 두지 않는다.
+        // Notion API 클라이언트와 공유하지 않는다. 쿠키 저장소·인증기·자동 리다이렉트를 두지 않는다.
+        // 프록시 선택(nonProxyHosts 포함)과 TLS 신뢰는 플랫폼이 주입하는 JVM 기본 설정을 따른다.
         fun secureClient(connectTimeout: Duration): HttpClient =
             HttpClient
                 .newBuilder()
                 .connectTimeout(connectTimeout)
                 .followRedirects(HttpClient.Redirect.NEVER)
-                .proxy(HttpClient.Builder.NO_PROXY)
                 .version(HttpClient.Version.HTTP_1_1)
                 .build()
     }
