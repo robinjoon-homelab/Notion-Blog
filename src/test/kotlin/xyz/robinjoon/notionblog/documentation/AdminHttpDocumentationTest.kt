@@ -25,6 +25,7 @@ import org.thymeleaf.spring6.SpringTemplateEngine
 import org.thymeleaf.spring6.view.ThymeleafViewResolver
 import org.thymeleaf.templatemode.TemplateMode
 import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver
+import xyz.robinjoon.notionblog.adapter.inbound.web.WebSecurityHeadersFilter
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.AdminFixtures
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.AdminLoginController
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.AdminPostCommandController
@@ -34,7 +35,6 @@ import xyz.robinjoon.notionblog.blog.adapter.inbound.web.MediaController
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.PostPageViewAssembler
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.WebExceptionHandler
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.WebFixtures
-import xyz.robinjoon.notionblog.blog.adapter.inbound.web.WebSecurityHeadersFilter
 import xyz.robinjoon.notionblog.blog.application.model.AdminPostListQuery
 import xyz.robinjoon.notionblog.blog.application.model.AdminPostLookupResult
 import xyz.robinjoon.notionblog.blog.application.model.AdminPostStatus

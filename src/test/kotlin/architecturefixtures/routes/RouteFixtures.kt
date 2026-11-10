@@ -33,6 +33,9 @@ class DeclaredRoutes {
     @GetMapping("/series/{seriesId}")
     fun series() = Unit
 
+    @GetMapping("/admin")
+    fun adminHome() = Unit
+
     @GetMapping("/admin/login")
     fun login() = Unit
 

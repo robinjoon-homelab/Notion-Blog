@@ -9,7 +9,6 @@ import xyz.robinjoon.notionblog.blog.adapter.inbound.web.PublicBlogUrls
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.RssFeedRenderer
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.RssSummaryExtractor
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.SeriesPageViewAssembler
-import xyz.robinjoon.notionblog.blog.adapter.inbound.web.WebSecurityHeadersFilter
 import java.time.Clock
 
 @Configuration(proxyBeanMethods = false)
@@ -40,7 +39,4 @@ internal class WebConfig {
         clock: Clock,
         pages: PostPageViewAssembler,
     ): AdminViewAssembler = AdminViewAssembler(clock, pages)
-
-    @Bean
-    fun webSecurityHeadersFilter(): WebSecurityHeadersFilter = WebSecurityHeadersFilter()
 }

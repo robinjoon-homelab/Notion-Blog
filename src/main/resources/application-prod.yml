@@ -1,0 +1,7 @@
+server:
+  # 프록시가 넘긴 X-Forwarded-* 헤더로 HTTPS 여부를 판단해야 Secure 쿠키와 리다이렉트가 맞는다.
+  forward-headers-strategy: native
+  servlet:
+    session:
+      cookie:
+        secure: true

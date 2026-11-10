@@ -24,13 +24,13 @@ import org.thymeleaf.spring6.SpringTemplateEngine
 import org.thymeleaf.spring6.view.ThymeleafViewResolver
 import org.thymeleaf.templatemode.TemplateMode
 import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver
+import xyz.robinjoon.notionblog.adapter.inbound.web.WebSecurityHeadersFilter
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.AdminCategoryController
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.AdminHomeController
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.AdminPostCategoryController
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.AdminSeriesController
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.WebExceptionHandler
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.WebFixtures
-import xyz.robinjoon.notionblog.blog.adapter.inbound.web.WebSecurityHeadersFilter
 import xyz.robinjoon.notionblog.blog.application.model.AdminPostStatus
 import xyz.robinjoon.notionblog.blog.application.model.CategoryChangeResult
 import xyz.robinjoon.notionblog.blog.application.model.CategoryOverview

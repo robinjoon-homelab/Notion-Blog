@@ -12,6 +12,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.springframework.test.web.servlet.setup.StandaloneMockMvcBuilder
+import xyz.robinjoon.notionblog.adapter.inbound.web.WebSecurityHeadersFilter
 import xyz.robinjoon.notionblog.blog.application.model.MediaContent
 import xyz.robinjoon.notionblog.blog.application.model.MediaLookupResult
 import xyz.robinjoon.notionblog.blog.application.port.input.GetMediaUseCase

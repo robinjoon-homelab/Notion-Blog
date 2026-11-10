@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="brand" class="ui-brand">블로그 관리</div>
+
+<nav th:fragment="items(current)" aria-label="주요 메뉴">
+    <a class="ui-nav-link" th:href="@{/admin/posts}" th:aria-current="${current == 'posts'} ? 'page'">글 관리</a>
+    <a class="ui-nav-link" th:href="@{/admin/categories}" th:aria-current="${current == 'categories'} ? 'page'">태그</a>
+    <a class="ui-nav-link" th:href="@{/admin/series}" th:aria-current="${current == 'series'} ? 'page'">시리즈</a>
+    <a class="ui-nav-link" th:href="@{/admin/home}" th:aria-current="${current == 'home'} ? 'page'">설정</a>
+    <a class="ui-nav-link" th:href="@{/}">내 블로그</a>
+</nav>
+
+<form th:fragment="logout" th:action="@{/admin/logout}" method="post">
+    <button class="ui-button" type="submit">로그아웃</button>
+</form>
+</body>
+</html>
