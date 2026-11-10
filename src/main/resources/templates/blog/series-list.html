@@ -11,7 +11,7 @@
         <ul class="nb-series-grid" th:if="${!#lists.isEmpty(page.cards)}">
             <li th:each="card : ${page.cards}" class="nb-series-card">
                 <a th:href="${card.href}">
-                    <span class="nb-post-thumb"><img th:src="${card.thumbnailHref}" data-fallback-src="/ui/default-post-thumbnail.svg" alt="" loading="lazy" decoding="async"></span>
+                    <span class="nb-post-thumb"><img th:src="${card.thumbnailHref}" data-fallback-src="/app/default-post-thumbnail.svg" alt="" loading="lazy" decoding="async"></span>
                     <span class="nb-series-card-body">
                         <span class="nb-post-title" th:text="${card.title}">시리즈 제목</span>
                         <span class="nb-post-summary" th:if="${card.description != null}" th:text="${card.description}">설명</span>
@@ -28,6 +28,6 @@
     <footer th:replace="~{blog/page-fragments :: footer(${page.chrome})}"></footer>
     <div class="notion-content" th:if="${page.chrome.feedUrl != null}"><p><a th:href="${page.chrome.feedUrl}">RSS 구독</a></p></div>
 </main>
-<script src="/ui/thumbnail-fallback.js" defer></script>
+<script src="/app/thumbnail-fallback.js" defer></script>
 </body>
 </html>

@@ -92,7 +92,7 @@ class AdminPagesRenderingTest {
 
         val html = html("/admin/posts/${postId.value}")
 
-        assertThat(html).contains("/ui/notion-shell.js", "data-toggle-menu")
+        assertThat(html).contains("/app/notion-shell.js", "data-toggle-menu")
         assertThat(html).contains("/admin/posts/${postId.value}/review", "발행하기 확인", "/refresh\"", "/archive\"", "분류 편집", "Notion에서 수정")
         assertThat(html).doesNotContain("name=\"revisionId\"", "/publish\"", "/unpublish\"", "/restore\"", "게시")
     }
@@ -193,8 +193,8 @@ class AdminPagesRenderingTest {
 
         val html = html("/admin/posts/${postId.value}/review")
 
-        assertThat(html).contains("발행 확인", "Hello", "A summary", "/ui/default-post-thumbnail.svg", "분류 편집", "Notion에서 수정", "최신 내용 가져오기")
-        assertThat(html).contains("/ui/notion-shell.js")
+        assertThat(html).contains("발행 확인", "Hello", "A summary", "/app/default-post-thumbnail.svg", "분류 편집", "Notion에서 수정", "최신 내용 가져오기")
+        assertThat(html).contains("/app/notion-shell.js")
         assertThat(html.substringAfter("nb-preview")).contains("Imported body")
         assertThat(html.substringAfter("nb-preview").substringBefore("aria-label=\"발행\"")).doesNotContain("<form", "contenteditable")
         assertThat(

@@ -98,5 +98,5 @@ internal class AdminPostCommandController(
         }
     }
 
-    private fun notFound(): ModelAndView = errorView("error/blog-not-found", HttpStatus.NOT_FOUND)
+    private fun notFound(): ModelAndView = errorView("blog/not-found", HttpStatus.NOT_FOUND)
 }

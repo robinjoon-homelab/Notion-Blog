@@ -35,7 +35,7 @@ internal class AdminPostController(
         @RequestParam(defaultValue = "latest") version: String,
         model: Model,
     ): ModelAndView {
-        val id = WebIds.postId(postId) ?: return errorView("error/blog-not-found", HttpStatus.NOT_FOUND)
+        val id = WebIds.postId(postId) ?: return errorView("blog/not-found", HttpStatus.NOT_FOUND)
         val previewVersion = previewVersion(version)
         return when (val result = queries.get(id, previewVersion)) {
             is AdminPostLookupResult.Found -> {
@@ -48,11 +48,11 @@ internal class AdminPostController(
             }
 
             AdminPostLookupResult.NotFound -> {
-                errorView("error/blog-not-found", HttpStatus.NOT_FOUND)
+                errorView("blog/not-found", HttpStatus.NOT_FOUND)
             }
 
             AdminPostLookupResult.ContentUnavailable -> {
-                errorView("error/blog-unavailable", HttpStatus.SERVICE_UNAVAILABLE)
+                errorView("blog/unavailable", HttpStatus.SERVICE_UNAVAILABLE)
             }
         }
     }
@@ -66,7 +66,7 @@ internal class AdminPostController(
         model: Model,
         attributes: RedirectAttributes,
     ): ModelAndView {
-        val id = WebIds.postId(postId) ?: return errorView("error/blog-not-found", HttpStatus.NOT_FOUND)
+        val id = WebIds.postId(postId) ?: return errorView("blog/not-found", HttpStatus.NOT_FOUND)
         val previewVersion = previewVersion(version)
         return when (val result = queries.get(id, previewVersion)) {
             is AdminPostLookupResult.Found -> {
@@ -79,11 +79,11 @@ internal class AdminPostController(
             }
 
             AdminPostLookupResult.NotFound -> {
-                errorView("error/blog-not-found", HttpStatus.NOT_FOUND)
+                errorView("blog/not-found", HttpStatus.NOT_FOUND)
             }
 
             AdminPostLookupResult.ContentUnavailable -> {
-                errorView("error/blog-unavailable", HttpStatus.SERVICE_UNAVAILABLE)
+                errorView("blog/unavailable", HttpStatus.SERVICE_UNAVAILABLE)
             }
         }
     }

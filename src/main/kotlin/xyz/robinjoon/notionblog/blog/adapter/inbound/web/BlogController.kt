@@ -28,7 +28,7 @@ class BlogController(
         @RequestParam(required = false) q: String?,
     ): ModelAndView {
         // 형식이 틀린 태그 값은 없는 태그와 같게 404로 처리한다.
-        val categoryId = (tag ?: category)?.let { WebIds.categoryId(it) ?: return errorView("error/blog-not-found", HttpStatus.NOT_FOUND) }
+        val categoryId = (tag ?: category)?.let { WebIds.categoryId(it) ?: return errorView("blog/not-found", HttpStatus.NOT_FOUND) }
         val input = HomeSearchInput(q.orEmpty())
         return when (val result = postLists.get(HomePageQuery(page.coerceAtLeast(1), categoryId, input.query))) {
             is PostListLookupResult.Found -> {
@@ -38,11 +38,11 @@ class BlogController(
             }
 
             PostListLookupResult.NotFound -> {
-                errorView("error/blog-not-found", HttpStatus.NOT_FOUND)
+                errorView("blog/not-found", HttpStatus.NOT_FOUND)
             }
 
             PostListLookupResult.ContentUnavailable -> {
-                errorView("error/blog-unavailable", HttpStatus.SERVICE_UNAVAILABLE)
+                errorView("blog/unavailable", HttpStatus.SERVICE_UNAVAILABLE)
             }
         }
     }
@@ -51,11 +51,11 @@ class BlogController(
     fun post(
         @PathVariable postId: String,
     ): ModelAndView {
-        val parsedPostId = WebIds.postId(postId) ?: return errorView("error/blog-not-found", HttpStatus.NOT_FOUND)
+        val parsedPostId = WebIds.postId(postId) ?: return errorView("blog/not-found", HttpStatus.NOT_FOUND)
         return when (val result = posts.get(parsedPostId)) {
             is PublicPostLookupResult.Found -> ModelAndView("blog/post").addObject("page", assembler.assemble(result.page))
-            PublicPostLookupResult.NotFound -> errorView("error/blog-not-found", HttpStatus.NOT_FOUND)
-            PublicPostLookupResult.ContentUnavailable -> errorView("error/blog-unavailable", HttpStatus.SERVICE_UNAVAILABLE)
+            PublicPostLookupResult.NotFound -> errorView("blog/not-found", HttpStatus.NOT_FOUND)
+            PublicPostLookupResult.ContentUnavailable -> errorView("blog/unavailable", HttpStatus.SERVICE_UNAVAILABLE)
         }
     }
 }

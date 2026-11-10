@@ -9,7 +9,7 @@
     <link th:if="${chrome.feedUrl != null}" rel="alternate" type="application/rss+xml" th:href="${chrome.feedUrl}">
     <link th:each="asset : ${chrome.styleSheets}" rel="stylesheet" th:href="${asset.publicPath}"
           th:type="${asset.mediaType}" th:integrity="${asset.integrity}" crossorigin="anonymous">
-    <link rel="stylesheet" href="/ui/notion-shell.css">
+    <link rel="stylesheet" href="/app/notion-shell.css">
     <script th:each="asset : ${chrome.scripts}" th:src="${asset.publicPath}" th:type="${asset.mediaType}"
             th:integrity="${asset.integrity}" crossorigin="anonymous" defer></script>
 </head>

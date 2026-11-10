@@ -22,8 +22,8 @@
             </div>
             <section class="nb-panel nb-review-summary" aria-label="발행 요약">
                 <div class="nb-review-cover">
-                    <img th:src="${view.page.properties.coverHref != null ? view.page.properties.coverHref : '/ui/default-post-thumbnail.svg'}"
-                         data-fallback-src="/ui/default-post-thumbnail.svg" alt="" loading="lazy" decoding="async">
+                    <img th:src="${view.page.properties.coverHref != null ? view.page.properties.coverHref : '/app/default-post-thumbnail.svg'}"
+                         data-fallback-src="/app/default-post-thumbnail.svg" alt="" loading="lazy" decoding="async">
                 </div>
                 <div>
                     <h2 class="nb-panel-title" th:text="${view.page.title}">제목</h2>
@@ -58,7 +58,7 @@
         </main>
     </div>
 </div>
-<script src="/ui/notion-shell.js" defer></script>
-<script src="/ui/thumbnail-fallback.js" defer></script>
+<script src="/app/notion-shell.js" defer></script>
+<script src="/app/thumbnail-fallback.js" defer></script>
 </body>
 </html>

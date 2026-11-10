@@ -218,10 +218,10 @@ class BlogControllerTest {
         val unknown = CategoryId(UUID.nameUUIDFromBytes("unknown".toByteArray()))
         every { lists.get(HomePageQuery(1, unknown)) } returns PostListLookupResult.NotFound
 
-        mockMvc.perform(get("/?tag=${unknown.value}")).andExpect(status().isNotFound).andExpect(view().name("error/blog-not-found"))
-        mockMvc.perform(get("/?category=${unknown.value}")).andExpect(status().isNotFound).andExpect(view().name("error/blog-not-found"))
-        mockMvc.perform(get("/?tag=not-a-uuid")).andExpect(status().isNotFound).andExpect(view().name("error/blog-not-found"))
-        mockMvc.perform(get("/?category=not-a-uuid")).andExpect(status().isNotFound).andExpect(view().name("error/blog-not-found"))
+        mockMvc.perform(get("/?tag=${unknown.value}")).andExpect(status().isNotFound).andExpect(view().name("blog/not-found"))
+        mockMvc.perform(get("/?category=${unknown.value}")).andExpect(status().isNotFound).andExpect(view().name("blog/not-found"))
+        mockMvc.perform(get("/?tag=not-a-uuid")).andExpect(status().isNotFound).andExpect(view().name("blog/not-found"))
+        mockMvc.perform(get("/?category=not-a-uuid")).andExpect(status().isNotFound).andExpect(view().name("blog/not-found"))
     }
 
     @Test
@@ -231,7 +231,7 @@ class BlogControllerTest {
         mockMvc
             .perform(get("/"))
             .andExpect(status().isServiceUnavailable)
-            .andExpect(view().name("error/blog-unavailable"))
+            .andExpect(view().name("blog/unavailable"))
     }
 
     @Test
@@ -251,13 +251,13 @@ class BlogControllerTest {
         mockMvc
             .perform(get("/posts/${WebFixtures.postId.value}"))
             .andExpect(status().isNotFound)
-            .andExpect(view().name("error/blog-not-found"))
+            .andExpect(view().name("blog/not-found"))
 
         every { posts.get(WebFixtures.postId) } returns PublicPostLookupResult.ContentUnavailable
         mockMvc
             .perform(get("/posts/${WebFixtures.postId.value}"))
             .andExpect(status().isServiceUnavailable)
-            .andExpect(view().name("error/blog-unavailable"))
+            .andExpect(view().name("blog/unavailable"))
     }
 
     @Test
@@ -265,7 +265,7 @@ class BlogControllerTest {
         mockMvc
             .perform(get("/posts/not-a-uuid"))
             .andExpect(status().isNotFound)
-            .andExpect(view().name("error/blog-not-found"))
+            .andExpect(view().name("blog/not-found"))
     }
 
     private fun home(url: String): HomePageView = mockMvc.perform(get(url)).andReturn().home()

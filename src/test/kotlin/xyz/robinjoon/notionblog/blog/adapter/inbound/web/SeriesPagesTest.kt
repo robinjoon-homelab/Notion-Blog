@@ -98,7 +98,7 @@ class SeriesPagesTest {
 
         val html = html("/series")
 
-        assertThat(html).contains("src=\"/media/${stored.value}\"", "src=\"/ui/default-post-thumbnail.svg\"").doesNotContain("cdn.example")
+        assertThat(html).contains("src=\"/media/${stored.value}\"", "src=\"/app/default-post-thumbnail.svg\"").doesNotContain("cdn.example")
     }
 
     @Test
@@ -115,7 +115,7 @@ class SeriesPagesTest {
     fun `list of an uninitialized blog is unavailable`() {
         every { series.list() } returns PublicSeriesListLookupResult.ContentUnavailable
 
-        mockMvc.perform(get("/series")).andExpect(status().isServiceUnavailable).andExpect(view().name("error/blog-unavailable"))
+        mockMvc.perform(get("/series")).andExpect(status().isServiceUnavailable).andExpect(view().name("blog/unavailable"))
     }
 
     @Test
@@ -151,15 +151,15 @@ class SeriesPagesTest {
             .perform(
                 get("/series/${WebFixtures.seriesId.value}"),
             ).andExpect(status().isNotFound)
-            .andExpect(view().name("error/blog-not-found"))
-        mockMvc.perform(get("/series/not-a-uuid")).andExpect(status().isNotFound).andExpect(view().name("error/blog-not-found"))
+            .andExpect(view().name("blog/not-found"))
+        mockMvc.perform(get("/series/not-a-uuid")).andExpect(status().isNotFound).andExpect(view().name("blog/not-found"))
 
         every { series.get(WebFixtures.seriesId) } returns PublicSeriesLookupResult.ContentUnavailable
         mockMvc
             .perform(
                 get("/series/${WebFixtures.seriesId.value}"),
             ).andExpect(status().isServiceUnavailable)
-            .andExpect(view().name("error/blog-unavailable"))
+            .andExpect(view().name("blog/unavailable"))
     }
 
     private fun seriesPage(configuration: HomeConfiguration): PublicSeriesPage =

@@ -119,7 +119,7 @@ internal class AdminSeriesController(
 
     private fun editPath(id: SeriesId): String = "/admin/series/${id.value}"
 
-    private fun notFound(): ModelAndView = errorView("error/blog-not-found", HttpStatus.NOT_FOUND)
+    private fun notFound(): ModelAndView = errorView("blog/not-found", HttpStatus.NOT_FOUND)
 
     private companion object {
         const val LIST_PATH = "/admin/series"

@@ -147,7 +147,7 @@ class AdminSeriesControllerTest {
     fun `edit of unknown or malformed series is not found`() {
         every { series.get(id) } returns SeriesLookupResult.NotFound
 
-        mockMvc.perform(get(path)).andExpect(status().isNotFound).andExpect(view().name("error/blog-not-found"))
+        mockMvc.perform(get(path)).andExpect(status().isNotFound).andExpect(view().name("blog/not-found"))
         mockMvc.perform(get("/admin/series/nope")).andExpect(status().isNotFound)
     }
 

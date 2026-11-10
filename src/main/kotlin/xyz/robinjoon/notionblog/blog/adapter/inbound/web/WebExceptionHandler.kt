@@ -9,7 +9,7 @@ import org.springframework.web.servlet.ModelAndView
 internal class WebExceptionHandler {
     @ExceptionHandler(MalformedPostIdException::class)
     internal fun handle(): ModelAndView =
-        ModelAndView("error/blog-not-found").apply {
+        ModelAndView("blog/not-found").apply {
             status = HttpStatus.NOT_FOUND
         }
 }

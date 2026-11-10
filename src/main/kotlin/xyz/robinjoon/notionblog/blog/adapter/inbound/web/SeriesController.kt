@@ -19,18 +19,18 @@ class SeriesController(
     fun list(): ModelAndView =
         when (val result = series.list()) {
             is PublicSeriesListLookupResult.Found -> ModelAndView("blog/series-list").addObject("page", assembler.assemble(result.page))
-            PublicSeriesListLookupResult.ContentUnavailable -> errorView("error/blog-unavailable", HttpStatus.SERVICE_UNAVAILABLE)
+            PublicSeriesListLookupResult.ContentUnavailable -> errorView("blog/unavailable", HttpStatus.SERVICE_UNAVAILABLE)
         }
 
     @GetMapping("/series/{seriesId}")
     fun detail(
         @PathVariable seriesId: String,
     ): ModelAndView {
-        val id = WebIds.seriesId(seriesId) ?: return errorView("error/blog-not-found", HttpStatus.NOT_FOUND)
+        val id = WebIds.seriesId(seriesId) ?: return errorView("blog/not-found", HttpStatus.NOT_FOUND)
         return when (val result = series.get(id)) {
             is PublicSeriesLookupResult.Found -> ModelAndView("blog/series").addObject("page", assembler.assemble(result.page))
-            PublicSeriesLookupResult.NotFound -> errorView("error/blog-not-found", HttpStatus.NOT_FOUND)
-            PublicSeriesLookupResult.ContentUnavailable -> errorView("error/blog-unavailable", HttpStatus.SERVICE_UNAVAILABLE)
+            PublicSeriesLookupResult.NotFound -> errorView("blog/not-found", HttpStatus.NOT_FOUND)
+            PublicSeriesLookupResult.ContentUnavailable -> errorView("blog/unavailable", HttpStatus.SERVICE_UNAVAILABLE)
         }
     }
 }

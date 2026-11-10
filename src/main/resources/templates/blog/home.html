@@ -26,7 +26,7 @@
                 <ul class="nb-post-list nb-home-list" th:classappend="${'nb-home-' + page.list.layout}" th:if="${!#lists.isEmpty(page.list.entries)}">
                     <li th:each="entry : ${page.list.entries}" class="nb-home-post">
                         <a class="nb-post-thumb" th:if="${entry.thumbnailHref != null}" th:href="${entry.href}" tabindex="-1" aria-hidden="true">
-                            <img th:src="${entry.thumbnailHref}" data-fallback-src="/ui/default-post-thumbnail.svg" alt="" loading="lazy" decoding="async">
+                            <img th:src="${entry.thumbnailHref}" data-fallback-src="/app/default-post-thumbnail.svg" alt="" loading="lazy" decoding="async">
                         </a>
                         <div class="nb-post-body">
                             <a class="nb-post-title" th:href="${entry.href}" th:text="${entry.title}">제목</a>
@@ -53,6 +53,6 @@
     <footer th:replace="~{blog/page-fragments :: footer(${page.chrome})}"></footer>
     <div class="notion-content" th:if="${page.chrome.feedUrl != null}"><p><a th:href="${page.chrome.feedUrl}">RSS 구독</a></p></div>
 </main>
-<script src="/ui/thumbnail-fallback.js" defer></script>
+<script src="/app/thumbnail-fallback.js" defer></script>
 </body>
 </html>

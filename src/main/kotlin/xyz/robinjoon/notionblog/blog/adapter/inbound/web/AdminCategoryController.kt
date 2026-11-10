@@ -92,7 +92,7 @@ internal class AdminCategoryController(
             overview.assignedPosts == 0,
         )
 
-    private fun notFound(): ModelAndView = errorView("error/blog-not-found", HttpStatus.NOT_FOUND)
+    private fun notFound(): ModelAndView = errorView("blog/not-found", HttpStatus.NOT_FOUND)
 
     private companion object {
         const val CATEGORIES_PATH = "/admin/categories"

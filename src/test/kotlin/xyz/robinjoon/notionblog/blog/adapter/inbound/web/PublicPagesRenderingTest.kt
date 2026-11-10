@@ -182,7 +182,7 @@ class PublicPagesRenderingTest {
 
         assertThat(
             html,
-        ).contains("nb-home-cards", "/ui/default-post-thumbnail.svg", "&lt;i&gt;Dev&lt;/i&gt;", "?tag=${category.id.value}")
+        ).contains("nb-home-cards", "/app/default-post-thumbnail.svg", "&lt;i&gt;Dev&lt;/i&gt;", "?tag=${category.id.value}")
         assertThat(html).doesNotContain("cdn.example", "<i>Dev").doesNotContain("소개 문서")
     }
 

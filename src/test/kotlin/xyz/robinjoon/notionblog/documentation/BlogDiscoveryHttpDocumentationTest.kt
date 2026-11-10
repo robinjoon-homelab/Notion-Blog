@@ -120,7 +120,7 @@ class BlogDiscoveryHttpDocumentationTest {
             .perform(get("/?tag={tag}", category.value.toString()))
             .andExpect(status().isOk)
             .andExpect(content().string(containsString("aria-current=\"true\"")))
-            .andExpect(content().string(containsString("/ui/default-post-thumbnail.svg")))
+            .andExpect(content().string(containsString("/app/default-post-thumbnail.svg")))
             .andExpect(content().string(containsString("nb-home-cards")))
             .andDo(document("root-tag", homeQueryParameters(), htmlHeaders()))
         mvc
