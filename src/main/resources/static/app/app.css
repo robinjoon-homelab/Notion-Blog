@@ -1,114 +1,10 @@
 /* 공개 블로그 화면과 관리 화면이 함께 쓰는 앱 전용 스타일. 색은 키트 토큰(--ui-*)과 theme.css의 --blog-*만 쓴다. */
-.nb-shell,
-.nb-shell * {
-    box-sizing: border-box;
-}
-
-body.nb-body-root {
-    margin: 0;
-    background: var(--ui-surface);
-    color: var(--ui-text);
-    font: 400 14px/1.65 var(--ui-font-sans);
-}
-
-.nb-shell h1,
-.nb-shell h2,
-.nb-shell p {
-    margin: 0;
-}
-
-.nb-shell a {
-    color: inherit;
-}
-
-.nb-shell {
-    display: grid;
-    grid-template-columns: 200px minmax(0, 1fr);
-    min-height: 100vh;
-}
-
-.nb-sidebar {
-    background: var(--ui-bg);
-    padding: 16px 9px;
-    border-right: 1px solid var(--ui-line);
-}
-
-.nb-workspace-name {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 2px 6px 20px;
-    font-weight: 500;
-    font-size: 13px;
-}
-
-.nb-side-heading {
-    color: var(--ui-text-muted);
-    font-size: 11px;
-    padding: 13px 8px 6px;
-}
-
-.nb-side-link {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 8px;
-    border-radius: 4px;
-    font-size: 13px;
-    text-decoration: none;
-}
-
-.nb-side-link[aria-current="page"],
-.nb-side-link:hover {
-    background: var(--blog-hover-strong);
-}
-
-.nb-side-form {
-    margin: 0;
-}
-
-.nb-side-form button {
-    width: 100%;
-    background: transparent;
-    border: 0;
-    text-align: left;
-    font: inherit;
-    color: inherit;
-    cursor: pointer;
-}
-
-.nb-main {
-    min-width: 0;
-    padding: 32px 42px 44px;
-    max-width: 960px;
-}
-
-.nb-button.nb-menu {
-    display: none;
-}
-
-.nb-heading {
-    font-size: 32px;
-    font-weight: 500;
-    letter-spacing: -0.045em;
-    line-height: 1.35;
-    overflow-wrap: anywhere;
-}
-
 .nb-muted {
     color: var(--ui-text-muted);
 }
 
 .nb-small {
     font-size: 12px;
-}
-
-.nb-section-head {
-    margin-bottom: 26px;
-}
-
-.nb-section-head p {
-    margin-top: 8px;
 }
 
 .nb-button {
@@ -127,41 +23,6 @@ body.nb-body-root {
 
 .nb-button:hover {
     background: var(--ui-hover);
-}
-
-.nb-primary {
-    background: var(--ui-text);
-    border-color: var(--ui-text);
-    color: var(--ui-surface);
-}
-
-.nb-primary:hover {
-    background: var(--ui-text);
-    opacity: 0.9;
-}
-
-.nb-link-danger {
-    background: transparent;
-    border: 0;
-    padding: 5px 0;
-    color: var(--ui-danger-text);
-    font: inherit;
-    cursor: pointer;
-}
-
-.nb-toolbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin: 22px 0 10px;
-}
-
-.nb-filters {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
 }
 
 .nb-filter {
@@ -190,38 +51,6 @@ body.nb-body-root {
     background: var(--ui-surface);
     color: inherit;
     font: inherit;
-}
-
-.nb-database {
-    width: 100%;
-    table-layout: fixed;
-    border-collapse: collapse;
-    text-align: left;
-}
-
-.nb-database th {
-    font-weight: 400;
-    font-size: 12px;
-    color: var(--ui-text-muted);
-    padding: 7px 9px;
-    border-top: 1px solid var(--ui-line);
-    border-bottom: 1px solid var(--ui-line);
-}
-
-.nb-database td {
-    padding: 11px 9px;
-    border-bottom: 1px solid var(--ui-line);
-    vertical-align: top;
-    overflow-wrap: anywhere;
-}
-
-.nb-database th:not(:last-child),
-.nb-database td:not(:last-child) {
-    border-right: 1px solid var(--ui-line);
-}
-
-.nb-database th:first-child {
-    width: 55%;
 }
 
 .nb-post-title {
@@ -254,16 +83,6 @@ body.nb-body-root {
     font-size: 11px;
     background: var(--ui-hover);
     color: var(--ui-text-muted);
-}
-
-.nb-badge-live {
-    background: var(--ui-success-bg);
-    color: var(--ui-success-text);
-}
-
-.nb-badge-change {
-    background: var(--ui-warning-bg);
-    color: var(--ui-warning-text);
 }
 
 .nb-notice {
@@ -331,59 +150,8 @@ body.nb-body-root {
     color: var(--ui-text-muted);
 }
 
-.nb-panel {
-    margin-top: 28px;
-    border-top: 1px solid var(--ui-line);
-    padding-top: 18px;
-}
-
-.nb-panel-title {
-    font-size: 14px;
-    font-weight: 500;
-}
-
-.nb-actions {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 14px;
-}
-
-.nb-actions form {
-    margin: 0;
-}
-
-.nb-login {
-    max-width: 360px;
-    margin: 14vh auto 0;
-    padding: 0 16px;
-}
-
-.nb-login-form {
-    display: grid;
-    gap: 12px;
-    margin-top: 18px;
-}
-
-.nb-login-form label {
-    display: grid;
-    gap: 4px;
-    font-size: 13px;
-    color: var(--ui-text-muted);
-}
-
-.nb-login-form input {
-    min-width: 0;
-    padding: 6px 8px;
-    border: 1px solid var(--ui-line);
-    border-radius: 4px;
-    background: var(--ui-surface);
-    color: var(--ui-text);
-    font: inherit;
-}
-
 /* 홈 목록 모양(공개 홈과 관리자 미리보기가 함께 쓴다). */
+
 .nb-home-list,
 .nb-home-list * {
     box-sizing: border-box;
@@ -524,20 +292,12 @@ body.nb-body-root {
 }
 
 /* 관리자 편집 화면. */
-.nb-main.nb-main-wide {
-    max-width: 1180px;
-}
 
 .nb-editor {
     display: grid;
     grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
     gap: 32px;
     align-items: start;
-}
-
-.nb-editor-fields {
-    display: grid;
-    gap: 20px;
 }
 
 .nb-fieldset {
@@ -552,8 +312,7 @@ body.nb-body-root {
 .nb-fieldset legend {
     padding: 0;
     margin-bottom: 6px;
-    font-size: 12px;
-    color: var(--ui-text-muted);
+    font-weight: 600;
 }
 
 .nb-choice {
@@ -583,39 +342,12 @@ body.nb-body-root {
     font-size: 14px;
 }
 
-.nb-field {
-    display: grid;
-    gap: 4px;
-    min-width: 0;
-}
-
-.nb-field label {
-    font-size: 12px;
-    color: var(--ui-text-muted);
-}
-
-.nb-field input[type="text"],
-.nb-field input[type="number"],
-.nb-field input[type="search"] {
-    min-width: 0;
-    padding: 6px 8px;
-    border: 1px solid var(--ui-line);
-    border-radius: 4px;
-    background: var(--ui-surface);
-    color: var(--ui-text);
-    font: inherit;
-}
-
 .nb-field-narrow {
     width: 110px;
 }
 
 .nb-preview-box {
     min-width: 0;
-    padding: 18px 20px;
-    border: 1px solid var(--ui-line);
-    border-radius: 6px;
-    background: var(--ui-surface);
 }
 
 .nb-preview-box .nb-home-list {
@@ -626,36 +358,71 @@ body.nb-body-root {
     display: flex;
     align-items: flex-end;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 12px;
     margin: 0;
 }
 
-.nb-inline-form .nb-field:first-child {
+.nb-inline-form .ui-field {
     flex: 1 1 200px;
+    min-width: 0;
 }
 
 .nb-category-list {
+    display: grid;
+    gap: 12px;
     list-style: none;
-    margin: 16px 0 0;
+    margin: 0;
     padding: 0;
 }
 
-.nb-category-row {
+.nb-form {
     display: grid;
-    gap: 8px;
-    padding: 14px 0;
-    border-top: 1px solid var(--ui-line);
+    gap: 24px;
 }
 
-.nb-category-row:last-child {
-    border-bottom: 1px solid var(--ui-line);
+.nb-info {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
 }
 
-.nb-category-delete {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin: 0;
+.nb-lead {
+    max-width: 72ch;
+    margin-top: 8px;
+}
+
+.nb-spread {
+    justify-content: space-between;
+}
+
+.nb-nowrap {
+    white-space: nowrap;
+}
+
+.nb-search-input {
+    width: auto;
+    flex: 1 1 200px;
+    max-width: 320px;
+}
+
+.ui-table-wrap td {
+    overflow-wrap: anywhere;
+}
+
+.ui-panel .ui-empty {
+    padding: 16px;
+}
+
+.ui-panel h2,
+.nb-summary-title {
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.nb-page-title {
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1.3;
 }
 
 @media (width <= 900px) {
@@ -664,56 +431,10 @@ body.nb-body-root {
     }
 }
 
-@media (width <= 780px) {
-    .nb-main {
-        padding: 27px 24px 35px;
-    }
-}
-
 @media (width <= 600px) {
-    .nb-shell {
-        grid-template-columns: minmax(0, 1fr);
-    }
-
-    .nb-sidebar {
-        display: none;
-        border-right: 0;
-        border-bottom: 1px solid var(--ui-line);
-    }
-
-    .nb-shell.nb-menu-open .nb-sidebar {
-        display: block;
-    }
-
-    .nb-button.nb-menu {
-        display: inline-flex;
-        margin: 10px 16px 0;
-    }
-
-    .nb-main {
-        padding: 20px 16px 32px;
-    }
-
-    .nb-heading {
-        font-size: 27px;
-    }
-
-    .nb-database th:first-child {
-        width: 62%;
-    }
-
-    .nb-database :is(td, th) {
-        padding-left: 7px;
-        padding-right: 7px;
-    }
-
     .nb-property {
         grid-template-columns: 70px minmax(0, 1fr);
         gap: 10px;
-    }
-
-    .nb-actions .nb-button {
-        flex: 1 1 120px;
     }
 
     .nb-home-thumbnails > .nb-home-post {
@@ -725,14 +446,15 @@ body.nb-body-root {
         width: 100%;
     }
 
-    .nb-inline-form .nb-field {
+    .nb-inline-form .ui-field {
         flex: 1 1 100%;
     }
 }
 
 @media (pointer: coarse) {
     .nb-button,
-    .nb-link-danger {
+    .ui-main .ui-button,
+    .ui-main .nb-filter {
         min-height: 44px;
     }
 
@@ -747,6 +469,7 @@ body.nb-body-root {
 }
 
 /* 공개 페이지와 미리보기. */
+
 .notion-page .nb-post-list {
     list-style: none;
     margin: 18px 0 0;
@@ -796,16 +519,13 @@ body.nb-body-root {
     max-width: none;
 }
 
-.nb-shell > div {
-    min-width: 0;
-}
-
 .nb-property a,
 .nb-property span {
     overflow-wrap: anywhere;
 }
 
 /* 내 블로그 홈 탭, 태그 탐색 2열, 검색. */
+
 .nb-visually-hidden {
     position: absolute;
     width: 1px;
@@ -880,12 +600,8 @@ body.nb-body-root {
     text-decoration: none;
 }
 
-.nb-badge-warn {
-    background: var(--ui-warning-bg);
-    color: var(--ui-warning-text);
-}
-
 /* 공개 시리즈 목록, 시리즈 안의 순서 목록, 글 안의 목차와 이전·다음. */
+
 .nb-series-grid {
     list-style: none;
     margin: 18px 0 0;
@@ -988,6 +704,10 @@ body.nb-body-root {
     font-size: 14px;
 }
 
+.ui-main details > summary {
+    cursor: pointer;
+}
+
 .nb-series-toc ol {
     margin: 8px 0;
     padding-inline-start: 22px;
@@ -1019,6 +739,7 @@ body.nb-body-root {
 }
 
 /* 발행 확인과 시리즈 편집. */
+
 .nb-review-summary {
     display: grid;
     grid-template-columns: 160px minmax(0, 1fr);
@@ -1031,10 +752,6 @@ body.nb-body-root {
     overflow: hidden;
     border-radius: 4px;
     background: var(--ui-hover);
-}
-
-.nb-series-editor {
-    margin-top: 8px;
 }
 
 .nb-series-list {
@@ -1080,11 +797,6 @@ body.nb-body-root {
     display: none;
 }
 
-.nb-shell details > summary {
-    cursor: pointer;
-    font-size: 13px;
-}
-
 @media (width <= 780px) {
     .nb-home-layout {
         grid-template-columns: minmax(0, 1fr);
@@ -1109,17 +821,12 @@ body.nb-body-root {
 }
 
 @media (pointer: coarse) {
-    .nb-series-buttons .nb-button,
-    .nb-series-buttons .nb-link-danger,
     .nb-home-tabs .nb-filter,
     .nb-home-search .nb-button {
         min-height: 44px;
     }
 }
 
-.nb-shell a:focus-visible,
-.nb-shell button:focus-visible,
-.nb-shell input:focus-visible,
 .nb-home-list a:focus-visible,
 .nb-category-nav a:focus-visible {
     outline: 2px solid var(--ui-focus);
@@ -1141,11 +848,12 @@ body.nb-body-root {
 }
 
 /* hidden 속성은 위의 display 규칙보다 항상 이기도록 마지막에 둔다. */
-.nb-shell [hidden] {
+.ui-main [hidden] {
     display: none;
 }
 
 /* 공개 화면의 바탕. 표현 프로필의 페이지 색을 따르고 없으면 키트 표면색을 쓴다. */
+
 body.blog-public {
     background: var(--notion-page, var(--ui-surface));
 }

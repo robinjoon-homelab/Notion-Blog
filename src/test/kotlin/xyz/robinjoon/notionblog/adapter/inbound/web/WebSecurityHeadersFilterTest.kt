@@ -16,13 +16,20 @@ import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ResponseStatusException
 
 private const val CSP = "Content-Security-Policy"
+private const val FRAME_SOURCES =
+    "https://youtube.com https://www.youtube.com https://youtube-nocookie.com " +
+        "https://www.youtube-nocookie.com https://vimeo.com https://www.vimeo.com https://player.vimeo.com"
 private const val PUBLIC_CSP =
     "default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; object-src 'none'; " +
         "script-src 'self'; style-src 'self'; img-src 'self' http: https:; media-src 'self' http: https:; font-src 'self'; " +
-        "frame-src https://youtube.com https://www.youtube.com https://youtube-nocookie.com " +
-        "https://www.youtube-nocookie.com https://vimeo.com https://www.vimeo.com https://player.vimeo.com; " +
-        "connect-src 'none'"
-private val adminCsp = PUBLIC_CSP.replace("form-action 'none'", "form-action 'self'")
+        "frame-src $FRAME_SOURCES; connect-src 'none'"
+private const val TEMPLATE_CSP =
+    "default-src 'none'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; " +
+        "script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'"
+private const val PREVIEW_CSP =
+    "default-src 'none'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; " +
+        "script-src 'self'; style-src 'self'; img-src 'self' data: http: https:; media-src 'self' http: https:; font-src 'self'; " +
+        "frame-src $FRAME_SOURCES; connect-src 'self'"
 private const val NOSNIFF = "X-Content-Type-Options"
 private const val FRAME_OPTIONS = "X-Frame-Options"
 private const val REFERRER_POLICY = "Referrer-Policy"
@@ -49,49 +56,65 @@ class WebSecurityHeadersFilterTest {
             .build()
 
     @ParameterizedTest
-    @ValueSource(strings = ["/", "/posts/1", "/ui/tokens.css", "/apiary", "/api/x", "/actuator/health"])
-    fun `public pages get the strict policy and stay cacheable`(path: String) {
+    @ValueSource(strings = ["/", "/posts/x", "/series", "/series/x", "/feed.xml", "/media/x"])
+    fun `public blog pages keep the public policy and stay cacheable`(path: String) {
         response(path).andExpectBrowserHeaders(PUBLIC_CSP).andExpectCacheable()
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = ["/admin/posts/x", "/admin/posts/x/review"])
+    fun `admin preview and review add only the post content sources and are never stored`(path: String) {
+        response(path).andExpectBrowserHeaders(PREVIEW_CSP).andExpectNeverStored()
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["/admin", "/admin/login", "/admin/posts", "/admin/posts/x/categories", "/admin/posts/x/publish"])
+    fun `other admin responses get the template policy and are never stored`(path: String) {
+        response(path).andExpectBrowserHeaders(TEMPLATE_CSP).andExpectNeverStored()
+    }
+
+    @ParameterizedTest
+    @ValueSource(
+        strings = [
+            "/ui/tokens.css",
+            "/app/app.css",
+            "/presentation/notion/v1/notion.css",
+            "/docs/index.html",
+            "/actuator/health",
+            "/unknown",
+            "/postsx",
+            "/seriesx",
+            "/administrator",
+        ],
+    )
+    fun `every other path gets the template policy and stays cacheable`(path: String) {
+        response(path).andExpectBrowserHeaders(TEMPLATE_CSP).andExpectCacheable()
+    }
+
     @Test
-    fun `the policy has no inline or eval allowance`() {
-        assertThat(response("/").andReturn().response.getHeader(CSP)).doesNotContain("unsafe-inline", "unsafe-eval")
+    fun `no policy has an inline or eval allowance`() {
+        listOf("/", "/admin", "/admin/posts/x").forEach {
+            assertThat(response(it).andReturn().response.getHeader(CSP)).doesNotContain("unsafe-inline", "unsafe-eval")
+        }
     }
 
     @Test
     fun `an error response has the same protective headers`() {
         response("/unavailable")
             .andExpect(status().isServiceUnavailable)
-            .andExpectBrowserHeaders(PUBLIC_CSP)
+            .andExpectBrowserHeaders(TEMPLATE_CSP)
             .andExpectCacheable()
-    }
-
-    @ParameterizedTest
-    @ValueSource(strings = ["/admin", "/admin/posts"])
-    fun `admin responses allow same-origin forms and are never stored`(path: String) {
-        response(path)
-            .andExpectBrowserHeaders(adminCsp)
-            .andExpect(header().string(CACHE_CONTROL, "no-store"))
-            .andExpect(header().string(PRAGMA, "no-cache"))
-    }
-
-    @Test
-    fun `a sibling of admin stays public and cacheable`() {
-        response("/administrator").andExpectBrowserHeaders(PUBLIC_CSP).andExpectCacheable()
-    }
-
-    @Test
-    fun `generated docs get the public policy because they are not an admin path`() {
-        response("/docs/index.html").andExpectBrowserHeaders(PUBLIC_CSP).andExpectCacheable()
     }
 
     @Test
     fun `paths are judged without the context path`() {
         mockMvc
-            .perform(get("/blog/admin/posts").contextPath("/blog"))
-            .andExpect(header().string(CSP, adminCsp))
+            .perform(get("/blog/admin/posts/x").contextPath("/blog"))
+            .andExpect(header().string(CSP, PREVIEW_CSP))
             .andExpect(header().string(CACHE_CONTROL, "no-store"))
+        mockMvc
+            .perform(get("/blog/posts/x").contextPath("/blog"))
+            .andExpect(header().string(CSP, PUBLIC_CSP))
     }
 
     @Test
@@ -110,6 +133,9 @@ class WebSecurityHeadersFilterTest {
             .andExpect(header().string(FRAME_OPTIONS, "DENY"))
             .andExpect(header().string(REFERRER_POLICY, "no-referrer"))
             .andExpect(header().string(PERMISSIONS_POLICY, EXPECTED_PERMISSIONS_POLICY))
+
+    private fun ResultActions.andExpectNeverStored(): ResultActions =
+        andExpect(header().string(CACHE_CONTROL, "no-store")).andExpect(header().string(PRAGMA, "no-cache"))
 
     private fun ResultActions.andExpectCacheable(): ResultActions =
         andExpect(header().doesNotExist(CACHE_CONTROL)).andExpect(header().doesNotExist(PRAGMA))
