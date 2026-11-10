@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{blog/page-fragments :: head(${view.page.chrome}, ${view.page.title})}"></head>
+<head th:replace="~{app/blog/page-fragments :: head(${view.page.chrome}, ${view.page.title})}"></head>
 <body class="nb-body-root">
 <div class="nb-shell">
     <aside th:replace="~{admin/fragments :: sidebar('posts')}"></aside>
@@ -34,7 +34,7 @@
                 </div>
             </section>
             <div class="notion-page nb-preview" th:classappend="${#strings.listJoin(view.page.chrome.profile.classes, ' ')}">
-                <article th:replace="~{blog/page-fragments :: article(${view.page})}"></article>
+                <article th:replace="~{app/blog/page-fragments :: article(${view.page})}"></article>
             </div>
             <section class="nb-panel" aria-label="발행">
                 <h2 class="nb-panel-title">발행</h2>

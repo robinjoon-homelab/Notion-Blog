@@ -52,7 +52,7 @@ internal object PostPageViewFixtures {
 
     fun render(page: PublicPostPage): String =
         templateEngine().process(
-            "blog/post",
+            "app/blog/post",
             Context().apply { setVariable("page", assembler.assemble(page)) },
         )
 

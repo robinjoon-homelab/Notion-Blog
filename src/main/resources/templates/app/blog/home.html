@@ -1,13 +1,13 @@
-<!doctype html>
+<!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" th:lang="${page.chrome.language}">
-<head th:replace="~{blog/page-fragments :: head(${page.chrome}, ${page.chrome.siteName})}"></head>
-<body>
+<head th:replace="~{app/blog/page-fragments :: head(${page.chrome}, ${page.chrome.siteName})}"></head>
+<body class="blog-public">
 <main class="notion-page" th:classappend="${#strings.listJoin(page.chrome.profile.classes, ' ')}">
-    <header th:replace="~{blog/page-fragments :: header(${page.chrome})}"></header>
+    <header th:replace="~{app/blog/page-fragments :: header(${page.chrome})}"></header>
     <section class="notion-content">
         <h1 class="notion-title" th:text="${page.chrome.siteName}">Blog</h1>
         <p class="nb-muted" th:if="${page.chrome.description != null}" th:text="${page.chrome.description}">설명</p>
-        <nav th:replace="~{blog/page-fragments :: homeTabs(${page.tabs})}"></nav>
+        <nav th:replace="~{app/blog/page-fragments :: homeTabs(${page.tabs})}"></nav>
         <div class="nb-home-layout" th:classappend="${page.categories == null ? 'nb-home-layout-single' : ''}">
             <nav class="nb-category-nav nb-tag-nav" aria-label="태그" th:if="${page.categories != null}">
                 <a class="nb-filter" th:href="${page.categories.allHref}" th:attr="aria-current=${page.categories.allSelected ? 'true' : null}">전체 <span class="nb-count" th:text="${page.categories.allCount}">12</span></a>
@@ -50,7 +50,7 @@
             </div>
         </div>
     </section>
-    <footer th:replace="~{blog/page-fragments :: footer(${page.chrome})}"></footer>
+    <footer th:replace="~{app/blog/page-fragments :: footer(${page.chrome})}"></footer>
     <div class="notion-content" th:if="${page.chrome.feedUrl != null}"><p><a th:href="${page.chrome.feedUrl}">RSS 구독</a></p></div>
 </main>
 <script src="/app/thumbnail-fallback.js" defer></script>

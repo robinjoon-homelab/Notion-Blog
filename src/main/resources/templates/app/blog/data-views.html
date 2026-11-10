@@ -9,8 +9,8 @@
                 <tr th:each="row : ${block.rows}">
                     <td th:each="cell, status : ${row.cells}" th:classappend="${#strings.listJoin(block.columns[status.index].classes, ' ')}">
                         <div class="notion-data-table-cell" th:tabindex="${block.columns[status.index].wrap ? null : 0}" th:attr="aria-label=${block.columns[status.index].wrap ? null : block.columns[status.index].name}">
-                            <th:block th:if="${status.index == block.titleColumnIndex}"><th:block th:replace="~{blog/fragments :: icon(${row.icon}, 'notion-data-icon')}"></th:block></th:block>
-                            <th:block th:replace="~{blog/fragments :: inlines(${cell})}"></th:block>
+                            <th:block th:if="${status.index == block.titleColumnIndex}"><th:block th:replace="~{app/blog/fragments :: icon(${row.icon}, 'notion-data-icon')}"></th:block></th:block>
+                            <th:block th:replace="~{app/blog/fragments :: inlines(${cell})}"></th:block>
                         </div>
                     </td>
                 </tr>
@@ -22,13 +22,13 @@
 
 <th:block th:fragment="entryTitle(row)">
     <h4 class="notion-data-entry-title">
-        <th:block th:replace="~{blog/fragments :: icon(${row.icon}, 'notion-data-icon')}"></th:block>
+        <th:block th:replace="~{app/blog/fragments :: icon(${row.icon}, 'notion-data-icon')}"></th:block>
         <a th:if="${row.link != null}" th:href="${row.link.href}"
            th:target="${row.link instanceof T(xyz.robinjoon.notionblog.blog.adapter.inbound.web.view.ExternalLinkView) ? '_blank' : null}"
            th:rel="${row.link instanceof T(xyz.robinjoon.notionblog.blog.adapter.inbound.web.view.ExternalLinkView) ? 'noopener noreferrer' : null}">
-            <th:block th:replace="~{blog/fragments :: inlines(${row.title})}"></th:block>
+            <th:block th:replace="~{app/blog/fragments :: inlines(${row.title})}"></th:block>
         </a>
-        <span th:if="${row.link == null}"><th:block th:replace="~{blog/fragments :: inlines(${row.title})}"></th:block></span>
+        <span th:if="${row.link == null}"><th:block th:replace="~{app/blog/fragments :: inlines(${row.title})}"></th:block></span>
     </h4>
 </th:block>
 
@@ -36,7 +36,7 @@
     <dl th:if="${!#lists.isEmpty(properties)}" class="notion-data-properties">
         <div th:each="property : ${properties}">
             <dt th:text="${property.name}">Property</dt>
-            <dd><span th:if="${#lists.isEmpty(property.content)}" class="notion-data-empty-value" aria-label="Empty">—</span><th:block th:replace="~{blog/fragments :: inlines(${property.content})}"></th:block></dd>
+            <dd><span th:if="${#lists.isEmpty(property.content)}" class="notion-data-empty-value" aria-label="Empty">—</span><th:block th:replace="~{app/blog/fragments :: inlines(${property.content})}"></th:block></dd>
         </div>
     </dl>
 </th:block>
@@ -47,8 +47,8 @@
         <span class="notion-data-view-title notion-sr-only" th:id="${block.id + '-title'}" th:text="${block.title}">Database list</span>
         <ul th:if="${!#lists.isEmpty(block.rows)}" class="notion-data-list-items">
             <li th:each="row : ${block.rows}" class="notion-data-list-row">
-                <th:block th:replace="~{blog/data-views :: entryTitle(${row})}"></th:block>
-                <th:block th:replace="~{blog/data-views :: properties(${row.properties})}"></th:block>
+                <th:block th:replace="~{app/blog/data-views :: entryTitle(${row})}"></th:block>
+                <th:block th:replace="~{app/blog/data-views :: properties(${row.properties})}"></th:block>
             </li>
         </ul>
         <p th:if="${#lists.isEmpty(block.rows)}" class="notion-data-empty">No published rows in this view.</p>
@@ -64,8 +64,8 @@
             <li th:each="row : ${block.rows}" class="notion-data-card">
                 <img th:if="${row.coverUrl != null}" class="notion-data-cover" th:src="${row.coverUrl}" th:alt="${row.titleText}" loading="lazy" decoding="async" referrerpolicy="no-referrer">
                 <div class="notion-data-card-content">
-                    <th:block th:replace="~{blog/data-views :: entryTitle(${row})}"></th:block>
-                    <th:block th:replace="~{blog/data-views :: properties(${row.properties})}"></th:block>
+                    <th:block th:replace="~{app/blog/data-views :: entryTitle(${row})}"></th:block>
+                    <th:block th:replace="~{app/blog/data-views :: properties(${row.properties})}"></th:block>
                 </div>
             </li>
         </ul>

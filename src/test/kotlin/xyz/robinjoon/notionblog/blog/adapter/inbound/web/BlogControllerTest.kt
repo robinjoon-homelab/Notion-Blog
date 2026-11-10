@@ -163,7 +163,7 @@ class BlogControllerTest {
             mockMvc
                 .perform(get("/").param("q", text))
                 .andExpect(status().isBadRequest)
-                .andExpect(view().name("blog/home"))
+                .andExpect(view().name("app/blog/home"))
                 .andReturn()
         val page = result.modelOf<HomePageView>("page")
 
@@ -242,7 +242,7 @@ class BlogControllerTest {
         mockMvc
             .perform(get("/posts/${WebFixtures.postId.value}"))
             .andExpect(status().isOk)
-            .andExpect(view().name("blog/post"))
+            .andExpect(view().name("app/blog/post"))
     }
 
     @Test
@@ -272,7 +272,7 @@ class BlogControllerTest {
 
     private fun MvcResult.home(): HomePageView {
         assertThat(response.status).isEqualTo(200)
-        assertThat(modelAndView?.viewName).isEqualTo("blog/home")
+        assertThat(modelAndView?.viewName).isEqualTo("app/blog/home")
         return modelOf("page")
     }
 

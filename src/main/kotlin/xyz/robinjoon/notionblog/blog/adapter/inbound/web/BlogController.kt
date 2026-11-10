@@ -32,7 +32,7 @@ class BlogController(
         val input = HomeSearchInput(q.orEmpty())
         return when (val result = postLists.get(HomePageQuery(page.coerceAtLeast(1), categoryId, input.query))) {
             is PostListLookupResult.Found -> {
-                ModelAndView("blog/home")
+                ModelAndView("app/blog/home")
                     .addObject("page", homes.assemble(result.page, input))
                     .apply { if (input.tooLong) status = HttpStatus.BAD_REQUEST }
             }
@@ -53,7 +53,7 @@ class BlogController(
     ): ModelAndView {
         val parsedPostId = WebIds.postId(postId) ?: return errorView("blog/not-found", HttpStatus.NOT_FOUND)
         return when (val result = posts.get(parsedPostId)) {
-            is PublicPostLookupResult.Found -> ModelAndView("blog/post").addObject("page", assembler.assemble(result.page))
+            is PublicPostLookupResult.Found -> ModelAndView("app/blog/post").addObject("page", assembler.assemble(result.page))
             PublicPostLookupResult.NotFound -> errorView("blog/not-found", HttpStatus.NOT_FOUND)
             PublicPostLookupResult.ContentUnavailable -> errorView("blog/unavailable", HttpStatus.SERVICE_UNAVAILABLE)
         }

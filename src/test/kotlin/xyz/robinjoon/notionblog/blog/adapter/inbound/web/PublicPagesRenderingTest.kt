@@ -4,6 +4,7 @@ import io.mockk.every
 import io.mockk.mockk
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import org.springframework.http.HttpStatus
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
@@ -27,6 +28,7 @@ import xyz.robinjoon.notionblog.blog.domain.home.HomePostOrder
 import xyz.robinjoon.notionblog.blog.domain.post.PostId
 import xyz.robinjoon.notionblog.blog.domain.post.PostProperties
 import xyz.robinjoon.notionblog.blog.domain.post.block.media.MediaSource
+import xyz.robinjoon.notionblog.support.web.saveRenderedPage
 import java.net.URI
 import java.time.Clock
 import java.time.Instant
@@ -63,7 +65,7 @@ class PublicPagesRenderingTest {
             )
         every { lists.get(any()) } returns PostListLookupResult.Found(WebFixtures.listPage(listOf(entry)))
 
-        val html = html("/")
+        val html = html("/", "public-home")
 
         assertThat(html).contains("&lt;b&gt;Title&lt;/b&gt;", "Short summary", "href=\"/posts/${WebFixtures.postId.value}\"")
         assertThat(html).doesNotContain("<b>Title", "kotlin")
@@ -79,7 +81,7 @@ class PublicPagesRenderingTest {
         every { posts.get(WebFixtures.postId) } returns
             PublicPostLookupResult.Found(WebFixtures.publicPage(revision).copy(categories = listOf(tag)))
 
-        val html = html("/posts/${WebFixtures.postId.value}")
+        val html = html("/posts/${WebFixtures.postId.value}", "public-post")
 
         assertThat(html).contains("A summary", "&lt;b&gt;App tag&lt;/b&gt;", "href=\"/?tag=${tag.id.value}\"", "발행일", "href=\"/\"")
         assertThat(html).doesNotContain("source-kotlin", "source-notion", "<b>App tag")
@@ -92,7 +94,7 @@ class PublicPagesRenderingTest {
         every { posts.get(WebFixtures.postId) } returns
             PublicPostLookupResult.Found(WebFixtures.publicPage(revision).copy(series = WebFixtures.seriesNavigation(currentIndex = 1)))
 
-        val html = html("/posts/${WebFixtures.postId.value}")
+        val html = html("/posts/${WebFixtures.postId.value}", "public-post-series")
 
         assertThat(
             html,
@@ -178,7 +180,7 @@ class PublicPagesRenderingTest {
                     ).copy(configuration = configuration, categories = listOf(PublicCategoryCount(category, 1))),
             )
 
-        val html = html("/")
+        val html = html("/", "public-home-cards")
 
         assertThat(
             html,
@@ -214,17 +216,63 @@ class PublicPagesRenderingTest {
         assertThat(html).contains("role=\"search\"")
     }
 
+    @Test
+    fun `public pages use the kit stylesheets before the app stylesheet and stay indexable`() {
+        every { lists.get(any()) } returns PostListLookupResult.Found(WebFixtures.listPage())
+
+        val html = html("/")
+
+        assertThat(listOf("/ui/tokens.css", "/app/theme.css", "/ui/components.css", "/app/app.css").map(html::indexOf))
+            .doesNotContain(-1)
+            .isSorted()
+        assertThat(html).doesNotContain("noindex")
+    }
+
+    @Test
+    fun `an unknown post is a kit error page with a 404 status`() {
+        val html = errorHtml("/posts/not-a-uuid", HttpStatus.NOT_FOUND, "public-not-found")
+
+        assertThat(html).contains("Page not found", "404", "ui-error")
+    }
+
+    @Test
+    fun `an uninitialized blog is a kit error page with a 503 status`() {
+        every { lists.get(any()) } returns PostListLookupResult.ContentUnavailable
+
+        val html = errorHtml("/", HttpStatus.SERVICE_UNAVAILABLE, "public-unavailable")
+
+        assertThat(html).contains("Blog temporarily unavailable", "503", "ui-error")
+    }
+
     private fun htmlOf(request: MockHttpServletRequestBuilder): String =
         mockMvc
             .perform(request)
             .andReturn()
             .response.contentAsString
 
-    private fun html(url: String): String =
-        mockMvc
-            .perform(get(url))
-            .andReturn()
-            .response.contentAsString
+    private fun html(
+        url: String,
+        snapshot: String? = null,
+    ): String {
+        val html =
+            mockMvc
+                .perform(get(url))
+                .andReturn()
+                .response.contentAsString
+        if (snapshot != null) saveRenderedPage(snapshot, html)
+        return html
+    }
+
+    // 오류 화면은 200이 아니므로 renderedPage 대신 상태를 확인하고 같은 방식으로 저장한다.
+    private fun errorHtml(
+        url: String,
+        status: HttpStatus,
+        snapshot: String,
+    ): String {
+        val response = mockMvc.perform(get(url)).andReturn().response
+        assertThat(response.status).isEqualTo(status.value())
+        return response.contentAsString.also { html -> saveRenderedPage(snapshot, html) }
+    }
 
     private fun viewResolver(): ThymeleafViewResolver {
         val templateResolver =

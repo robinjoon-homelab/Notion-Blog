@@ -5,7 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
     <title th:text="${title + ' · 블로그 관리'}">관리</title>
-    <link rel="stylesheet" href="/app/notion-shell.css">
+    <link rel="stylesheet" th:href="@{/ui/tokens.css}">
+    <link rel="stylesheet" th:href="@{/app/theme.css}">
+    <link rel="stylesheet" th:href="@{/app/app.css}">
     <script src="/app/notion-shell.js" defer></script>
 </head>
 <body>

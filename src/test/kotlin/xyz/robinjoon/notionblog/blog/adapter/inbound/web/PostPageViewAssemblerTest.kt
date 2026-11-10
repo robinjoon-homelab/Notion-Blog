@@ -40,7 +40,7 @@ class PostPageViewAssemblerTest {
         val page = base.copy(chrome = base.chrome.copy(footer = footer))
         val view = PostPageViewAssembler(clock, feedUrl).assemble(page)
 
-        val html = templateEngine().process("blog/post", Context().apply { setVariable("page", view) })
+        val html = templateEngine().process("app/blog/post", Context().apply { setVariable("page", view) })
         val head = html.substringAfter("<head>").substringBefore("</head>")
         val body = html.substringAfter("<body>").substringBefore("</body>")
         val alternateLinks = Regex("<link\\b[^>]*rel=\"alternate\"[^>]*>").findAll(head).map { it.value }.toList()

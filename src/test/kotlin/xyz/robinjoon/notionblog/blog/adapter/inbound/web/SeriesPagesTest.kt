@@ -32,6 +32,7 @@ import xyz.robinjoon.notionblog.blog.domain.post.PostRevisionId
 import xyz.robinjoon.notionblog.blog.domain.post.block.media.MediaKey
 import xyz.robinjoon.notionblog.blog.domain.post.block.media.MediaSource
 import xyz.robinjoon.notionblog.blog.domain.post.block.media.SourceMediaKey
+import xyz.robinjoon.notionblog.support.web.saveRenderedPage
 import java.net.URI
 import java.time.Clock
 import java.time.Instant
@@ -60,7 +61,7 @@ class SeriesPagesTest {
                 ),
             )
 
-        val html = html("/series")
+        val html = html("/series", "public-series-list")
 
         assertThat(html).contains("&lt;DDD&gt; 적용기", "차근차근 적용합니다", "글 3개", "href=\"/series/${WebFixtures.seriesId.value}\"")
         assertThat(html).contains("aria-current=\"page\"", "thumbnail-fallback.js").doesNotContain("<DDD>")
@@ -125,7 +126,7 @@ class SeriesPagesTest {
                 seriesPage(HomeConfiguration.create(HomeLayout.CARDS, HomePostOrder.OLDEST_FIRST, 10, HomePostDetails())),
             )
 
-        val html = html("/series/${WebFixtures.seriesId.value}")
+        val html = html("/series/${WebFixtures.seriesId.value}", "public-series-detail")
 
         assertThat(html).contains("&lt;DDD&gt; 적용기", "설명입니다", "href=\"/series\"")
         assertThat(listOf("Chapter 1", "Chapter 2", "Chapter 3").map(html::indexOf)).isSorted().doesNotContain(-1)
@@ -181,11 +182,18 @@ class SeriesPagesTest {
             Instant.parse("2026-10-05T03:04:05Z"),
         )
 
-    private fun html(url: String): String =
-        mockMvc
-            .perform(get(url))
-            .andReturn()
-            .response.contentAsString
+    private fun html(
+        url: String,
+        snapshot: String? = null,
+    ): String {
+        val html =
+            mockMvc
+                .perform(get(url))
+                .andReturn()
+                .response.contentAsString
+        if (snapshot != null) saveRenderedPage(snapshot, html)
+        return html
+    }
 
     private fun viewResolver(): ThymeleafViewResolver {
         val templateResolver =
