@@ -30,8 +30,8 @@ GitHub Actions Variables에 다음 값을 설정한다.
 
 - `build/libs/application.jar`, JRE 25, 컨테이너 포트 **8080**, 비루트 UID/GID `10001`, `linux/amd64`를 유지한다.
 - `prod` 프로필에서 PostgreSQL을 사용하고 `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`를 설정한다. H2로 대체하지 않는다.
-- `NOTION_TOKEN`, `NOTION_SETTINGS_DATA_SOURCE_ID`, `BLOG_ADMIN_PASSWORD`는 Secret 참조로 주입한다. 값은 저장소·이미지·로그에 넣지 않는다. 글 데이터 소스(`NOTION_POSTS_*`), 관리자 계정 아이디(`BLOG_ADMIN_USERNAME`), 파일 한도(`BLOG_MEDIA_*`)는 [개발 지침](development.md#실행-환경)의 이름으로 하네스에서 설정한다. `.github/deployment.json`은 최초 생성에만 적용된다.
-- 관리자 아이디·비밀번호 중 하나라도 비면 관리 화면은 닫힌다(`403`). 업로드 파일은 PostgreSQL에 저장되므로 DB 백업과 용량에 포함한다.
+- `NOTION_TOKEN`, `NOTION_SETTINGS_DATA_SOURCE_ID`, `ADMIN_PASSWORD`는 Secret 참조로 주입한다. 값은 저장소·이미지·로그에 넣지 않는다. 글 데이터 소스(`NOTION_POSTS_*`), 관리자 계정 아이디(`ADMIN_USERNAME`), 파일 한도(`BLOG_MEDIA_*`)는 [개발 지침](development.md#실행-환경)의 이름으로 하네스에서 설정한다. `.github/deployment.json`은 최초 생성에만 적용된다.
+- 관리자 아이디·비밀번호 중 하나라도 비면 관리 화면과 `/docs/**`는 [닫힌다](frontend.md#관리자-자격과-닫힘-동작)(`403`). 업로드 파일은 PostgreSQL에 저장되므로 DB 백업과 용량에 포함한다.
 - 앱 JVM에 힙·OOM 옵션을 임의로 추가하거나 하네스 메모리 제한을 바꾸지 않는다.
 - liveness는 `/actuator/health/liveness`, readiness는 `/actuator/health/readiness`(애플리케이션 준비 상태와 DB)다. Notion 장애를 readiness에 연결하지 않는다. Kubernetes 프로브 연결을 보고할 때는 실제 워크로드 설정을 확인한다.
 - 스케줄러는 다중 인스턴스 조정을 하지 않는다. 스케줄러를 활성화한 인스턴스는 하나만 둔다.
@@ -80,7 +80,7 @@ bash scripts/verify-runtime-image.sh notion-blog:local
 - **사전 조건:** 새 앱을 시작하기 전에 **모든 이전 인스턴스의 스케줄러와 쓰기 작업을 중지**한다. 이전 앱과 새 앱이 함께 쓰면 시작 시 이전 중간에 레거시 원본 상태가 바뀔 수 있다.
 - **백업:** DB(`pg_dump`)와 복원 확인을 먼저 끝내고 스테이징에서 같은 절차를 검증한다. 업로드 파일은 PostgreSQL에 저장되므로 DB 백업에 포함된다.
 - **시작 이전:** Flyway V1~V7은 그대로이고 V8은 추가형이다. 시작할 때 `MigrateLegacyPostsService`가 `SmartInitializingSingleton`으로 웹 서버와 스케줄러보다 먼저 한 번 실행된다. 관리되지 않는 글만 가져오고 이미 관리 중인 글은 건너뛰며, 실패하면 앱이 시작하지 않는다. 이전에 실제로 공개되던 글만 같은 내용으로 계속 공개하고 나머지는 비공개이며, 레거시 행은 수정·삭제하지 않는다.
-- **첫 배포는 `BLOG_ADMIN_USERNAME`과 `BLOG_ADMIN_PASSWORD`를 설정하지 않은 채** 한다(관리 화면 닫힘).
+- **첫 배포는 `ADMIN_USERNAME`과 `ADMIN_PASSWORD`를 설정하지 않은 채** 한다(관리 화면 닫힘).
 - **파일 보존 확인:** 시작 이전은 파일 참조만 복사하며 만료된 Notion 파일의 바이트를 복구하지 않는다. 시작이 이를 강제하지 않는다. 비공개·보관 글의 기존 데이터도 보존 대상이므로 공개 여부와 상관없이 **모든 revision**의 빈 보관 키를 센다. 관리 화면이 닫힌 상태에서는 읽기 전용 SQL로 확인하고, 동기화가 한 번 돈 뒤에도 0이어야 한다.
 
 ```sql
