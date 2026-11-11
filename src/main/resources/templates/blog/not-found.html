@@ -1,0 +1,7 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{ui/layout :: head('Page not found')}"></head>
+<body>
+<main th:replace="~{ui/layout :: errorPage('404', 'Page not found', 'The requested page could not be found.')}"></main>
+</body>
+</html>

@@ -8,7 +8,7 @@
 - 필수 환경변수는 `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`, `NOTION_TOKEN`, `NOTION_SETTINGS_DATA_SOURCE_ID`다. 선택 값과 기본값은 `src/main/resources/application.yml`의 `notion.*`, `blog.*` 설정을 따른다.
 - `NOTION_API_VERSION`은 `2026-03-11`만 허용한다. `BLOG_PUBLIC_BASE_URL`은 하위 경로·사용자 정보·query·fragment 없는 HTTP(S) 원점이며, 빈 값이면 RSS가 503을 반환한다.
 - 글 데이터베이스는 `NOTION_POSTS_DATA_SOURCE_ID`와 속성 ID(`NOTION_POSTS_SUMMARY_PROPERTY_ID`, `NOTION_POSTS_TAGS_PROPERTY_ID`)로 지정한다. 모두 선택이며 비우면 카탈로그 스캔이 설정 오류로 실패하고 기존 설정 데이터 소스 동작은 유지된다. 설정 데이터 소스의 `rootPage`도 선택이다.
-- 관리 화면은 Spring Security 폼 로그인(`/admin/login`)으로만 열린다. `blog.admin.{username,password}`(`BLOG_ADMIN_USERNAME`, `BLOG_ADMIN_PASSWORD`) 중 하나라도 비면 로그인 화면을 포함한 `/admin/**` 전체가 `403`으로 닫히고 공개 읽기만 동작한다. 운영자는 설정한 계정 하나다. 비밀번호는 환경 주입만 쓰고 로그에 출력하지 않으며, 대체 계정을 만들지 않는다.
+- 관리 화면은 Spring Security 폼 로그인(`/admin/login`)으로만 열린다. `app.admin.{username,password}`(`ADMIN_USERNAME`, `ADMIN_PASSWORD`) 중 하나라도 비면 로그인 화면을 포함한 `/admin/**`와 `/docs/**` 전체가 `403`으로 닫히고 공개 읽기만 동작한다. 세부 계약은 [화면 지침](frontend.md#관리자-자격과-닫힘-동작)을 따른다. 운영자는 설정한 계정 하나다. 비밀번호는 환경 주입만 쓰고 로그에 출력하지 않으며, 대체 계정을 만들지 않는다.
 - 비밀번호는 bcrypt 제한에 맞춰 UTF-8 **72바이트 이하**로 지정하고 Spring 속성 치환 문법(`${…}`)을 넣지 않는다.
 - 업로드 파일 한도는 `BLOG_MEDIA_MAX_BYTES`(파일당 기본 25MiB), `BLOG_MEDIA_MAX_IMPORT_BYTES`(글 하나 기본 100MiB), `BLOG_MEDIA_REQUEST_TIMEOUT`(기본 10s), `BLOG_MEDIA_MAX_REDIRECTS`(기본 3)다. 글 카탈로그 스캔 간격은 `BLOG_SYNCHRONIZATION_CATALOG_INTERVAL_MS`(기본 5분)다.
 - 로컬 API는 `http://localhost:8080`으로 호출한다. 빈 DB에서는 Flyway seed의 설정 동기화 대상부터 처리하며, 사이트 설정과 표현 프로필이 준비되기 전 `/`와 게시글 경로는 503이다.
@@ -55,7 +55,7 @@
 - API 변경과 함께 REST Docs 설명을 수정하고 `src/docs/asciidoc/index.adoc`에 생성 스니펫을 연결한다. 문서는 같은 출처 스타일만 쓰므로 외부 글꼴·스크립트를 불러오는 Asciidoctor 속성을 켜지 않는다.
 - HTTP 상세를 README·개발 가이드에 재작성하지 않는다. 업무 규칙은 [아키텍처 문서](ddd-architecture.md#현재-업무-규칙)에서 관리한다.
 - `build/generated-snippets`와 `build/docs/asciidoc/index.html`을 직접 편집하지 않는다.
-- 생성 문서는 전체 빌드가 만든 `build/docs/asciidoc/index.html`과 `application.jar`의 `BOOT-INF/classes/static/docs/index.html`로 확인한다. 화면으로 볼 때는 `java -jar build/libs/application.jar`로 실행해 `http://localhost:8080/docs/index.html`만 열고 `bootRun`을 사용하지 않는다. 이 확인은 HTTP 업무 시나리오 검증이 아니다.
+- 생성 문서는 전체 빌드가 만든 `build/docs/asciidoc/index.html`과 `application.jar`의 `BOOT-INF/classes/static/docs/index.html`로 확인한다. 화면으로 볼 때는 `ADMIN_USERNAME`, `ADMIN_PASSWORD`를 일회용 값으로 설정하고 `java -jar build/libs/application.jar`로 실행해 `http://localhost:8080/docs/index.html`만 열어 로그인하고 `bootRun`을 사용하지 않는다. 자격을 설정하지 않으면 `/docs/**`는 [403](frontend.md#관리자-자격과-닫힘-동작)이다. 이 확인은 HTTP 업무 시나리오 검증이 아니다.
 
 ## 스키마 변경
 
@@ -81,6 +81,7 @@ set -a; source local.env; set +a
 - HTTP·문서: `./gradlew :test --tests '*HttpDocumentationTest'`(공개 `BlogHttpDocumentationTest`, 관리 `AdminHttpDocumentationTest`).
 - 형식: 수정은 `./gradlew ktlintFormat`, 확인은 `./gradlew ktlintCheck`.
 - 검사 규칙: `./gradlew detektMain detektTest`, `./gradlew :quality-rules:test`. [검사기 지침](quality-maintenance.md)의 회귀 범위도 확인한다.
+- 화면: `./gradlew uiCheck`. 포맷 수정은 [화면 검증](frontend.md#검증)을 따른다.
 - 배포 스크립트: [배포 없이 검증](deployment.md#배포-없이-검증)의 Python 테스트도 실행한다.
 
 마지막에 전체 빌드와 diff를 확인한다.
@@ -93,11 +94,12 @@ git diff
 
 - 전체 빌드의 규칙 테스트·REST Docs 생성을 생략하지 않는다.
 - 검증 후 ktlint 자동 수정도 검토한다. 커밋할 때 자동 수정 파일을 빠뜨리지 않는다.
-- 실패 시 `build/reports/tests/test/`, `build/reports/detekt/`, `quality-rules/build/reports/tests/test/`를 확인한다.
+- 실패 시 `build/reports/tests/test/`, `build/reports/detekt/`, `quality-rules/build/reports/tests/test/`를 확인한다. html-validate 실패는 `build/rendered-ui/`의 렌더링 결과를 확인한다.
 
 ## 템플릿 적용
 
 1. [Use this template](https://github.com/robinjoon-homelab/kotlin-springboot-exposed-template/generate)로 서비스 저장소를 만들고 복제한다. 첫 `main`·`master` 푸시 전에 [배포 전 설정](deployment.md#배포-전-설정)을 끝낸다.
 2. 프로젝트명·패키지를 바꾸면 `settings.gradle.kts`, 소스·테스트의 선언·경로, `HexagonalArchitectureTest`의 `ROOT`와 시작 클래스 단언, 애플리케이션 이름을 함께 변경한다. 시작 클래스명을 바꾸면 `ArchitectureRules`의 `applicationClass` 인자도 맞춘다.
 3. 공용 배포 파일과 `application.jar` 이름을 유지하고 앱 이름·이미지 경로는 [배포 변수](deployment.md#배포-이름과-이미지-설정)로 지정한다.
-4. `./gradlew build`로 확인한다.
+4. 메뉴는 `src/main/resources/templates/app/nav.html`, 테마는 `src/main/resources/static/app/theme.css`에서 바꾼다. [화면 지침](frontend.md#토큰-덮어쓰기)을 따른다. 키트는 [키트 갱신](frontend.md#키트-갱신)으로 받는다.
+5. `./gradlew build`로 확인한다.

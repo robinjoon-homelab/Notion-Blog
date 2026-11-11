@@ -28,6 +28,7 @@ import org.thymeleaf.spring6.SpringTemplateEngine
 import org.thymeleaf.spring6.view.ThymeleafViewResolver
 import org.thymeleaf.templatemode.TemplateMode
 import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver
+import xyz.robinjoon.notionblog.adapter.inbound.web.WebSecurityHeadersFilter
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.BlogController
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.HomePageViewAssembler
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.PostPageViewAssembler
@@ -36,7 +37,6 @@ import xyz.robinjoon.notionblog.blog.adapter.inbound.web.RssFeedController
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.RssFeedRenderer
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.RssSummaryExtractor
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.WebExceptionHandler
-import xyz.robinjoon.notionblog.blog.adapter.inbound.web.WebSecurityHeadersFilter
 import xyz.robinjoon.notionblog.blog.application.model.ContentReferences
 import xyz.robinjoon.notionblog.blog.application.model.PageQuery
 import xyz.robinjoon.notionblog.blog.application.model.PostListEntry

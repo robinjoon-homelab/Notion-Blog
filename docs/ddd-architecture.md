@@ -162,8 +162,10 @@ blog/application/port/input/         유스케이스 계약
 blog/application/port/output/        persistence·source·presentation·diagnostics 계약
 blog/application/service/            유스케이스 구현
 blog/adapter/inbound/<group>/        web(공개·관리 HTTP·Thymeleaf·RSS·파일), scheduling, startup
+blog/adapter/inbound/web/view/        템플릿에 넘기는 뷰 모델
 blog/adapter/outbound/<group>/       notion, media(파일 내려받기), persistence(Exposed·스냅샷 JSON), presentation, diagnostics
 domain/AggregateRoot.kt              공용 기술 표식
+adapter/inbound/web/                 업무 타입에 의존하지 않는 공용 웹 어댑터(보안 헤더·404 처리·로그인 보안)
 config/                             빈 조립·기술 설정
 ```
 

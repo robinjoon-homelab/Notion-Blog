@@ -1,0 +1,7 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{ui/layout :: head('Blog temporarily unavailable')}"></head>
+<body>
+<main th:replace="~{ui/layout :: errorPage('503', 'Blog temporarily unavailable', 'The blog is temporarily unavailable. Please try again later.')}"></main>
+</body>
+</html>

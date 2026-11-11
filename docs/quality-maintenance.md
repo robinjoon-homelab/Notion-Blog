@@ -1,6 +1,6 @@
 # 품질 검사 유지보수
 
-**detekt 설정·Gradle 검사 연결·사용자 정의 규칙·ArchUnit 검사기·fixture를 바꿀 때만** 읽는다. 수치와 허용 예외는 [코드 품질 규칙](code-quality.md), 앱 경계는 [아키텍처와 도메인 경계](ddd-architecture.md), 명령은 [실행과 검증](development.md#실행과-검증)을 따른다.
+**detekt 설정·Gradle 검사 연결·사용자 정의 규칙·ArchUnit 검사기·fixture·UI 검사기를 바꿀 때만** 읽는다. 수치와 허용 예외는 [코드 품질 규칙](code-quality.md), 앱 경계는 [아키텍처와 도메인 경계](ddd-architecture.md), 명령은 [실행과 검증](development.md#실행과-검증)을 따른다.
 
 ## 변경 원칙
 
@@ -27,6 +27,17 @@ detekt는 분석 전에 컴파일된 규칙 JAR를 플러그인으로 읽으므�
 
 - 앱 detekt는 `src/main`·`src/test`를 검사한다. `quality-rules`에는 자기 detekt를 적용하지 않고 ktlint·fixture 테스트를 적용하며, 전체 `build`가 이 테스트를 포함한다.
 - `CleanCodeRuleSetProvider`가 `clean-code` 규칙 `LogicalNestingDepth`·`NoMutableCollectionExposure`·`MaximumFunctionLength`를 등록한다. 동작은 [코드 품질 규칙](code-quality.md)의 조건과 맞추고 조건마다 회귀 fixture를 유지한다.
+
+## UI 검사기
+
+규칙의 원본은 [화면 지침](frontend.md#검사-규칙)이다.
+
+- 린트 규칙을 바꾸면 `src/test/ui/lint-rules.test.mjs`의 정상·위반·경계 사례를 함께 고친다.
+- Thymeleaf 원본 규칙을 바꾸면 `ThymeleafSourceRulesTest`의 정상·위반·경계 사례를 함께 고친다.
+- 키트 파일을 바꾸면 [키트 갱신](frontend.md#키트-갱신)의 `--write-manifest`를 실행한다.
+- 키트 경로 목록을 바꾸면 `scripts/sync-ui-kit.py`의 `KIT_FILES`·`KIT_DIRS`와 `UiKitManifest`의 `kitFiles`·`kitDirs`를 함께 고친다.
+- 도구 버전은 범위 지정자 없이 고정하고 공개 후 2주가 지난 버전만 쓴다. Node·pnpm 버전은 `config/ui/tool-versions.properties`에서 바꾼다.
+- `uiCheck`를 `check`에 연결한 상태로 유지하고 검사가 파일을 수정하게 하지 않는다. 검사 대상과 렌더링 결과가 0개일 때의 실패를 유지한다.
 
 ## 아키텍처 검사기
 

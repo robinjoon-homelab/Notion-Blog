@@ -309,6 +309,7 @@ internal class TargetArchitectureChecks(
                 "GET /media/{mediaKey}",
                 "GET /series",
                 "GET /series/{seriesId}",
+                "GET /admin",
                 "GET /admin/login",
                 "GET /admin/home",
                 "POST /admin/home",

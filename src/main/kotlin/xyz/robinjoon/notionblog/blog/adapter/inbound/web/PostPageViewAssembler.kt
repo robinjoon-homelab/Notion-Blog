@@ -183,7 +183,7 @@ class PostPageViewAssembler(
     private companion object {
         const val PUBLIC_MEDIA_PATH = "/media/"
         const val ADMIN_MEDIA_PATH = "/admin/media/"
-        const val DEFAULT_THUMBNAIL = "/ui/default-post-thumbnail.svg"
+        const val DEFAULT_THUMBNAIL = "/app/default-post-thumbnail.svg"
         val styleSheetMediaTypes = setOf("text/css")
         val scriptMediaTypes = setOf("application/javascript", "text/javascript")
         val faviconMediaTypes = setOf("image/x-icon", "image/png", "image/svg+xml", "image/webp")

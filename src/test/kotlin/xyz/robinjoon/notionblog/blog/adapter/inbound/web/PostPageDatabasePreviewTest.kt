@@ -156,7 +156,7 @@ class PostPageDatabasePreviewTest {
         PresentationProfile.restore(reference, key, tokens, assets)
 
     private fun resourceIntegrity(publicPath: String): String {
-        val bytes = checkNotNull(javaClass.classLoader.getResourceAsStream("static$publicPath")).use { it.readBytes() }
+        val bytes = checkNotNull(javaClass.classLoader.getResourceAsStream(publicPath.removePrefix("/"))).use { it.readBytes() }
         return "sha256-" + Base64.getEncoder().encodeToString(MessageDigest.getInstance("SHA-256").digest(bytes))
     }
 }

@@ -17,6 +17,7 @@
 - [아키텍처](docs/ddd-architecture.md): BC·어그리게이트 선정, 업무 규칙과 계층·트랜잭션 규칙.
 - [코드 품질](docs/code-quality.md): 수치 제한·예외·금지 사항.
 - [개발 절차](docs/development.md): 기능·API·DB 변경, 테스트 범위와 검증.
+- [화면](docs/frontend.md): 파일 소유·화면 추가·UI 검사·관리자 자격·응답 헤더·키트 갱신.
 - [배포](docs/deployment.md): 공용 파일 유지·앱별 설정·실행·확인.
 - [검사기 유지보수](docs/quality-maintenance.md): 검사 규칙·빌드 연결을 바꿀 때만 참조.
 

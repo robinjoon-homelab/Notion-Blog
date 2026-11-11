@@ -118,7 +118,7 @@ class PostPageTextBlockViewTest {
                     ),
             )
 
-        val html = templateEngine().process("blog/post", Context().apply { setVariable("page", assembler.assemble(page)) })
+        val html = templateEngine().process("app/blog/post", Context().apply { setVariable("page", assembler.assemble(page)) })
 
         assertThat(html).contains("<ul", "one", "two", "type=\"checkbox\"", " disabled")
         assertThat(html).contains("<details", "toggle", "<thead", "scope=\"col\"", "scope=\"row\"")

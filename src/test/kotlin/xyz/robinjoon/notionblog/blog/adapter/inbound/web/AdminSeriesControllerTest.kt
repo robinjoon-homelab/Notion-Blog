@@ -122,7 +122,7 @@ class AdminSeriesControllerTest {
         assertThat(listOf("첫 글", "둘째 &lt;글&gt;").map(members::indexOf)).isSorted().doesNotContain(-1)
         assertThat(
             members,
-        ).contains("value=\"${first.value}\"", "&lt;글&gt;", "위로 이동", "아래로 이동", "시리즈에서 제외", "nb-badge-live", "nb-badge-draft")
+        ).contains("value=\"${first.value}\"", "&lt;글&gt;", "위로 이동", "아래로 이동", "시리즈에서 제외", "ui-badge-success", "class=\"ui-badge\"")
         assertThat(members).doesNotContain(" disabled")
         assertThat(candidates).contains("value=\"${third.value}\"", "disabled", "현재: 다른 시리즈 → 저장하면 이 시리즈로 옮겨집니다", "시리즈에 추가")
         assertThat(html).contains("action=\"$path\"", "name=\"description\"", "시리즈 저장", "series-editor.js", "data-candidate-filter", "삭제")
@@ -147,7 +147,7 @@ class AdminSeriesControllerTest {
     fun `edit of unknown or malformed series is not found`() {
         every { series.get(id) } returns SeriesLookupResult.NotFound
 
-        mockMvc.perform(get(path)).andExpect(status().isNotFound).andExpect(view().name("error/blog-not-found"))
+        mockMvc.perform(get(path)).andExpect(status().isNotFound).andExpect(view().name("blog/not-found"))
         mockMvc.perform(get("/admin/series/nope")).andExpect(status().isNotFound)
     }
 

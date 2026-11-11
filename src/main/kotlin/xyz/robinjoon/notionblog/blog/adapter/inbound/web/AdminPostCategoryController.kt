@@ -100,7 +100,7 @@ internal class AdminPostCategoryController(
             candidate.name.length > Category.MAX_NAME_LENGTH,
         )
 
-    private fun notFound(): ModelAndView = errorView("error/blog-not-found", HttpStatus.NOT_FOUND)
+    private fun notFound(): ModelAndView = errorView("blog/not-found", HttpStatus.NOT_FOUND)
 
     private companion object {
         const val SAVED = "분류를 저장했습니다. 공개 중인 글의 태그와 시리즈에 바로 반영되며 본문과 공개 상태는 바뀌지 않습니다."

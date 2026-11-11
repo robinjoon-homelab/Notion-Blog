@@ -12,7 +12,7 @@ class WebExceptionHandlerTest {
         val result = handler.handle()
 
         assertThat(result.status).isEqualTo(HttpStatus.NOT_FOUND)
-        assertThat(result.viewName).isEqualTo("error/blog-not-found")
+        assertThat(result.viewName).isEqualTo("blog/not-found")
         assertThat(result.model).doesNotContainKey("exception")
     }
 }

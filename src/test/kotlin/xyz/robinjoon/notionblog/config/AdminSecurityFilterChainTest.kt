@@ -1,10 +1,13 @@
 package xyz.robinjoon.notionblog.config
 
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.CsvSource
+import org.junit.jupiter.params.provider.ValueSource
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
-import org.springframework.http.ResponseEntity
 import org.springframework.mock.web.MockHttpSession
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestBuilders.formLogin
@@ -16,6 +19,7 @@ import org.springframework.test.context.junit.jupiter.web.SpringJUnitWebConfig
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.test.web.servlet.request.RequestPostProcessor
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.test.web.servlet.setup.DefaultMockMvcBuilder
@@ -25,108 +29,152 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.context.WebApplicationContext
 import org.springframework.web.servlet.config.annotation.EnableWebMvc
+import java.time.Clock
 
-// 관리 경로의 인증·권한·CSRF를 실제 필터 체인으로 확인한다. 로그인 화면은 컨트롤러 테스트가 다루므로 여기서는 보안 필터의 결과만 본다.
-@Configuration
-@EnableWebMvc
-@EnableWebSecurity
-@Import(AdminSecurityConfig::class)
-internal class SecurityProbeConfig {
-    @Bean
-    fun probe() = SecurityProbeController()
-}
+@SpringJUnitWebConfig(AdminSecurityProbeConfig::class)
+@TestPropertySource(properties = ["app.admin.username=admin", "app.admin.password=fixture-password"])
+class AdminSecurityFilterChainTest
+    @Autowired
+    constructor(
+        context: WebApplicationContext,
+    ) {
+        private val mockMvc = securedMockMvc(context)
 
-@RestController
-internal class SecurityProbeController {
-    @GetMapping("/admin/probe", "/probe", "/admin/login")
-    fun read(): ResponseEntity<String> = ResponseEntity.ok("ok")
+        @Test
+        fun `public paths need neither login nor csrf`() {
+            mockMvc.perform(get("/probe")).andExpect(status().isOk)
+            mockMvc.perform(post("/probe")).andExpect(status().isOk)
+        }
 
-    @PostMapping("/admin/probe")
-    fun write(): ResponseEntity<String> = ResponseEntity.ok("done")
-}
+        @ParameterizedTest
+        @ValueSource(strings = ["/admin/probe", "/docs/probe"])
+        fun `anonymous admin and docs go to login`(path: String) {
+            mockMvc
+                .perform(get(path))
+                .andExpect(status().isFound)
+                .andExpect(redirectedUrl("/admin/login"))
+        }
 
-@SpringJUnitWebConfig(SecurityProbeConfig::class)
-@TestPropertySource(
-    properties = [
-        "blog.admin.username=admin",
-        "blog.admin.password=fixture-password",
-    ],
-)
-class AdminSecurityFilterChainTest(
-    context: WebApplicationContext,
-) {
-    private val mockMvc: MockMvc =
-        MockMvcBuilders.webAppContextSetup(context).apply<DefaultMockMvcBuilder>(springSecurity()).build()
+        @ParameterizedTest
+        @ValueSource(strings = ["/admin/login", "/admin/login?error", "/admin/login?locked", "/admin/login?logout"])
+        fun `login page is open in every state`(url: String) {
+            mockMvc.perform(get(url)).andExpect(status().isOk)
+        }
 
-    private fun signIn(): MockHttpSession {
-        val result =
+        @Test
+        fun `correct credentials open admin and docs`() {
+            val session = loggedInSession()
+
+            mockMvc.perform(get("/admin/probe").session(session)).andExpect(status().isOk)
+            mockMvc.perform(get("/docs/probe").session(session)).andExpect(status().isOk)
+        }
+
+        @ParameterizedTest
+        @CsvSource("admin, wrong-password", "nobody, fixture-password")
+        fun `wrong password and unknown user fail the same way`(
+            username: String,
+            password: String,
+        ) {
+            mockMvc
+                .perform(formLogin("/admin/login").user(username).password(password))
+                .andExpect(status().isFound)
+                .andExpect(redirectedUrl("/admin/login?error"))
+        }
+
+        @Test
+        fun `login needs csrf`() {
+            mockMvc
+                .perform(post("/admin/login").param("username", "admin").param("password", "fixture-password"))
+                .andExpect(status().isForbidden)
+        }
+
+        @Test
+        fun `admin writes need csrf`() {
+            val session = loggedInSession()
+
+            mockMvc.perform(post("/admin/probe").session(session)).andExpect(status().isForbidden)
+            mockMvc.perform(post("/admin/probe").session(session).with(csrf())).andExpect(status().isOk)
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = ["/admin/login", "/admin/probe", "/admin/logout"])
+        fun `a stale session without a token goes to login`(path: String) {
+            mockMvc
+                .perform(post(path).with(requestedSession("expired-session-id", valid = false)))
+                .andExpect(status().isFound)
+                .andExpect(redirectedUrl("/admin/login"))
+        }
+
+        @Test
+        fun `signed in user without the admin authority is forbidden`() {
+            mockMvc.perform(get("/admin/probe").with(user("guest").authorities())).andExpect(status().isForbidden)
+        }
+
+        @Test
+        fun `logout is a CSRF protected POST that ends the session and returns to the login page`() {
+            val session = loggedInSession()
+
+            mockMvc.perform(post("/admin/logout").session(session)).andExpect(status().isForbidden)
+            mockMvc
+                .perform(post("/admin/logout").session(session).with(csrf()))
+                .andExpect(status().isFound)
+                .andExpect(redirectedUrl("/admin/login?logout"))
+            mockMvc.perform(get("/admin/probe").session(session)).andExpect(status().isFound).andExpect(redirectedUrl("/admin/login"))
+        }
+
+        @Test
+        fun `a live session without a token stays forbidden`() {
+            val session = loggedInSession()
+
+            mockMvc
+                .perform(post("/admin/probe").session(session).with(requestedSession(session.id, valid = true)))
+                .andExpect(status().isForbidden)
+        }
+
+        @Test
+        fun `a request without a session cookie or a token stays forbidden`() {
+            mockMvc.perform(post("/admin/probe")).andExpect(status().isForbidden)
+        }
+
+        private fun requestedSession(
+            id: String,
+            valid: Boolean,
+        ) = RequestPostProcessor { request ->
+            request.requestedSessionId = id
+            request.isRequestedSessionIdValid = valid
+            request
+        }
+
+        private fun loggedInSession(): MockHttpSession =
             mockMvc
                 .perform(formLogin("/admin/login").user("admin").password("fixture-password"))
                 .andExpect(status().isFound)
-                .andExpect(redirectedUrl("/admin/posts"))
+                .andExpect(redirectedUrl("/admin"))
                 .andReturn()
-        return requireNotNull(result.request.getSession(false)) as MockHttpSession
+                .request
+                .session as MockHttpSession
     }
 
-    @Test
-    fun `public pages need no login`() {
-        mockMvc.perform(get("/probe")).andExpect(status().isOk)
-    }
+internal fun securedMockMvc(context: WebApplicationContext): MockMvc =
+    MockMvcBuilders.webAppContextSetup(context).apply<DefaultMockMvcBuilder>(springSecurity()).build()
 
-    @Test
-    fun `anonymous admin access is sent to the login form`() {
-        mockMvc.perform(get("/admin/probe")).andExpect(status().isFound).andExpect(redirectedUrl("/admin/login"))
-    }
+@Configuration(proxyBeanMethods = false)
+@EnableWebMvc
+@EnableWebSecurity
+@Import(AdminSecurityConfig::class)
+class AdminSecurityProbeConfig {
+    @Bean
+    fun clock(): Clock = Clock.systemUTC()
 
-    @Test
-    fun `anonymous requests can reach the login form and its failure page`() {
-        mockMvc.perform(get("/admin/login")).andExpect(status().isOk)
-        mockMvc.perform(get("/admin/login?error")).andExpect(status().isOk)
-    }
+    @Bean
+    fun adminSecurityProbeController(): AdminSecurityProbeController = AdminSecurityProbeController()
+}
 
-    @Test
-    fun `correct credentials open the admin session`() {
-        mockMvc.perform(get("/admin/probe").session(signIn())).andExpect(status().isOk)
-    }
+@RestController
+class AdminSecurityProbeController {
+    @GetMapping("/admin/probe", "/admin/login", "/docs/probe", "/probe")
+    fun read(): String = "ok"
 
-    @Test
-    fun `wrong password or unknown username gets the same generic failure`() {
-        mockMvc
-            .perform(formLogin("/admin/login").user("admin").password("wrong"))
-            .andExpect(status().isFound)
-            .andExpect(redirectedUrl("/admin/login?error"))
-        mockMvc
-            .perform(formLogin("/admin/login").user("someone").password("fixture-password"))
-            .andExpect(status().isFound)
-            .andExpect(redirectedUrl("/admin/login?error"))
-    }
-
-    @Test
-    fun `login submission needs a CSRF token`() {
-        mockMvc
-            .perform(post("/admin/login").param("username", "admin").param("password", "fixture-password"))
-            .andExpect(status().isForbidden)
-    }
-
-    @Test
-    fun `signed in user without the admin authority is forbidden`() {
-        mockMvc.perform(get("/admin/probe").with(user("guest").authorities())).andExpect(status().isForbidden)
-    }
-
-    @Test
-    fun `state changing admin requests need a CSRF token`() {
-        val session = signIn()
-
-        mockMvc.perform(post("/admin/probe").session(session)).andExpect(status().isForbidden)
-        mockMvc.perform(post("/admin/probe").session(session).with(csrf())).andExpect(status().isOk)
-    }
-
-    @Test
-    fun `logout is a CSRF protected POST that ends the session and returns home`() {
-        val session = signIn()
-
-        mockMvc.perform(post("/admin/logout").session(session)).andExpect(status().isForbidden)
-        mockMvc.perform(post("/admin/logout").session(session).with(csrf())).andExpect(status().isFound).andExpect(redirectedUrl("/"))
-        mockMvc.perform(get("/admin/probe").session(session)).andExpect(status().isFound).andExpect(redirectedUrl("/admin/login"))
-    }
+    @PostMapping("/admin/probe", "/probe")
+    fun write(): String = "ok"
 }

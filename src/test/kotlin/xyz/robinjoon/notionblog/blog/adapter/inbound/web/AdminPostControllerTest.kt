@@ -203,7 +203,7 @@ class AdminPostControllerTest {
     @Test
     fun `unknown or malformed posts are not found and missing site content is unavailable`() {
         every { queries.get(postId, PreviewVersion.LATEST) } returns AdminPostLookupResult.NotFound
-        mockMvc.perform(get("/admin/posts/${postId.value}")).andExpect(status().isNotFound).andExpect(view().name("error/blog-not-found"))
+        mockMvc.perform(get("/admin/posts/${postId.value}")).andExpect(status().isNotFound).andExpect(view().name("blog/not-found"))
         mockMvc.perform(get("/admin/posts/nope")).andExpect(status().isNotFound)
 
         every { queries.get(postId, PreviewVersion.LATEST) } returns AdminPostLookupResult.ContentUnavailable

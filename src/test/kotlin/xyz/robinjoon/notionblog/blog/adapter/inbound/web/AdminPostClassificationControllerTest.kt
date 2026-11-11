@@ -101,7 +101,7 @@ class AdminPostClassificationControllerTest {
     fun `edit of unknown or malformed posts is not found`() {
         every { classifications.get(postId) } returns PostClassificationLookupResult.NotFound
 
-        mockMvc.perform(get(path)).andExpect(status().isNotFound).andExpect(view().name("error/blog-not-found"))
+        mockMvc.perform(get(path)).andExpect(status().isNotFound).andExpect(view().name("blog/not-found"))
         mockMvc.perform(get("/admin/posts/nope/categories")).andExpect(status().isNotFound)
     }
 

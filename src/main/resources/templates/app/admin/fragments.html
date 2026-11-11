@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- 글 상태 배지. 뷰 모델의 tone(live, change, warn, draft)을 키트의 success, warning과 중립 배지로 옮긴다. -->
+<span th:fragment="badges(badges)" class="nb-status-stack">
+    <th:block th:each="badge : ${badges}">
+        <span th:replace="~{ui/layout :: badge(${badge.label}, ${badge.tone == 'live' ? 'success' : (badge.tone == 'draft' ? null : 'warning')})}"></span>
+    </th:block>
+</span>
+
+<div th:fragment="panelInfo(panel)" class="nb-info">
+    <span th:replace="~{app/admin/fragments :: badges(${panel.badges})}"></span>
+    <div class="nb-property"><span>공개 주소</span>
+        <span><a th:if="${panel.publicHref != null}" th:href="${panel.publicHref}" th:text="${panel.publicHref}">/posts/…</a>
+            <span th:if="${panel.publicHref == null}" class="ui-muted">공개되지 않음</span></span></div>
+    <div class="nb-property"><span>최근 가져옴</span><span th:text="${panel.source.capturedAt}">2026-10-16 14:20</span></div>
+    <div class="nb-property"><span>태그</span>
+        <span class="nb-status-stack">
+            <th:block th:each="name : ${panel.classification.categories}">
+                <span th:replace="~{ui/layout :: badge(${name}, null)}"></span>
+            </th:block>
+            <span th:if="${#lists.isEmpty(panel.classification.categories)}" class="ui-muted">지정된 태그 없음</span></span></div>
+    <div class="nb-property"><span>시리즈</span>
+        <span><a th:if="${panel.classification.series != null}" th:href="${panel.classification.series.href}" th:text="${panel.classification.series.title + ' (' + panel.classification.series.position + ' / ' + panel.classification.series.size + ')'}">시리즈</a>
+            <span th:if="${panel.classification.series == null}" class="ui-muted">속한 시리즈 없음</span></span></div>
+    <div class="nb-property"><span>Notion 원문 태그</span>
+        <span class="nb-status-stack">
+            <th:block th:each="name : ${panel.classification.sourceTags}">
+                <span th:replace="~{ui/layout :: badge(${name}, null)}"></span>
+            </th:block>
+            <span th:if="${#lists.isEmpty(panel.classification.sourceTags)}" class="ui-muted">없음</span></span></div>
+    <p class="ui-muted nb-small" th:if="${panel.source.problem != null}" th:text="${panel.source.problem}">문제</p>
+    <p class="ui-muted nb-small" th:if="${panel.source.mediaNotice != null}" th:text="${panel.source.mediaNotice}">파일</p>
+</div>
+
+<!-- 렌더링 결과가 html-validate의 boolean 속성 규칙(값 생략)을 지키도록 checked를 값 없이 쓰는 분기를 따로 둔다. -->
+<th:block th:fragment="radio(name, value, checked)">
+    <input th:if="${checked}" type="radio" th:name="${name}" th:value="${value}" checked>
+    <input th:unless="${checked}" type="radio" th:name="${name}" th:value="${value}">
+</th:block>
+
+<th:block th:fragment="checkbox(name, value, checked)">
+    <input th:if="${checked}" type="checkbox" th:name="${name}" th:value="${value}" checked>
+    <input th:unless="${checked}" type="checkbox" th:name="${name}" th:value="${value}">
+</th:block>
+
+<!-- 글이 소속 목록에 있으면 위로·아래로·제외, 후보 목록에 있으면 추가만 CSS로 보여 준다. -->
+<span th:fragment="seriesButtons(title)" class="nb-series-buttons">
+    <button type="button" class="ui-button" data-action="up" th:attr="aria-label=${title + ' 위로 이동'}">위로</button>
+    <button type="button" class="ui-button" data-action="down" th:attr="aria-label=${title + ' 아래로 이동'}">아래로</button>
+    <button type="button" class="ui-button ui-button-danger" data-action="remove" th:attr="aria-label=${title + ' 시리즈에서 제외'}">제외</button>
+    <button type="button" class="ui-button" data-action="add" th:attr="aria-label=${title + ' 시리즈에 추가'}">추가</button>
+</span>
+</body>
+</html>

@@ -1,0 +1,6 @@
+/* 앱 전용 색 토큰. 키트 토큰으로 표현할 수 없는 값만 둔다. */
+:root {
+    color-scheme: light dark;
+
+    --blog-hover-strong: light-dark(#e2e6eb, #2c3440);
+}
