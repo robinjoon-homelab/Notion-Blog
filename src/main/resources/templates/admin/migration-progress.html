@@ -31,7 +31,9 @@
             <a class="ui-button" th:href="@{/admin/migrations}">다른 데이터베이스 가져오기</a>
         </div>
     </div>
-    <div th:if="${#lists.isEmpty(view.rows)}" th:replace="~{ui/layout :: emptyState('가져올 글이 없습니다', '다른 데이터베이스를 선택하거나 원본의 글을 확인하세요.')}"></div>
+    <th:block th:if="${#lists.isEmpty(view.rows)}">
+        <div th:replace="~{ui/layout :: emptyState('가져올 글이 없습니다', '다른 데이터베이스를 선택하거나 원본의 글을 확인하세요.')}"></div>
+    </th:block>
     <div class="ui-table-wrap" th:unless="${#lists.isEmpty(view.rows)}">
         <table class="ui-table nb-migration-results">
             <caption>글별 마이그레이션 결과</caption>

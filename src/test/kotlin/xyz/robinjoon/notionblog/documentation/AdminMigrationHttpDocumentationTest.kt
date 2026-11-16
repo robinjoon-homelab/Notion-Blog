@@ -4,6 +4,7 @@ import io.mockk.every
 import io.mockk.mockk
 import org.assertj.core.api.Assertions.assertThat
 import org.hamcrest.Matchers.containsString
+import org.hamcrest.Matchers.not
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -120,7 +121,14 @@ class AdminMigrationHttpDocumentationTest {
         assertThat(result.response.contentAsString)
             .contains("예전 블로그", "게시글", "독서록", "name=\"authoredAtPropertyId\"", "value=\"$dataSourceId\"", "value=\"$pageId\"")
             .contains("https://www.notion.so/${databaseId.replace("-", "")}")
-            .doesNotContain("value=\"rating\"")
+            .doesNotContain("value=\"rating\"", "읽을 수 있는 데이터 소스가 없습니다")
+
+        every { migrations.inspect(databaseUrl) } returns MigrationDatabase(databaseId, "빈 데이터베이스", emptyList())
+        mvc
+            .perform(post("/admin/migrations/inspect").param("databaseUrl", databaseUrl))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString("읽을 수 있는 데이터 소스가 없습니다")))
+            .andDo { saveRenderedPage("admin-migrations-empty-database", it.response.contentAsString) }
     }
 
     @Test
@@ -172,8 +180,16 @@ class AdminMigrationHttpDocumentationTest {
             .andExpect(content().string(containsString("/app/post-migration.js")))
             .andExpect(content().string(containsString("실패한 글만 다시 시도")))
             .andExpect(content().string(containsString("name=\"authoredAtPropertyId\" value=\"date\"")))
+            .andExpect(content().string(not(containsString("가져올 글이 없습니다"))))
             .andDo(document("admin-migrations-prepare"))
             .andDo { saveRenderedPage("admin-migrations-progress", it.response.contentAsString) }
+
+        every { migrations.prepare(selection) } returns MigrationPlan(selection, emptyList())
+        mvc
+            .perform(mappingRequest("/admin/migrations/prepare"))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString("가져올 글이 없습니다")))
+            .andDo { saveRenderedPage("admin-migrations-empty-progress", it.response.contentAsString) }
     }
 
     @Test
