@@ -59,7 +59,7 @@ class SynchronizePostService(
     }
 
     private fun importRevision(context: PostSynchronizationContext): RefreshPostResult {
-        val imported = source.fetchRevision(context.sourceDocument)
+        val imported = source.fetchRevision(context.sourceDocument, context.migrationSelection)
         require(imported.sourceDocument == context.sourceDocument) { "imported document must match the requested source document" }
         val changed = imported.sourceRevision != context.latestSourceRevision
         val newRevision = if (changed) imported.sourceHostedMedia() else emptySet()

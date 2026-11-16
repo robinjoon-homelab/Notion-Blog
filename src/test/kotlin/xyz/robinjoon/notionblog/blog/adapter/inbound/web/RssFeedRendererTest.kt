@@ -71,6 +71,18 @@ class RssFeedRendererTest {
     }
 
     @Test
+    fun `imported items retain their original authored date in RSS instead of the migration publication date`() {
+        val authoredAt = Instant.parse("2023-07-15T00:00:00Z")
+        val imported = entry("Imported", "Body").copy(authoredAt = authoredAt)
+
+        val document = parse(renderer.render(PublicFeed(metadata(), listOf(imported)), urls))
+        val date = document.getElementsByTagName("pubDate").item(0).textContent
+
+        assertThat(ZonedDateTime.parse(date, DateTimeFormatter.RFC_1123_DATE_TIME).toInstant()).isEqualTo(authoredAt)
+        assertThat(imported.firstPublishedAt).isEqualTo(publishedAt)
+    }
+
+    @Test
     fun `domain and content changes preserve GUID and first publication date`() {
         val original = entry("Original", "Original body")
         val properties = original.revision.properties

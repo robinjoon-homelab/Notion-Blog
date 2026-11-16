@@ -62,8 +62,8 @@ internal class AdminHomeController(
             )
         val orderText =
             mapOf(
-                HomePostOrder.NEWEST_FIRST to ("최신 글 먼저" to "처음 발행한 시각이 늦은 글부터 보여 줍니다."),
-                HomePostOrder.OLDEST_FIRST to ("오래된 글 먼저" to "처음 발행한 시각이 이른 글부터 보여 줍니다."),
+                HomePostOrder.NEWEST_FIRST to ("최신 글 먼저" to "작성일이 늦은 글부터 보여 줍니다. 작성일이 없으면 최초 발행일을 씁니다."),
+                HomePostOrder.OLDEST_FIRST to ("오래된 글 먼저" to "작성일이 이른 글부터 보여 줍니다. 작성일이 없으면 최초 발행일을 씁니다."),
             )
     }
 }

@@ -2,8 +2,11 @@ package xyz.robinjoon.notionblog.blog.adapter.outbound.notion.source
 
 import xyz.robinjoon.notionblog.blog.adapter.outbound.notion.dto.NotionPostsConfiguration
 import xyz.robinjoon.notionblog.blog.adapter.outbound.notion.mapping.NotionBlockMappingException
+import xyz.robinjoon.notionblog.blog.adapter.outbound.notion.mapping.NotionMigrationPropertiesMapper
+import xyz.robinjoon.notionblog.blog.adapter.outbound.notion.mapping.NotionMigrationSchema
 import xyz.robinjoon.notionblog.blog.adapter.outbound.notion.mapping.NotionPostPropertiesMapper
 import xyz.robinjoon.notionblog.blog.application.model.ImportedRevision
+import xyz.robinjoon.notionblog.blog.application.model.MigrationSelection
 import xyz.robinjoon.notionblog.blog.application.port.output.source.PostRevisionSource
 import xyz.robinjoon.notionblog.blog.application.port.output.source.SourceAccessException
 import xyz.robinjoon.notionblog.blog.application.port.output.source.SourceMappingException
@@ -29,23 +32,42 @@ internal class NotionRevisionSource(
     ) : this(sourceId, NotionPostsConfiguration(dataSourceId, summaryPropertyId, tagsPropertyId), pages)
 
     private val properties = NotionPostPropertiesMapper(sourceId, posts)
+    private val migrationProperties = NotionMigrationPropertiesMapper(sourceId)
 
-    override fun fetchRevision(reference: SourceDocumentRef): ImportedRevision {
+    override fun fetchRevision(
+        reference: SourceDocumentRef,
+        migration: MigrationSelection?,
+    ): ImportedRevision {
         val collected =
             pages.fetch(reference) { page ->
                 if (page.inTrash) throw SourceAccessException("Notion page is in the trash")
+                if (migration != null) NotionMigrationSchema.requireParent(page, migration)
             }
         return try {
-            ImportedRevision(
-                sourceDocument = collected.metadata.sourceDocument,
-                properties = properties.map(collected.page, collected.metadata.title),
-                sourceRevision = collected.sourceRevision,
-                content = collected.content,
-            )
+            mapRevision(collected, migration)
         } catch (exception: NotionBlockMappingException) {
             throw SourceMappingException("Notion page properties could not be mapped", exception)
         } catch (exception: IllegalArgumentException) {
             throw SourceMappingException("Notion page properties are malformed", exception)
         }
+    }
+
+    private fun mapRevision(
+        collected: CollectedPost,
+        migration: MigrationSelection?,
+    ): ImportedRevision {
+        val mapped =
+            if (migration == null) {
+                properties.map(collected.page, collected.metadata.title)
+            } else {
+                migrationProperties.map(collected.page, migration.fields)
+            }
+        return ImportedRevision(
+            sourceDocument = collected.metadata.sourceDocument,
+            properties = mapped,
+            sourceRevision = collected.sourceRevision,
+            content = collected.content,
+            authoredAt = migration?.let { migrationProperties.authoredAt(collected.page, it.fields) },
+        )
     }
 }

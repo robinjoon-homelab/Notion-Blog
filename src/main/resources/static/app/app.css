@@ -857,3 +857,62 @@
 body.blog-public {
     background: var(--notion-page, var(--ui-surface));
 }
+
+/* 원본 DB의 필드 매핑과 글별 마이그레이션 진행. */
+.nb-migration-content,
+.nb-migration-content .ui-panel,
+.nb-migration-content .ui-field {
+    min-width: 0;
+}
+
+.nb-migration-content .ui-panel,
+.nb-migration-content .nb-summary-title {
+    overflow-wrap: anywhere;
+}
+
+.nb-migration-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.nb-migration-fields .ui-input {
+    min-width: 0;
+}
+
+.nb-migration-results {
+    table-layout: fixed;
+}
+
+.nb-migration-results th:first-child {
+    width: 40%;
+}
+
+.nb-migration-results th:last-child {
+    width: 20%;
+}
+
+.nb-migration-results tr[data-state="failed"] [data-migration-result] {
+    color: var(--ui-danger-text);
+}
+
+.nb-migration-results tr[data-state="imported"] [data-migration-result] {
+    color: var(--ui-success-text);
+}
+
+[data-migration-progress] {
+    width: 100%;
+    accent-color: var(--ui-accent);
+}
+
+@media (width <= 640px) {
+    .nb-migration-fields {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .nb-migration-content .ui-toolbar .ui-button {
+        max-width: 100%;
+        white-space: normal;
+        text-align: center;
+    }
+}

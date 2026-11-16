@@ -12,6 +12,7 @@ data class PostSynchronizationContext(
     val sourceDocument: SourceDocumentRef,
     val latestSourceRevision: SourceRevision?,
     val pendingRepairs: List<MediaRepairTarget>,
+    val migrationSelection: MigrationSelection? = null,
 )
 
 // 파일의 저장 사본이 아직 없는 표시 리비전이다(레거시 스냅숏에서 복사한 리비전만 해당한다). 사본은 그 리비전에 저장된 URL에서, 또는

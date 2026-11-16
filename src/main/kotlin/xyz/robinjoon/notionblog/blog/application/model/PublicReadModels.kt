@@ -16,10 +16,14 @@ import xyz.robinjoon.notionblog.blog.domain.site.SiteConfiguration
 import xyz.robinjoon.notionblog.blog.domain.site.SiteMetadata
 import java.time.Instant
 
+// 원래 작성 시각은 표시와 정렬에 쓰고 실제 최초 게시 이력은 별도로 유지한다.
 data class PublishedPost(
     val revision: PostRevision,
     val firstPublishedAt: Instant,
-)
+    val authoredAt: Instant? = null,
+) {
+    val displayDate: Instant get() = authoredAt ?: firstPublishedAt
+}
 
 // revisionId는 항목이 보여 주는 게시 리비전이며, 커버도 그 리비전을 통해서만 찾는다.
 data class PostListEntry(
@@ -28,7 +32,10 @@ data class PostListEntry(
     val properties: PostProperties,
     val firstPublishedAt: Instant,
     val categories: List<ListedCategory> = emptyList(),
-)
+    val authoredAt: Instant? = null,
+) {
+    val displayDate: Instant get() = authoredAt ?: firstPublishedAt
+}
 
 data class SitePresentationContext(
     val site: SiteConfiguration,

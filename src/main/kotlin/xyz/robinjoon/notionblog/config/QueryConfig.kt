@@ -12,6 +12,7 @@ import xyz.robinjoon.notionblog.blog.application.port.output.diagnostics.Snapsho
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.CategoryRepository
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.HomeConfigurationRepository
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.MediaStoragePort
+import xyz.robinjoon.notionblog.blog.application.port.output.persistence.PostMigrationMappingRepository
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.PostRepository
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.PresentationProfileRepository
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.PublishedPostStore
@@ -100,5 +101,8 @@ internal class QueryConfig(
     ): AdminPostQueryUseCase = AdminPostQueryService(summaries, posts, chromes, references, snapshotFailures)
 
     @Bean
-    fun synchronizationQueryService(states: SyncStateRepository): SynchronizationQueryService = SynchronizationQueryService(posts, states)
+    fun synchronizationQueryService(
+        states: SyncStateRepository,
+        migrations: PostMigrationMappingRepository,
+    ): SynchronizationQueryService = SynchronizationQueryService(posts, states, migrations)
 }

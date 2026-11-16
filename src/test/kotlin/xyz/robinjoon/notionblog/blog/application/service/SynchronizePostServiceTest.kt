@@ -8,6 +8,8 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import xyz.robinjoon.notionblog.blog.application.model.CapturedMedia
 import xyz.robinjoon.notionblog.blog.application.model.ImportedRevision
+import xyz.robinjoon.notionblog.blog.application.model.MigrationFields
+import xyz.robinjoon.notionblog.blog.application.model.MigrationSelection
 import xyz.robinjoon.notionblog.blog.application.model.PostSynchronizationContext
 import xyz.robinjoon.notionblog.blog.application.model.RefreshPostResult
 import xyz.robinjoon.notionblog.blog.application.port.output.diagnostics.OperationFailureReporter
@@ -46,6 +48,17 @@ class SynchronizePostServiceTest {
     fun `a stored import is returned as the refresh result`() {
         givenContext(latest = "rev-1")
         every { source.fetchRevision(any()) } returns imported("rev-2")
+        every { media.capture(any(), any()) } returns CapturedMedia.empty
+        every { applyService.apply(any(), any(), any()) } returns RefreshPostResult.Updated(PostFixtures.revisionId(2))
+
+        assertThat(service.refresh(postId)).isEqualTo(RefreshPostResult.Updated(PostFixtures.revisionId(2)))
+    }
+
+    @Test
+    fun `refresh of a migrated post keeps its stored source field mapping`() {
+        val selection = MigrationSelection("previous-source", MigrationFields("name", "description", "labels", "written"))
+        every { queries.loadPost(postId) } returns PostSynchronizationContext(postId, document, null, emptyList(), selection)
+        every { source.fetchRevision(document, selection) } returns imported("rev-2")
         every { media.capture(any(), any()) } returns CapturedMedia.empty
         every { applyService.apply(any(), any(), any()) } returns RefreshPostResult.Updated(PostFixtures.revisionId(2))
 

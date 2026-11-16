@@ -66,6 +66,13 @@ internal class NotionResponseParser {
                     },
                 parent = parseParent(response.requiredObject("parent")),
                 inTrash = response.requiredBoolean("in_trash"),
+                title =
+                    response
+                        .get(
+                            "title",
+                        )?.takeIf(JsonNode::isArray)
+                        ?.joinToString("") { it.nullableText("plain_text").orEmpty() }
+                        .orEmpty(),
             )
         }
 

@@ -147,17 +147,17 @@ class ExposedPublishedPostStore(
         return (PostRevisionTable.title.lowerCase() like pattern) or (PostRevisionTable.summary.lowerCase() like pattern)
     }
 
-    private fun Query.newestFirst(): Query = orderBy(PostTable.firstPublishedAt to SortOrder.DESC, PostTable.postId to SortOrder.ASC)
+    private fun Query.newestFirst(): Query = orderBy(ExposedPublishedRows.displayDate to SortOrder.DESC, PostTable.postId to SortOrder.ASC)
 
     // 같은 시각이면 두 방향 모두 글 ID 오름차순으로 순서를 고정한다.
     private fun Query.ordered(order: HomePostOrder): Query =
         when (order) {
             HomePostOrder.NEWEST_FIRST -> newestFirst()
-            HomePostOrder.OLDEST_FIRST -> orderBy(PostTable.firstPublishedAt to SortOrder.ASC, PostTable.postId to SortOrder.ASC)
+            HomePostOrder.OLDEST_FIRST -> orderBy(ExposedPublishedRows.displayDate to SortOrder.ASC, PostTable.postId to SortOrder.ASC)
         }
 
     private fun ResultRow.toPublishedPost(): PublishedPost =
-        PublishedPost(revisions.read(this), ExposedPublishedRows.firstPublishedAt(this))
+        PublishedPost(revisions.read(this), ExposedPublishedRows.firstPublishedAt(this), this[PostTable.authoredAt]?.toInstant())
 
     private companion object {
         const val ESCAPE = '\\'

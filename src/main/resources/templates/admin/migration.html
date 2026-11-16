@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{ui/layout :: head('글 마이그레이션')}"></head>
+<body th:replace="~{ui/layout :: shell('migrations', ~{::section})}">
+<section class="nb-migration-content">
+    <div class="ui-page-head">
+        <div>
+            <h1>글 마이그레이션</h1>
+            <p class="ui-muted nb-lead">다른 Notion 데이터베이스의 글을 기존 블로그에 추가합니다. 기존 글과 공개 상태는 유지하고, 새 글은 초안으로 가져옵니다.</p>
+        </div>
+    </div>
+
+    <p th:replace="~{ui/layout :: notice(${view.notice?.text}, ${view.notice?.error})}"></p>
+
+    <div class="ui-panel">
+        <h2 id="migration-access-title">먼저 원본 DB의 읽기 권한을 연결하세요</h2>
+        <p>원본 Notion DB를 열고 <strong>••• → 더 보기 → 연결 → 연결 추가</strong>에서 블로그 서버가 사용하는 연동을 선택하세요.</p>
+        <p class="ui-muted nb-small">연동에는 Read content 권한이 필요합니다. 블로그 서버에 등록된 연동을 선택하고 기존 블로그 DB의 연결은 유지하세요. 본문에 다른 DB나 동기화 블록이 있으면 그 원본에도 읽기 권한이 필요할 수 있습니다.</p>
+        <div class="ui-toolbar">
+            <a class="ui-button" th:if="${view.sourceHref != null}" th:href="${view.sourceHref}" target="_blank" rel="noopener noreferrer">원본 DB 열기</a>
+            <a class="ui-button" href="https://www.notion.so/profile/integrations" target="_blank" rel="noopener noreferrer">Notion 연동 관리</a>
+            <a class="ui-button" href="https://www.notion.com/help/add-and-manage-connections-with-the-api" target="_blank" rel="noopener noreferrer">권한 부여 안내</a>
+        </div>
+    </div>
+
+    <div class="ui-panel">
+        <h2 id="migration-source-title">1. 원본 데이터베이스</h2>
+        <form th:action="@{/admin/migrations/inspect}" method="post">
+            <div class="ui-field">
+                <label for="migration-database-url">Notion 데이터베이스 링크 또는 ID</label>
+                <input class="ui-input" id="migration-database-url" type="text" name="databaseUrl" th:value="${view.databaseUrl}" required autocomplete="off" placeholder="https://www.notion.so/…">
+            </div>
+            <div class="ui-toolbar"><button class="ui-button" type="submit">데이터베이스 확인</button></div>
+        </form>
+        <p class="ui-muted nb-small">토큰이나 서버 설정을 바꾸지 않습니다. Notion 원문을 이동·복제·수정하지 않습니다.</p>
+    </div>
+
+    <div class="nb-form" th:if="${view.database != null}">
+        <div class="ui-panel">
+            <h2 id="migration-mapping-title">2. 필드 매핑</h2>
+            <p><span th:text="${view.database.title}">데이터베이스</span>
+                <a th:if="${view.database.href != null}" th:href="${view.database.href}" target="_blank" rel="noopener noreferrer">Notion에서 열기</a></p>
+            <p class="ui-muted nb-small">가져올 데이터 소스의 필드를 고르세요. 본문과 페이지 표지는 자동으로 가져옵니다. Notion 원문 태그는 보존하며, 공개 태그는 가져온 뒤 글 관리에서 지정할 수 있습니다.</p>
+            <p class="ui-muted nb-small" id="migration-date-help">작성일은 최초 발행 시각과 별도로 보존합니다. 날짜만 있으면 UTC 자정, 기간이면 시작일을 사용합니다. 선택한 작성일이 비거나 잘못된 글은 실패로 표시합니다. 작성일을 선택하지 않으면 블로그 발행일을 표시합니다.</p>
+            <div th:if="${#lists.isEmpty(view.database.sources)}" th:replace="~{ui/layout :: emptyState('읽을 수 있는 데이터 소스가 없습니다', '원본 DB의 연결 권한을 확인하세요.')}"></div>
+        </div>
+        <form class="ui-panel" th:each="source : ${view.database.sources}" th:action="@{/admin/migrations/prepare}" method="post">
+            <h3 class="nb-summary-title" th:text="${source.name}">데이터 소스</h3>
+            <input type="hidden" name="dataSourceId" th:value="${source.id}">
+            <input type="hidden" name="databaseUrl" th:value="${view.databaseUrl}">
+            <div class="nb-migration-fields">
+                <div th:replace="~{app/admin/migration-fields :: mapping('titlePropertyId', '제목', ${source.fields.titles}, true, ${source.id})}"></div>
+                <div th:replace="~{app/admin/migration-fields :: mapping('summaryPropertyId', '요약', ${source.fields.summaries}, false, ${source.id})}"></div>
+                <div th:replace="~{app/admin/migration-fields :: mapping('tagsPropertyId', 'Notion 원문 태그', ${source.fields.tags}, false, ${source.id})}"></div>
+                <div th:replace="~{app/admin/migration-fields :: mapping('authoredAtPropertyId', '기존 작성일', ${source.fields.dates}, false, ${source.id})}"></div>
+            </div>
+            <div class="ui-toolbar"><button class="ui-button ui-button-primary" type="submit">마이그레이션 시작</button></div>
+        </form>
+    </div>
+</section>
+</body>
+</html>

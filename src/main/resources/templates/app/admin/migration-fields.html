@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{ui/layout :: head('마이그레이션 필드')}"></head>
+<body>
+<div th:fragment="mapping(name, label, options, required, prefix)" class="ui-field">
+    <label th:for="${'migration-' + prefix + '-' + name}" th:text="${label}">필드</label>
+    <select th:if="${required}" class="ui-input" th:id="${'migration-' + prefix + '-' + name}" th:name="${name}" required>
+        <th:block th:replace="~{app/admin/migration-fields :: options(${options}, true)}"></th:block>
+    </select>
+    <select th:unless="${required}" class="ui-input" th:id="${'migration-' + prefix + '-' + name}" th:name="${name}">
+        <th:block th:replace="~{app/admin/migration-fields :: options(${options}, false)}"></th:block>
+    </select>
+</div>
+
+<!-- boolean 속성은 키트와 같이 값을 생략한 literal 분기로 렌더링한다. -->
+<th:block th:fragment="options(options, required)">
+    <th:block th:unless="${required}">
+        <option value="" th:unless="${#lists.contains(options.![selected], true)}" selected>사용 안 함</option>
+        <option value="" th:if="${#lists.contains(options.![selected], true)}">사용 안 함</option>
+    </th:block>
+    <th:block th:each="option : ${options}">
+        <option th:if="${option.selected}" th:value="${option.value}" th:text="${option.label}" selected>속성</option>
+        <option th:unless="${option.selected}" th:value="${option.value}" th:text="${option.label}">속성</option>
+    </th:block>
+</th:block>
+</body>
+</html>

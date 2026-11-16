@@ -34,7 +34,7 @@ class PostPageViewAssembler(
     private val feedUrl: String? = null,
 ) {
     fun assemble(page: PublicPostPage): PostPageView {
-        val view = postView(page.chrome, page.post.revision, page.post.firstPublishedAt, mappers(page.references, PUBLIC_MEDIA_PATH))
+        val view = postView(page.chrome, page.post.revision, page.post.displayDate, mappers(page.references, PUBLIC_MEDIA_PATH))
         return view.copy(
             properties = view.properties.copy(categories = categoryLinks(page.categories)),
             series = page.series?.let(::seriesNav),
@@ -47,7 +47,7 @@ class PostPageViewAssembler(
         current: CurrentClassification,
     ): PostPageView {
         val view =
-            postView(preview.chrome, preview.revision, preview.history.firstPublishedAt, mappers(preview.references, ADMIN_MEDIA_PATH))
+            postView(preview.chrome, preview.revision, preview.history.displayDate, mappers(preview.references, ADMIN_MEDIA_PATH))
         return view.copy(properties = view.properties.copy(categories = categoryLinks(current.categories)))
     }
 

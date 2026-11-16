@@ -45,6 +45,18 @@ class DeclaredRoutes {
     @PostMapping("/admin/home")
     fun saveHomeSettings() = Unit
 
+    @GetMapping("/admin/migrations")
+    fun migrations() = Unit
+
+    @PostMapping("/admin/migrations/inspect")
+    fun inspectMigration() = Unit
+
+    @PostMapping("/admin/migrations/prepare")
+    fun prepareMigration() = Unit
+
+    @PostMapping("/admin/migrations/import")
+    fun importMigrationPost() = Unit
+
     @GetMapping("/admin/categories")
     fun categories() = Unit
 

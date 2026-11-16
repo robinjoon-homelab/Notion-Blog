@@ -6,6 +6,7 @@ import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.Expose
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.ExposedHomeConfigurationRepository
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.ExposedLegacyPostStore
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.ExposedMediaStorage
+import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.ExposedPostMigrationMappingRepository
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.ExposedPostRepository
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.ExposedPresentationProfileRepository
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.ExposedPublicationRepository
@@ -21,6 +22,7 @@ import xyz.robinjoon.notionblog.blog.application.port.output.persistence.Categor
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.HomeConfigurationRepository
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.LegacyPostStore
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.MediaStoragePort
+import xyz.robinjoon.notionblog.blog.application.port.output.persistence.PostMigrationMappingRepository
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.PostRepository
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.PresentationProfileRepository
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.PublicationRepository
@@ -32,6 +34,9 @@ import xyz.robinjoon.notionblog.blog.application.port.output.persistence.SyncSta
 
 @Configuration(proxyBeanMethods = false)
 internal class PersistenceConfig {
+    @Bean
+    fun postMigrationMappingRepository(): PostMigrationMappingRepository = ExposedPostMigrationMappingRepository()
+
     @Bean
     fun homeConfigurationRepository(): HomeConfigurationRepository = ExposedHomeConfigurationRepository()
 

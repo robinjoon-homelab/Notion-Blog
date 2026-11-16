@@ -10,6 +10,9 @@ import xyz.robinjoon.notionblog.blog.adapter.inbound.web.PostPageViewFixtures.no
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.PostPageViewFixtures.page
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.PostPageViewFixtures.render
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.PostPageViewFixtures.templateEngine
+import xyz.robinjoon.notionblog.blog.application.model.AdminPostHistory
+import xyz.robinjoon.notionblog.blog.application.model.AdminPostStatus
+import xyz.robinjoon.notionblog.blog.application.model.CurrentClassification
 import xyz.robinjoon.notionblog.blog.domain.post.PostId
 import xyz.robinjoon.notionblog.blog.domain.post.block.BlockId
 import xyz.robinjoon.notionblog.blog.domain.post.block.BlockNode
@@ -19,9 +22,37 @@ import xyz.robinjoon.notionblog.blog.domain.post.block.content.ListBlockContent
 import xyz.robinjoon.notionblog.blog.domain.post.block.content.ReferenceBlockContent
 import xyz.robinjoon.notionblog.blog.domain.post.block.content.TextBlockContent
 import xyz.robinjoon.notionblog.blog.domain.post.block.inline.InlineContent
+import java.time.Instant
 import java.util.UUID
 
 class PostPageViewAssemblerTest {
+    @Test
+    fun `public post date shows the imported authored date while preserving publication history`() {
+        val base = page(emptyList())
+        val authoredAt = Instant.parse("2023-07-15T00:00:00Z")
+        val imported = base.copy(post = base.post.copy(authoredAt = authoredAt))
+
+        val view = PostPageViewAssembler(clock).assemble(imported)
+
+        assertThat(view.properties.publishedOn).isEqualTo("Jul 15, 2023")
+        assertThat(imported.post.firstPublishedAt).isEqualTo(base.post.firstPublishedAt)
+    }
+
+    @Test
+    fun `draft preview shows the imported authored date before the first publication`() {
+        val preview =
+            AdminFixtures.preview(
+                status = AdminPostStatus.DRAFT,
+                actions = AdminFixtures.actions(),
+                history = AdminPostHistory(null, null, Instant.parse("2023-07-15T00:00:00Z")),
+            )
+
+        val view = PostPageViewAssembler(clock).assemble(preview, CurrentClassification.none)
+
+        assertThat(view.properties.publishedOn).isEqualTo("Jul 15, 2023")
+        assertThat(preview.history.firstPublishedAt).isNull()
+    }
+
     @ParameterizedTest
     @CsvSource("true, true", "true, false", "false, true", "false, false")
     fun `renders RSS discovery and subscription only with a configured feed regardless of footer document`(

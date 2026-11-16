@@ -21,11 +21,15 @@ data class Post private constructor(
     val latestRevisionId: PostRevisionId?,
     val publication: PostPublication,
     val categoryIds: Set<CategoryId> = emptySet(),
+    val authoredAt: Instant? = null,
 ) {
     val firstPublishedAt: Instant?
         get() = publication.firstPublishedAt
 
     fun recordRevision(revisionId: PostRevisionId): Post = copy(latestRevisionId = revisionId)
+
+    // 원래 작성 시각은 최초 값만 보존하며 실제 발행 이력과 구분한다.
+    fun preserveAuthoredAt(authoredAt: Instant?): Post = copy(authoredAt = this.authoredAt ?: authoredAt)
 
     fun publish(
         revisionId: PostRevisionId,
@@ -49,7 +53,8 @@ data class Post private constructor(
         fun register(
             id: PostId,
             source: SourceDocumentRef,
-        ): Post = Post(id, source, null, PostPublication.initial())
+            authoredAt: Instant? = null,
+        ): Post = Post(id, source, null, PostPublication.initial(), authoredAt = authoredAt)
 
         fun restore(
             id: PostId,

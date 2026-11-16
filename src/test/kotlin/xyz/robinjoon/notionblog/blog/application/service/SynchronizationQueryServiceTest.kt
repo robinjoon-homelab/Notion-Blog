@@ -6,8 +6,11 @@ import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 import org.junit.jupiter.api.Test
 import xyz.robinjoon.notionblog.blog.application.model.MediaRepairTarget
+import xyz.robinjoon.notionblog.blog.application.model.MigrationFields
+import xyz.robinjoon.notionblog.blog.application.model.MigrationSelection
 import xyz.robinjoon.notionblog.blog.application.model.PostRevisionSummary
 import xyz.robinjoon.notionblog.blog.application.model.PostSynchronizationContext
+import xyz.robinjoon.notionblog.blog.application.port.output.persistence.PostMigrationMappingRepository
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.PostRepository
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.SyncStateRepository
 import xyz.robinjoon.notionblog.blog.domain.SourceRevision
@@ -19,7 +22,8 @@ import java.time.Instant
 class SynchronizationQueryServiceTest {
     private val posts = mockk<PostRepository>()
     private val syncStates = mockk<SyncStateRepository>()
-    private val service = SynchronizationQueryService(posts, syncStates)
+    private val migrations = mockk<PostMigrationMappingRepository>()
+    private val service = SynchronizationQueryService(posts, syncStates, migrations)
     private val postId = PostFixtures.postId(1)
 
     @Test
@@ -38,8 +42,10 @@ class SynchronizationQueryServiceTest {
         val published = PostFixtures.revisionId(1)
         val latest = PostFixtures.revisionId(2)
         val post = PostFixtures.publicPost(postId, published = published, latest = latest)
+        val selection = MigrationSelection("old-database", MigrationFields("title", authoredAtPropertyId = "date"))
         val legacyFile = PostFixtures.hosted("legacy.png")
         every { posts.find(postId) } returns post
+        every { migrations.find(post.source) } returns selection
         every { posts.findUnboundMedia(setOf(latest, published)) } returns mapOf(published to setOf(legacyFile))
 
         every { posts.findRevisionSummaries(setOf(latest, published)) } returns
@@ -54,6 +60,7 @@ class SynchronizationQueryServiceTest {
                 post.source,
                 SourceRevision("rev-2"),
                 listOf(MediaRepairTarget(published, SourceRevision("legacy"), setOf(legacyFile))),
+                selection,
             ),
         )
     }

@@ -3,17 +3,25 @@ package xyz.robinjoon.notionblog.config
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import xyz.robinjoon.notionblog.blog.adapter.outbound.notion.client.NotionApiClient
+import xyz.robinjoon.notionblog.blog.adapter.outbound.notion.source.NotionMigrationSource
 import xyz.robinjoon.notionblog.blog.adapter.outbound.notion.source.NotionPostCatalog
 import xyz.robinjoon.notionblog.blog.adapter.outbound.notion.source.NotionPostSource
 import xyz.robinjoon.notionblog.blog.adapter.outbound.notion.source.NotionRevisionSource
 import xyz.robinjoon.notionblog.blog.adapter.outbound.notion.source.NotionSiteConfigurationSource
 import xyz.robinjoon.notionblog.blog.application.port.output.source.PostCatalog
+import xyz.robinjoon.notionblog.blog.application.port.output.source.PostMigrationSource
 import xyz.robinjoon.notionblog.blog.application.port.output.source.PostRevisionSource
 import xyz.robinjoon.notionblog.blog.application.port.output.source.SiteConfigurationSource
 import xyz.robinjoon.notionblog.blog.domain.SourceId
 
 @Configuration(proxyBeanMethods = false)
 internal class NotionConfig {
+    @Bean
+    fun postMigrationSource(
+        properties: NotionProperties,
+        client: NotionApiClient,
+    ): PostMigrationSource = NotionMigrationSource(SourceId(properties.sourceId), client)
+
     @Bean
     fun notionApiClient(properties: NotionProperties): NotionApiClient =
         NotionApiClient(

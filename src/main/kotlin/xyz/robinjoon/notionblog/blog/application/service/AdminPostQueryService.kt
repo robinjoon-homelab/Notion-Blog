@@ -59,7 +59,7 @@ class AdminPostQueryService(
         val revision = load(post, revisionId) ?: return AdminPostLookupResult.ContentUnavailable
         val chrome = chromes.load() ?: return AdminPostLookupResult.ContentUnavailable
         val shown = references.resolve(listOfNotNull(revision, chrome.header, chrome.footer))
-        val history = AdminPostHistory(post.publication.publishedRevisionId, post.firstPublishedAt)
+        val history = AdminPostHistory(post.publication.publishedRevisionId, post.firstPublishedAt, post.authoredAt)
         val actions = summaries.actions(post, revision.id)
         val preview = AdminPostPreview(summary, chrome, revision, shown, actions, history)
         return AdminPostLookupResult.Found(preview, summaries.classification(post))

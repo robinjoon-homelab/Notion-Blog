@@ -240,7 +240,8 @@ class ExposedPostRepository(
                         generation = this[PostPublicationTable.generation],
                         firstPublishedAt = this[PostTable.firstPublishedAt]?.toInstant(),
                     ),
-            ).categorize(categoryIds)
+            ).preserveAuthoredAt(this[PostTable.authoredAt]?.toInstant())
+            .categorize(categoryIds)
 
     private fun writePublication(
         statement: UpdateBuilder<*>,
@@ -281,6 +282,7 @@ class ExposedPostRepository(
             it[createdAt] = registeredAt.asOffsetDateTime()
             it[updatedAt] = registeredAt.asOffsetDateTime()
             it[firstPublishedAt] = post.firstPublishedAt?.asOffsetDateTime()
+            it[authoredAt] = post.authoredAt?.asOffsetDateTime()
         }
     }
 

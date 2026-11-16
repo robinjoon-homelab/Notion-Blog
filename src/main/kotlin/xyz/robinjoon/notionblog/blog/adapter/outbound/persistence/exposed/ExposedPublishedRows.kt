@@ -1,5 +1,6 @@
 package xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed
 
+import org.jetbrains.exposed.v1.core.Coalesce
 import org.jetbrains.exposed.v1.core.Join
 import org.jetbrains.exposed.v1.core.JoinType
 import org.jetbrains.exposed.v1.core.Op
@@ -28,6 +29,8 @@ import java.time.Instant
 
 // 유일한 공개 판정이다. 공개 글 Store들은 PUBLIC 게시 상태와 그 상태가 게시한 리비전만 이 조인으로 보며 원본 상태는 전혀 참고하지 않는다.
 internal object ExposedPublishedRows {
+    val displayDate = Coalesce(PostTable.authoredAt, PostTable.firstPublishedAt)
+
     val listColumns =
         listOf(
             PostPublicationTable.postId,
@@ -37,6 +40,7 @@ internal object ExposedPublishedRows {
             PostRevisionTable.tagsJson,
             PostRevisionTable.coverJson,
             PostTable.firstPublishedAt,
+            PostTable.authoredAt,
             PostTable.postId,
         )
 
@@ -91,6 +95,7 @@ internal object ExposedPublishedRows {
                         cover = propertiesCodec.decodeCover(row[PostRevisionTable.coverJson]),
                     ),
                 firstPublishedAt = firstPublishedAt(row),
+                authoredAt = row[PostTable.authoredAt]?.toInstant(),
                 categories = categories,
             )
         } catch (exception: IllegalArgumentException) {

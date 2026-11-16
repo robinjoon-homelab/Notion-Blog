@@ -11,7 +11,7 @@ import xyz.robinjoon.notionblog.blog.application.port.output.persistence.Publish
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.SiteConfigurationRepository
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.SnapshotContentException
 
-// 최신 공개 글 목록이다. 항목 식별자와 날짜는 글 ID와 최초 게시 시각에서 가져온다.
+// 최신 공개 글 목록이다. 항목 식별자는 글 ID이며 날짜는 원래 작성 시각, 없으면 최초 게시 시각이다.
 @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
 class GetPublicFeedService(
     private val siteConfigurations: SiteConfigurationRepository,

@@ -72,7 +72,7 @@ class RssFeedRenderer(
         writeAttribute("isPermaLink", "false")
         writeCharacters("urn:uuid:${entry.revision.postId.value}")
         writeEndElement()
-        element("pubDate", DateTimeFormatter.RFC_1123_DATE_TIME.format(entry.firstPublishedAt.atOffset(ZoneOffset.UTC)))
+        element("pubDate", DateTimeFormatter.RFC_1123_DATE_TIME.format(entry.displayDate.atOffset(ZoneOffset.UTC)))
         writeEndElement()
     }
 

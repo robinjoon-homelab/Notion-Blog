@@ -52,11 +52,14 @@ data class AdminPostActions(
     val canRestore: Boolean,
 )
 
-// 저장된 게시 이력이다. 독자가 마지막으로 받은 리비전(있다면)과 최초 게시 시각을 담는다.
+// 실제 게시 이력과 원래 작성 시각을 구분한다. 미리보기 날짜는 작성 시각을 우선한다.
 data class AdminPostHistory(
     val publishedRevisionId: PostRevisionId?,
     val firstPublishedAt: Instant?,
-)
+    val authoredAt: Instant? = null,
+) {
+    val displayDate: Instant? get() = authoredAt ?: firstPublishedAt
+}
 
 data class AdminPostPreview(
     val summary: AdminPostSummary,

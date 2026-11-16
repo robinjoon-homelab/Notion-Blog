@@ -68,6 +68,7 @@ internal data class NotionDataSourceResponse(
     val properties: List<NotionDatabaseProperty>,
     val parent: NotionParentResponse,
     val inTrash: Boolean,
+    val title: String = "",
 )
 
 internal data class NotionDatabaseProperty(

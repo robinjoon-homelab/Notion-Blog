@@ -11,6 +11,7 @@ import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.OwnedMediaTable
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.PostAvailabilityTable
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.PostCategoryTable
+import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.PostMigrationMappingTable
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.PostPublicationTable
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.PostRevisionMediaTable
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.PostRevisionTable
@@ -59,6 +60,7 @@ class ExposedH2Database : AutoCloseable {
                 SyncStateTable,
                 PostRevisionTable,
                 PostPublicationTable,
+                PostMigrationMappingTable,
                 OwnedMediaTable,
                 PostRevisionMediaTable,
                 HomeConfigurationTable,

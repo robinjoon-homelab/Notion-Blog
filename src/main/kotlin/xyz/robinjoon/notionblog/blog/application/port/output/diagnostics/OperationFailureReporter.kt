@@ -14,4 +14,7 @@ enum class RecoveredOperation {
 
     // 관리자 새로고침이 실패했다. 관리자는 실패 종류만 보고 글은 기존 리비전을 유지한다.
     POST_REFRESH,
+
+    // 이전 중 실패한 글은 결과로 표시하고 재실행할 수 있다.
+    POST_MIGRATION,
 }

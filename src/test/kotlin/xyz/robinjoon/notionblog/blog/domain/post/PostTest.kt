@@ -51,6 +51,21 @@ class PostTest {
     }
 
     @Test
+    fun `publishing and later changes preserve the original authored time separately from publication history`() {
+        val authoredAt = Instant.parse("2023-07-15T00:00:00Z")
+        val draft = Post.register(postId, PostFixtures.document("imported"), authoredAt).recordRevision(first)
+
+        val published = draft.publish(first, firstPublication)
+        val changed = published.unpublish().recordRevision(second).publish(second, laterPublication)
+
+        assertThat(draft.firstPublishedAt).isNull()
+        assertThat(published.authoredAt).isEqualTo(authoredAt)
+        assertThat(changed.authoredAt).isEqualTo(authoredAt)
+        assertThat(changed.firstPublishedAt).isEqualTo(firstPublication)
+        assertThat(changed.preserveAuthoredAt(laterPublication).authoredAt).isEqualTo(authoredAt)
+    }
+
+    @Test
     fun `every admin command advances the generation`() {
         val draft = PostFixtures.privatePost(postId, latest = first, generation = 4)
 

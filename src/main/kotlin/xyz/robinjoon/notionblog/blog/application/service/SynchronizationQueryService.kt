@@ -4,6 +4,7 @@ import org.springframework.transaction.annotation.Transactional
 import xyz.robinjoon.notionblog.blog.application.model.MediaRepairTarget
 import xyz.robinjoon.notionblog.blog.application.model.PostSynchronizationContext
 import xyz.robinjoon.notionblog.blog.application.port.input.SynchronizationQueryUseCase
+import xyz.robinjoon.notionblog.blog.application.port.output.persistence.PostMigrationMappingRepository
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.PostRepository
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.SyncStateRepository
 import xyz.robinjoon.notionblog.blog.domain.post.PostId
@@ -14,6 +15,7 @@ import java.time.Instant
 class SynchronizationQueryService(
     private val posts: PostRepository,
     private val syncStates: SyncStateRepository,
+    private val migrations: PostMigrationMappingRepository,
 ) : SynchronizationQueryUseCase {
     @Transactional(readOnly = true)
     override fun findDueTargets(
@@ -39,6 +41,7 @@ class SynchronizationQueryService(
             sourceDocument = post.source,
             latestSourceRevision = post.latestRevisionId?.let(summaries::get)?.sourceRevision,
             pendingRepairs = repairs,
+            migrationSelection = migrations.find(post.source),
         )
     }
 }

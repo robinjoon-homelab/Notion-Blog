@@ -48,7 +48,7 @@ class SeriesPageViewAssembler(
                         href = HomeLinks.post(entry.postId),
                         title = entry.properties.title,
                         summary = entry.properties.summary.takeIf { details.showSummary },
-                        publishedOn = pages.date(entry.firstPublishedAt, locale).takeIf { details.showDate },
+                        publishedOn = pages.date(entry.displayDate, locale).takeIf { details.showDate },
                     )
                 },
         )

@@ -37,7 +37,7 @@ interface PostRepository {
         registeredAt: Instant,
     )
 
-    // 게시 상태를 쓰고, 저장된 최초 게시 시각이 없을 때만 그 시각을 기록한다. 분류 연결은 쓰지 않는다.
+    // 게시 상태를 쓰고, 저장된 최초 게시 시각이 없을 때만 그 시각을 기록한다. 작성일·이전 매핑·분류 연결은 쓰지 않는다.
     fun save(
         post: Post,
         changedAt: Instant,
