@@ -2,6 +2,8 @@ package xyz.robinjoon.notionblog.blog.application.service
 
 import xyz.robinjoon.notionblog.blog.application.model.CapturedMedia
 import xyz.robinjoon.notionblog.blog.application.model.FetchedMedia
+import xyz.robinjoon.notionblog.blog.application.model.MigrationFailureDetail
+import xyz.robinjoon.notionblog.blog.application.model.MigrationFailureStage
 import xyz.robinjoon.notionblog.blog.application.port.output.diagnostics.OperationFailureReporter
 import xyz.robinjoon.notionblog.blog.application.port.output.diagnostics.RecoveredOperation
 import xyz.robinjoon.notionblog.blog.application.port.output.media.MediaFetchException
@@ -33,7 +35,7 @@ class CapturePostMediaService(
         val budget = ImportBudget(maxImportBytes)
         val fetched =
             newRevision.groupBy(::sourceKey).values.map { sources ->
-                budget.take(fetchConsistent(sources)) ?: throw MediaFetchException("files of one import exceed the configured total size")
+                budget.take(fetchConsistent(sources)) ?: throw importSizeExceeded()
             }
         val repaired =
             repairs.mapValues { (_, sources) ->
@@ -46,10 +48,30 @@ class CapturePostMediaService(
     private fun fetchConsistent(sources: List<MediaSource.SourceHosted>): FetchedMedia {
         val files = sources.distinctBy { it.url }.map(gateway::fetch)
         if (files.map(FetchedMedia::mediaKey).distinct().size > 1) {
-            throw MediaFetchException("one source file name resolved to different bytes")
+            throw MediaFetchException(
+                "one source file name resolved to different bytes",
+                diagnostic =
+                    MigrationFailureDetail(
+                        MigrationFailureStage.MEDIA,
+                        "같은 원본 파일이 서로 다른 내용으로 내려받아져 파일을 확정할 수 없습니다.",
+                        "MediaFetchException",
+                    ),
+            )
         }
         return files.first()
     }
+
+    private fun importSizeExceeded(): MediaFetchException =
+        MediaFetchException(
+            "files of one import exceed the configured total size",
+            diagnostic =
+                MigrationFailureDetail(
+                    MigrationFailureStage.MEDIA,
+                    "글 하나의 전체 파일 크기가 가져오기 허용 한도를 초과했습니다.",
+                    "MediaFetchException",
+                    limitBytes = maxImportBytes,
+                ),
+        )
 
     private fun recover(sources: List<MediaSource.SourceHosted>): FetchedMedia? =
         try {

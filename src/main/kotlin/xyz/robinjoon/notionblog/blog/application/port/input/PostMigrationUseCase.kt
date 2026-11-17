@@ -3,6 +3,7 @@ package xyz.robinjoon.notionblog.blog.application.port.input
 import xyz.robinjoon.notionblog.blog.application.model.MigratePostCommand
 import xyz.robinjoon.notionblog.blog.application.model.MigratePostResult
 import xyz.robinjoon.notionblog.blog.application.model.MigrationDatabase
+import xyz.robinjoon.notionblog.blog.application.model.MigrationFailureDetail
 import xyz.robinjoon.notionblog.blog.application.model.MigrationPlan
 import xyz.robinjoon.notionblog.blog.application.model.MigrationSelection
 import xyz.robinjoon.notionblog.blog.domain.sync.SyncFailureKind
@@ -18,4 +19,5 @@ interface PostMigrationUseCase {
 class MigrationSourceException(
     val kind: SyncFailureKind,
     cause: RuntimeException,
+    val diagnostic: MigrationFailureDetail? = null,
 ) : RuntimeException("migration source could not be read", cause)

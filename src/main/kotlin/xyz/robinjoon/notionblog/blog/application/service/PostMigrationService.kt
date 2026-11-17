@@ -49,10 +49,10 @@ class PostMigrationService(
         } catch (exception: SourceException) {
             if (exception.causedByInterruption()) throw exception
             failures.report(RecoveredOperation.POST_MIGRATION, exception)
-            throw MigrationSourceException(exception.toSyncFailureKind(), exception)
+            throw MigrationSourceException(exception.toSyncFailureKind(), exception, MigrationFailureDiagnostics.of(exception))
         } catch (exception: IllegalArgumentException) {
             if (exception.causedByInterruption()) throw exception
-            throw MigrationSourceException(SyncFailureKind.CONFIGURATION, exception)
+            throw MigrationSourceException(SyncFailureKind.CONFIGURATION, exception, MigrationFailureDiagnostics.of(exception))
         }
 
     override fun migrate(command: MigratePostCommand): MigratePostResult {
@@ -85,6 +85,6 @@ class PostMigrationService(
     ): MigratePostResult {
         if (cause.causedByInterruption()) throw cause
         failures.report(RecoveredOperation.POST_MIGRATION, cause)
-        return MigratePostResult.Failed(kind)
+        return MigratePostResult.Failed(kind, MigrationFailureDiagnostics.of(cause))
     }
 }

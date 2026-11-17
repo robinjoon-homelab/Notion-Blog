@@ -33,6 +33,8 @@ import xyz.robinjoon.notionblog.blog.application.model.MigratePostResult
 import xyz.robinjoon.notionblog.blog.application.model.MigrationDataSource
 import xyz.robinjoon.notionblog.blog.application.model.MigrationDatabase
 import xyz.robinjoon.notionblog.blog.application.model.MigrationEntry
+import xyz.robinjoon.notionblog.blog.application.model.MigrationFailureDetail
+import xyz.robinjoon.notionblog.blog.application.model.MigrationFailureStage
 import xyz.robinjoon.notionblog.blog.application.model.MigrationFields
 import xyz.robinjoon.notionblog.blog.application.model.MigrationPlan
 import xyz.robinjoon.notionblog.blog.application.model.MigrationProperty
@@ -194,8 +196,13 @@ class AdminMigrationHttpDocumentationTest {
 
     @Test
     fun `import responses distinguish a saved draft, existing post and failed row`() {
+        val diagnostic = MigrationFailureDetail(MigrationFailureStage.AUTHORED_AT, "매핑한 작성일이 비어 있습니다.", "SourceMappingException")
         every { migrations.migrate(MigratePostCommand(selection, source)) } returnsMany
-            listOf(MigratePostResult.Imported(postId), MigratePostResult.Skipped(postId), MigratePostResult.Failed(SyncFailureKind.MAPPING))
+            listOf(
+                MigratePostResult.Imported(postId),
+                MigratePostResult.Skipped(postId),
+                MigratePostResult.Failed(SyncFailureKind.MAPPING, diagnostic),
+            )
 
         mvc
             .perform(importRequest())
@@ -214,7 +221,28 @@ class AdminMigrationHttpDocumentationTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.status").value("failed"))
             .andExpect(jsonPath("$.message").value(containsString("작성일")))
+            .andExpect(jsonPath("$.message").value(containsString("단계: 작성일 매핑")))
+            .andExpect(jsonPath("$.message").value(containsString("사유: 매핑한 작성일이 비어 있습니다.")))
+            .andExpect(jsonPath("$.message").value(containsString("예외: SourceMappingException")))
             .andDo(document("admin-migrations-failed"))
+    }
+
+    @Test
+    fun `safe block identity HTTP status and size details appear in the row message`() {
+        val block = UUID.fromString("335e2d0a-976a-837d-b9f1-819ca3e19953")
+        val diagnostic =
+            MigrationFailureDetail(MigrationFailureStage.BODY, "주소 형식이 올바르지 않습니다.", "NotionBlockMappingException", block, 400, 1024)
+        every { migrations.migrate(MigratePostCommand(selection, source)) } returns
+            MigratePostResult.Failed(SyncFailureKind.MAPPING, diagnostic)
+
+        mvc
+            .perform(importRequest())
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.status").value("failed"))
+            .andExpect(jsonPath("$.message").value(containsString("단계: 본문 블록 변환")))
+            .andExpect(jsonPath("$.message").value(containsString("Notion 블록: $block")))
+            .andExpect(jsonPath("$.message").value(containsString("HTTP 상태: 400")))
+            .andExpect(jsonPath("$.message").value(containsString("크기 제한: 1024 바이트")))
     }
 
     @Test
@@ -251,6 +279,7 @@ class AdminMigrationHttpDocumentationTest {
             .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.detail").value(containsString("읽기 권한을 부여")))
+            .andExpect(content().string(not(containsString("private-server-token"))))
     }
 
     private fun mappingRequest(path: String): MockHttpServletRequestBuilder =

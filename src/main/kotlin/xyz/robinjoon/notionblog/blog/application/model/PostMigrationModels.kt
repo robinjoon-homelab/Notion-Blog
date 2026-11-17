@@ -25,5 +25,6 @@ sealed interface MigratePostResult {
 
     data class Failed(
         val kind: SyncFailureKind,
+        val diagnostic: MigrationFailureDetail? = null,
     ) : MigratePostResult
 }

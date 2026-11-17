@@ -37,7 +37,7 @@ internal class NotionRichTextMapper(
                         text.get("content")?.takeIf(JsonNode::isString)?.stringValue()
                             ?: throw NotionBlockMappingException("text content must be a string"),
                     annotations = annotations,
-                    link = text.optionalObject("link")?.safeUri("url")?.let(LinkTarget::ExternalUrl),
+                    link = text.optionalObject("link")?.let { LinkTarget.ExternalUrl(richTextUrl(it.requiredText("url"))) },
                 )
             }
 
@@ -68,7 +68,7 @@ internal class NotionRichTextMapper(
             label = node.requiredText("plain_text"),
             kind = mentionKind(type),
             annotations = annotations,
-            target = mentionTarget(mention, node.optionalText("href")?.let(::parseSafeUri)),
+            target = mentionTarget(mention, node.optionalText("href")?.let(::richTextUrl)),
         )
     }
 
@@ -85,7 +85,7 @@ internal class NotionRichTextMapper(
             }
 
             "link_preview" -> {
-                LinkTarget.ExternalUrl(href ?: mention.requiredObject("link_preview").safeUri("url"))
+                LinkTarget.ExternalUrl(href ?: richTextUrl(mention.requiredObject("link_preview").requiredText("url")))
             }
 
             else -> {
@@ -106,4 +106,13 @@ internal class NotionRichTextMapper(
 
     private fun pageSourceReference(externalId: String): SourceDocumentRef =
         SourceDocumentRef(sourceId, NotionIdNormalizer.normalize(externalId))
+
+    // Notion 문서 안의 경로만 원본 주소로 바꾼다. 블록 링크의 query와 fragment는 보존한다.
+    private fun richTextUrl(value: String): URI {
+        val path = value.substringBefore('?').substringBefore('#')
+        if (!path.startsWith('/')) return parseSafeUri(value)
+        val pageId = path.removePrefix("/").removePrefix("p/")
+        if (NotionIdNormalizer.normalizeOrNull(pageId) == null) return parseSafeUri(value)
+        return parseSafeUri("https://app.notion.com/p/$pageId${value.substring(path.length)}")
+    }
 }

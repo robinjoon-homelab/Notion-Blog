@@ -9,8 +9,11 @@ import xyz.robinjoon.notionblog.blog.adapter.outbound.notion.dto.NotionPageRespo
 import xyz.robinjoon.notionblog.blog.adapter.outbound.notion.mapping.NotionBlockMapper
 import xyz.robinjoon.notionblog.blog.adapter.outbound.notion.mapping.NotionBlockMappingException
 import xyz.robinjoon.notionblog.blog.adapter.outbound.notion.mapping.NotionIdNormalizer
+import xyz.robinjoon.notionblog.blog.adapter.outbound.notion.mapping.NotionMappingFailureDetails
 import xyz.robinjoon.notionblog.blog.adapter.outbound.notion.mapping.NotionPageMapper
 import xyz.robinjoon.notionblog.blog.adapter.outbound.notion.mapping.NotionPageMetadata
+import xyz.robinjoon.notionblog.blog.application.model.MigrationFailureDetail
+import xyz.robinjoon.notionblog.blog.application.model.MigrationFailureStage
 import xyz.robinjoon.notionblog.blog.application.port.output.source.RetryableSourceException
 import xyz.robinjoon.notionblog.blog.application.port.output.source.SourceConfigurationException
 import xyz.robinjoon.notionblog.blog.application.port.output.source.SourceMappingException
@@ -55,9 +58,17 @@ internal class NotionPostSource(
             val requestedReference = reference.copy(externalId = NotionIdNormalizer.normalize(reference.externalId))
             Collection(requestedReference, startedAt).fetch(beforeBody)
         } catch (exception: NotionBlockMappingException) {
-            throw SourceMappingException("Notion block could not be mapped", exception)
+            throw SourceMappingException(
+                "Notion block could not be mapped",
+                exception,
+                NotionMappingFailureDetails.of(exception, MigrationFailureStage.BODY),
+            )
         } catch (exception: IllegalArgumentException) {
-            throw SourceMappingException("Notion post content is malformed", exception)
+            throw SourceMappingException(
+                "Notion post content is malformed",
+                exception,
+                NotionMappingFailureDetails.of(exception, MigrationFailureStage.BODY),
+            )
         }
     }
 
@@ -138,15 +149,32 @@ internal class NotionPostSource(
             reserveMaterializedBlock()
             if (block.type == CHILD_DATABASE_TYPE) return collectDatabase(block, depth)
             val children = collectBlockChildren(block, depth, skipPreviouslyVisitedBlocks)
-            val mapped =
+            val mapped = mapCurrentBlock(block, children, parentType)
+            if (block.type == CHILD_PAGE_TYPE) confirmContainedChild(block)
+            return mapped
+        }
+
+        private fun mapCurrentBlock(
+            block: NotionBlockEnvelope,
+            children: List<BlockNode>,
+            parentType: String?,
+        ): BlockNode =
+            try {
                 if (parentType == TAB_TYPE && block.type == PARAGRAPH_TYPE) {
                     blockMapper.mapTabItem(block, children)
                 } else {
                     blockMapper.map(block, children, sourceDocument)
                 }
-            if (block.type == CHILD_PAGE_TYPE) confirmContainedChild(block)
-            return mapped
-        }
+            } catch (exception: IllegalArgumentException) {
+                val diagnostic = NotionMappingFailureDetails.of(exception, MigrationFailureStage.BODY, block.id)
+                throw SourceMappingException("Notion block could not be mapped", exception, diagnostic)
+            } catch (exception: SourceMappingException) {
+                throw SourceMappingException(
+                    "Notion block reference could not be mapped",
+                    exception,
+                    NotionMappingFailureDetails.reference(block.id),
+                )
+            }
 
         private fun collectDatabase(
             block: NotionBlockEnvelope,
@@ -154,7 +182,7 @@ internal class NotionPostSource(
         ): BlockNode? {
             val database =
                 databaseReader.read(
-                    blockMapper.map(block, sourceDocument = sourceDocument),
+                    mapCurrentBlock(block, emptyList(), null),
                     sourceDocument,
                     checkDeadline = ::checkDeadline,
                     reserve = ::reserveCollectionItem,
@@ -289,7 +317,8 @@ internal class NotionPostSource(
 
         private fun checkDeadline() {
             if (nanoTime() - startedAt >= collectionTimeout.toNanos()) {
-                throw RetryableSourceException("Notion post collection deadline exceeded")
+                val diagnostic = MigrationFailureDetail(MigrationFailureStage.BODY, "본문 전체를 읽는 제한 시간이 초과되었습니다.", "RetryableSourceException")
+                throw RetryableSourceException("Notion post collection deadline exceeded", diagnostic = diagnostic)
             }
         }
     }

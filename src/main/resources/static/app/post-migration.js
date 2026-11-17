@@ -63,9 +63,13 @@ if (page) {
         } catch (error) {
             paused = true;
             const message = error instanceof ApiError ? error.message : "서버에 연결하지 못했습니다.";
+            const responseStatus =
+                error instanceof ApiError && error.status >= 400 && error.status <= 599
+                    ? `\n블로그 응답: HTTP ${error.status}`
+                    : "";
             showResult(row, {
                 status: "failed",
-                message: `${message} 연결과 로그인 상태를 확인한 뒤 다시 시도하세요. 저장된 글은 유지됩니다.`,
+                message: `${message}${responseStatus}\n연결과 로그인 상태를 확인한 뒤 다시 시도하세요. 저장된 글은 유지됩니다.`,
             });
         }
     }

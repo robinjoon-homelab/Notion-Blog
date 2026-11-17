@@ -15,6 +15,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
+import xyz.robinjoon.notionblog.blog.application.model.MigrationFailureStage
 import xyz.robinjoon.notionblog.blog.application.port.output.media.MediaFetchException
 import xyz.robinjoon.notionblog.blog.domain.post.block.media.MediaSource
 import xyz.robinjoon.notionblog.blog.domain.post.block.media.SourceMediaKey
@@ -86,7 +87,12 @@ class HttpMediaGatewayTest {
     fun `rejects a declared length above the limit without accepting the body`() {
         server.enqueue(MockResponse().setBody(Buffer().write(ByteArray(11))))
 
-        assertFetchFails(gateway(maxBytes = 10), "/large?X-Amz-Signature=secret-signature", "byte limit")
+        assertThatThrownBy { gateway(maxBytes = 10).fetch(source("/large?X-Amz-Signature=secret-signature")) }
+            .isInstanceOfSatisfying(MediaFetchException::class.java) { failure ->
+                assertThat(failure.diagnostic?.stage).isEqualTo(MigrationFailureStage.MEDIA)
+                assertThat(failure.diagnostic?.limitBytes).isEqualTo(10L)
+                assertThat(failure.diagnostic.toString()).doesNotContain("secret-signature", server.hostName)
+            }.hasMessageContaining("byte limit")
     }
 
     @Test
@@ -145,7 +151,11 @@ class HttpMediaGatewayTest {
         assertThatThrownBy { gateway().fetch(source("/file?X-Amz-Signature=secret-signature")) }
             .isInstanceOf(MediaFetchException::class.java)
             .hasMessageContaining("HTTP $statusCode")
-            .hasMessageNotContaining("secret-signature")
+            .isInstanceOfSatisfying(MediaFetchException::class.java) { failure ->
+                assertThat(failure.diagnostic?.httpStatus).isEqualTo(statusCode)
+                assertThat(failure.diagnostic?.stage).isEqualTo(MigrationFailureStage.MEDIA)
+                assertThat(failure.diagnostic.toString()).doesNotContain("secret-signature", "private-response-body", server.hostName)
+            }.hasMessageNotContaining("secret-signature")
             .hasMessageNotContaining("private-response-body")
     }
 

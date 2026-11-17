@@ -12,6 +12,8 @@ import xyz.robinjoon.notionblog.blog.application.model.MigratePostCommand
 import xyz.robinjoon.notionblog.blog.application.model.MigratePostResult
 import xyz.robinjoon.notionblog.blog.application.model.MigrationCatalogPage
 import xyz.robinjoon.notionblog.blog.application.model.MigrationEntry
+import xyz.robinjoon.notionblog.blog.application.model.MigrationFailureDetail
+import xyz.robinjoon.notionblog.blog.application.model.MigrationFailureStage
 import xyz.robinjoon.notionblog.blog.application.model.MigrationFields
 import xyz.robinjoon.notionblog.blog.application.model.MigrationSelection
 import xyz.robinjoon.notionblog.blog.application.port.input.MigrationSourceException
@@ -26,6 +28,7 @@ import xyz.robinjoon.notionblog.blog.domain.SourceRevision
 import xyz.robinjoon.notionblog.blog.domain.sync.SyncFailureKind
 import xyz.robinjoon.notionblog.support.fixture.PostFixtures
 import java.time.Instant
+import java.util.UUID
 
 class PostMigrationServiceTest {
     private val catalog = mockk<PostMigrationSource>()
@@ -99,7 +102,7 @@ class PostMigrationServiceTest {
         every { media.capture(any(), any()) } returns CapturedMedia.empty
         every { writer.apply(selection, nextImport, CapturedMedia.empty) } returns MigratePostResult.Imported(id)
 
-        assertThat(service.migrate(command)).isEqualTo(MigratePostResult.Failed(SyncFailureKind.ACCESS))
+        assertThat((service.migrate(command) as MigratePostResult.Failed).kind).isEqualTo(SyncFailureKind.ACCESS)
         assertThat(service.migrate(MigratePostCommand(selection, nextDocument))).isEqualTo(MigratePostResult.Imported(id))
     }
 
@@ -107,10 +110,38 @@ class PostMigrationServiceTest {
     fun `media failure and mismatched source produce distinct failure results`() {
         givenFreshDocument()
         every { media.capture(any(), any()) } throws MediaFetchException("file too big")
-        assertThat(service.migrate(command)).isEqualTo(MigratePostResult.Failed(SyncFailureKind.MEDIA))
+        assertThat((service.migrate(command) as MigratePostResult.Failed).kind).isEqualTo(SyncFailureKind.MEDIA)
 
         every { revisions.fetchRevision(document, selection) } returns imported.copy(sourceDocument = PostFixtures.document("wrong"))
-        assertThat(service.migrate(command)).isEqualTo(MigratePostResult.Failed(SyncFailureKind.MAPPING))
+        assertThat((service.migrate(command) as MigratePostResult.Failed).kind).isEqualTo(SyncFailureKind.MAPPING)
+    }
+
+    @Test
+    fun `safe block details survive the migration failure without exposing foreign exception text`() {
+        givenFreshDocument()
+        val block = UUID.fromString("335e2d0a-976a-837d-b9f1-819ca3e19953")
+        val diagnostic =
+            MigrationFailureDetail(MigrationFailureStage.BODY, "번호 목록의 시작 번호가 올바르지 않습니다.", "NotionBlockMappingException", block)
+        every { revisions.fetchRevision(document, selection) } throws
+            SourceMappingException("private-token https://private.example", diagnostic = diagnostic)
+
+        val result = service.migrate(command) as MigratePostResult.Failed
+
+        assertThat(result.kind).isEqualTo(SyncFailureKind.MAPPING)
+        assertThat(result.diagnostic).isEqualTo(diagnostic)
+        assertThat(result.toString()).doesNotContain("private-token", "private.example")
+    }
+
+    @Test
+    fun `an unclassified exception exposes a fixed fallback and known type instead of its message`() {
+        givenFreshDocument()
+        every { revisions.fetchRevision(document, selection) } throws
+            SourceMappingException("foreign secret message", IllegalArgumentException("nested secret"))
+
+        val diagnostic = requireNotNull((service.migrate(command) as MigratePostResult.Failed).diagnostic)
+
+        assertThat(diagnostic.exceptionType).isEqualTo("SourceMappingException")
+        assertThat(diagnostic.toString()).doesNotContain("foreign secret", "nested secret")
     }
 
     @Test

@@ -2,6 +2,8 @@ package xyz.robinjoon.notionblog.blog.adapter.outbound.notion.mapping
 
 import tools.jackson.databind.JsonNode
 import xyz.robinjoon.notionblog.blog.adapter.outbound.notion.dto.NotionPageResponse
+import xyz.robinjoon.notionblog.blog.application.model.MigrationFailureDetail
+import xyz.robinjoon.notionblog.blog.application.model.MigrationFailureStage
 import xyz.robinjoon.notionblog.blog.application.model.MigrationFields
 import xyz.robinjoon.notionblog.blog.application.port.output.source.SourceConfigurationException
 import xyz.robinjoon.notionblog.blog.application.port.output.source.SourceMappingException
@@ -33,32 +35,49 @@ internal class NotionMigrationPropertiesMapper(
         val property = property(page, fields.titlePropertyId, setOf("title", "rich_text"))
         return text(property).takeIf(String::isNotBlank)
             ?: fallback
-            ?: throw SourceMappingException("Mapped migration title is empty")
+            ?: throw SourceMappingException(
+                "Mapped migration title is empty",
+                diagnostic = detail("매핑한 제목이 비어 있습니다.", "SourceMappingException"),
+            )
     }
 
     fun authoredAt(
         page: NotionPageResponse,
         fields: MigrationFields,
-    ): Instant? = optionalProperty(page, fields.authoredAtPropertyId, setOf("date", "created_time"))?.let(NotionMigrationDates::read)
+    ): Instant? =
+        optionalProperty(
+            page,
+            fields.authoredAtPropertyId,
+            setOf("date", "created_time"),
+            MigrationFailureStage.AUTHORED_AT,
+        )?.let(NotionMigrationDates::read)
 
     private fun optionalProperty(
         page: NotionPageResponse,
         id: String,
         types: Set<String>,
-    ): JsonNode? = if (id.isBlank()) null else property(page, id, types)
+        stage: MigrationFailureStage = MigrationFailureStage.PROPERTIES,
+    ): JsonNode? = if (id.isBlank()) null else property(page, id, types, stage)
 
     private fun property(
         page: NotionPageResponse,
         id: String,
         types: Set<String>,
+        stage: MigrationFailureStage = MigrationFailureStage.PROPERTIES,
     ): JsonNode {
         val property =
             page.properties.values().singleOrNull { NotionPropertyIds.same(it.get("id")?.stringValue().orEmpty(), id) }
-                ?: throw SourceConfigurationException("Mapped migration property is missing")
+                ?: throw SourceConfigurationException(
+                    "Mapped migration property is missing",
+                    diagnostic = detail("매핑한 속성이 원본 글에 없습니다.", "SourceConfigurationException", stage),
+                )
         if (property.optionalText("type") !in
             types
         ) {
-            throw SourceConfigurationException("Mapped migration property has an incompatible type")
+            throw SourceConfigurationException(
+                "Mapped migration property has an incompatible type",
+                diagnostic = detail("매핑한 속성의 타입이 선택한 용도와 맞지 않습니다.", "SourceConfigurationException", stage),
+            )
         }
         return property
     }
@@ -69,7 +88,10 @@ internal class NotionMigrationPropertiesMapper(
             .requiredArray(type)
             .joinToString("") { part ->
                 part.get("plain_text")?.takeIf(JsonNode::isString)?.stringValue()
-                    ?: throw SourceMappingException("Mapped migration text is malformed")
+                    ?: throw SourceMappingException(
+                        "Mapped migration text is malformed",
+                        diagnostic = detail("매핑한 텍스트 속성의 plain_text가 문자열 형식이 아닙니다.", "SourceMappingException"),
+                    )
             }.trim()
     }
 
@@ -81,4 +103,10 @@ internal class NotionMigrationPropertiesMapper(
             }
         return options.map { it.requiredText("name").trim() }.filter(String::isNotBlank).distinct()
     }
+
+    private fun detail(
+        reason: String,
+        type: String,
+        stage: MigrationFailureStage = MigrationFailureStage.PROPERTIES,
+    ): MigrationFailureDetail = MigrationFailureDetail(stage, reason, type)
 }

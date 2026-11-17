@@ -3,6 +3,8 @@ package xyz.robinjoon.notionblog.blog.adapter.outbound.notion.mapping
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import xyz.robinjoon.notionblog.blog.domain.SourceId
 import xyz.robinjoon.notionblog.blog.domain.post.block.content.TextBlockContent
 import xyz.robinjoon.notionblog.blog.domain.post.block.inline.InlineContent
@@ -127,8 +129,33 @@ class NotionBlockMapperRichTextTest {
         )
     }
 
-    @Test
-    fun `rejects an unsafe href on a non-page mention`() {
+    @ParameterizedTest
+    @ValueSource(strings = ["/", "/p/"])
+    fun `preserves the Notion page and block destination in a relative rich text link`(prefix: String) {
+        val page = "a1b2c3d4e5f64a5b8c9d0e1f2a3b4c5d"
+        val suffix = "?pvs=25#b1b2c3d4e5f64a5b8c9d0e1f2a3b4c5d"
+        val block =
+            fixture.envelope(
+                type = "paragraph",
+                payload =
+                    """
+                    {"rich_text":[
+                      {"type":"text","text":{"content":"Section","link":{"url":"$prefix$page$suffix"}},"annotations":{}},
+                      {"type":"mention","mention":{"type":"database"},"plain_text":"Database","href":"$prefix$page$suffix","annotations":{}}
+                    ]}
+                    """.trimIndent(),
+            )
+
+        val richText = (mapper.map(block).content as TextBlockContent.Paragraph).richText
+        val expected = LinkTarget.ExternalUrl(URI("https://app.notion.com/p/$page$suffix"))
+
+        assertThat((richText[0] as InlineContent.Text).link).isEqualTo(expected)
+        assertThat((richText[1] as InlineContent.Mention).target).isEqualTo(expected)
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["javascript:alert(1)", "//example.com/a1b2c3d4e5f64a5b8c9d0e1f2a3b4c5d", "/unrecognized-path"])
+    fun `rejects an unsafe or unrecognized href on a non-page mention`(url: String) {
         val block =
             fixture.envelope(
                 type = "paragraph",
@@ -136,7 +163,7 @@ class NotionBlockMapperRichTextTest {
                     """
                     {"rich_text":[
                       {"type":"mention","mention":{"type":"database","database":{"id":"database-1"}},"annotations":{"color":"default"},
-                        "plain_text":"Database","href":"javascript:alert(1)"}
+                        "plain_text":"Database","href":"$url"}
                     ]}
                     """.trimIndent(),
             )

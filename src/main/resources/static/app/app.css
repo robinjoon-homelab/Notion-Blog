@@ -892,6 +892,12 @@ body.blog-public {
     width: 20%;
 }
 
+.nb-migration-content .ui-notice,
+.nb-migration-results [data-migration-result] {
+    overflow-wrap: anywhere;
+    white-space: pre-line;
+}
+
 .nb-migration-results tr[data-state="failed"] [data-migration-result] {
     color: var(--ui-danger-text);
 }

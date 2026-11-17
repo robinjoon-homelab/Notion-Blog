@@ -12,11 +12,14 @@ import org.junit.jupiter.params.provider.ValueSource
 import org.springframework.web.client.ResourceAccessException
 import org.springframework.web.client.RestClientException
 import org.springframework.web.client.RestClientResponseException
+import xyz.robinjoon.notionblog.blog.application.model.MigrationFailureStage
 import xyz.robinjoon.notionblog.blog.application.port.output.source.RetryableSourceException
 import xyz.robinjoon.notionblog.blog.application.port.output.source.SourceConfigurationException
 import xyz.robinjoon.notionblog.blog.application.port.output.source.SourceException
+import java.io.IOException
 import java.time.Duration
 import java.util.concurrent.TimeUnit
+import javax.net.ssl.SSLHandshakeException
 
 class NotionApiFailureTest {
     private val server = MockWebServer()
@@ -42,6 +45,11 @@ class NotionApiFailureTest {
             .hasMessageNotContaining("private-response-body")
             .hasMessageNotContaining("private-page")
             .hasMessageNotContaining("test-token")
+            .isInstanceOfSatisfying(SourceException::class.java) { failure ->
+                assertThat(failure.diagnostic?.stage).isEqualTo(MigrationFailureStage.SOURCE)
+                assertThat(failure.diagnostic?.httpStatus).isEqualTo(statusCode)
+                assertThat(failure.diagnostic.toString()).doesNotContain("private-response-body", "private-page", "test-token")
+            }
     }
 
     @Test
@@ -97,6 +105,40 @@ class NotionApiFailureTest {
         } finally {
             Thread.interrupted()
         }
+    }
+
+    @Test
+    fun `request diagnostics identify a wrapped TLS failure without exposing its cause message`() {
+        val tls = SSLHandshakeException("private-host")
+        tls.initCause(IllegalArgumentException("private-certificate"))
+
+        val failure = NotionFailureTranslator().requestFailure(IOException("private-url", tls))
+
+        assertThat(failure.diagnostic?.reason).contains("보안 연결")
+        assertThat(failure.diagnostic.toString()).doesNotContain("private-host", "private-certificate", "private-url")
+        assertThat(failure.cause).isInstanceOf(IOException::class.java)
+    }
+
+    @Test
+    fun `request diagnostics stop traversing a cyclic cause chain`() {
+        val first = IOException("private-first")
+        val second = IOException("private-second", first)
+        first.initCause(second)
+
+        val failure = NotionFailureTranslator().requestFailure(first)
+
+        assertThat(failure.diagnostic?.stage).isEqualTo(MigrationFailureStage.SOURCE)
+        assertThat(failure.diagnostic?.reason).contains("통신")
+        assertThat(failure.diagnostic.toString()).doesNotContain("private-first", "private-second")
+    }
+
+    @Test
+    fun `unexpected HTTP status preserves the retryable classification without invalid diagnostic metadata`() {
+        val failure = NotionFailureTranslator().httpFailure(700)
+
+        assertThat(failure).isInstanceOf(RetryableSourceException::class.java)
+        assertThat(failure.diagnostic?.httpStatus).isNull()
+        assertThat(failure.message).contains("HTTP 700")
     }
 
     private fun client(requestTimeout: Duration = Duration.ofSeconds(1)): NotionApiClient =

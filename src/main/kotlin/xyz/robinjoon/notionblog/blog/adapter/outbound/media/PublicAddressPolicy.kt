@@ -1,6 +1,5 @@
 package xyz.robinjoon.notionblog.blog.adapter.outbound.media
 
-import xyz.robinjoon.notionblog.blog.application.port.output.media.MediaFetchException
 import java.net.InetAddress
 import java.net.URI
 import java.net.UnknownHostException
@@ -36,23 +35,23 @@ internal class PublicAddressPolicy(
             try {
                 resolver.resolve(host)
             } catch (exception: UnknownHostException) {
-                throw MediaFetchException("media source host could not be resolved", exception)
+                throw mediaFailure("media source host could not be resolved", "파일 서버의 DNS 주소를 확인하지 못했습니다.", exception)
             }
         if (addresses.isEmpty() || !addresses.all(PublicUnicastAddresses::contains)) {
-            throw MediaFetchException("media source host resolves to a non-public address")
+            throw mediaFailure("media source host resolves to a non-public address", "파일 서버가 허용되지 않는 내부 또는 비공개 주소로 연결됩니다.")
         }
     }
 
     private fun allowedHost(url: URI): String {
         if (!url.isAbsolute || !url.scheme.equals(HTTPS, ignoreCase = true)) {
-            throw MediaFetchException("media URL must use HTTPS")
+            throw mediaFailure("media URL must use HTTPS", "파일 주소가 HTTPS 형식이 아닙니다.")
         }
         if (url.rawUserInfo != null || (url.port != DEFAULT_PORT && url.port != HTTPS_PORT)) {
-            throw MediaFetchException("media URL must not carry user info or a non-default port")
+            throw mediaFailure("media URL must not carry user info or a non-default port", "파일 주소에 사용자 정보 또는 허용되지 않는 포트가 포함되어 있습니다.")
         }
         val host = url.host?.let(::normalize)
         if (host == null || host !in hosts) {
-            throw MediaFetchException("media URL host is not an allowed media source host")
+            throw mediaFailure("media URL host is not an allowed media source host", "허용된 Notion 파일 저장소의 주소가 아닙니다.")
         }
         return host
     }

@@ -2,10 +2,12 @@ package xyz.robinjoon.notionblog.blog.adapter.outbound.notion.source
 
 import xyz.robinjoon.notionblog.blog.adapter.outbound.notion.dto.NotionPostsConfiguration
 import xyz.robinjoon.notionblog.blog.adapter.outbound.notion.mapping.NotionBlockMappingException
+import xyz.robinjoon.notionblog.blog.adapter.outbound.notion.mapping.NotionMappingFailureDetails
 import xyz.robinjoon.notionblog.blog.adapter.outbound.notion.mapping.NotionMigrationPropertiesMapper
 import xyz.robinjoon.notionblog.blog.adapter.outbound.notion.mapping.NotionMigrationSchema
 import xyz.robinjoon.notionblog.blog.adapter.outbound.notion.mapping.NotionPostPropertiesMapper
 import xyz.robinjoon.notionblog.blog.application.model.ImportedRevision
+import xyz.robinjoon.notionblog.blog.application.model.MigrationFailureStage
 import xyz.robinjoon.notionblog.blog.application.model.MigrationSelection
 import xyz.robinjoon.notionblog.blog.application.port.output.source.PostRevisionSource
 import xyz.robinjoon.notionblog.blog.application.port.output.source.SourceAccessException
@@ -46,9 +48,17 @@ internal class NotionRevisionSource(
         return try {
             mapRevision(collected, migration)
         } catch (exception: NotionBlockMappingException) {
-            throw SourceMappingException("Notion page properties could not be mapped", exception)
+            throw SourceMappingException(
+                "Notion page properties could not be mapped",
+                exception,
+                NotionMappingFailureDetails.of(exception, MigrationFailureStage.PROPERTIES),
+            )
         } catch (exception: IllegalArgumentException) {
-            throw SourceMappingException("Notion page properties are malformed", exception)
+            throw SourceMappingException(
+                "Notion page properties are malformed",
+                exception,
+                NotionMappingFailureDetails.of(exception, MigrationFailureStage.PROPERTIES),
+            )
         }
     }
 

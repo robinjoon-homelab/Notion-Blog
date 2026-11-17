@@ -110,17 +110,20 @@ internal class AdminMigrationController(
             }
 
             is MigratePostResult.Failed -> {
-                MigrationImportResponse("failed", failureMessages.getValue(result.kind))
+                MigrationImportResponse("failed", MigrationFailureMessages.append(failureMessages.getValue(result.kind), result.diagnostic))
             }
         }
 
-    private fun sourceError(exception: MigrationSourceException): String =
-        when (exception.kind) {
-            SyncFailureKind.ACCESS -> "원본을 읽을 수 없습니다. 원본 DB에서 서버의 Notion 연동에 읽기 권한을 부여한 뒤 다시 확인하세요."
-            SyncFailureKind.AUTHENTICATION -> "서버의 Notion 연동 인증을 확인하세요. 이 화면에는 토큰을 입력하지 않습니다."
-            SyncFailureKind.CONFIGURATION -> "Notion 데이터베이스 링크와 필드 매핑을 확인하세요. 글은 변경하지 않았습니다."
-            else -> "원본 DB를 읽지 못했습니다. 링크·필드 타입·연동 권한을 확인한 뒤 다시 시도하세요."
-        }
+    private fun sourceError(exception: MigrationSourceException): String {
+        val message =
+            when (exception.kind) {
+                SyncFailureKind.ACCESS -> "원본을 읽을 수 없습니다. 원본 DB에서 서버의 Notion 연동에 읽기 권한을 부여한 뒤 다시 확인하세요."
+                SyncFailureKind.AUTHENTICATION -> "서버의 Notion 연동 인증을 확인하세요. 이 화면에는 토큰을 입력하지 않습니다."
+                SyncFailureKind.CONFIGURATION -> "Notion 데이터베이스 링크와 필드 매핑을 확인하세요. 글은 변경하지 않았습니다."
+                else -> "원본 DB를 읽지 못했습니다. 링크·필드 타입·연동 권한을 확인한 뒤 다시 시도하세요."
+            }
+        return MigrationFailureMessages.append(message, exception.diagnostic)
+    }
 
     private fun rethrowInterruption(exception: MigrationSourceException) {
         if (Thread.currentThread().isInterrupted ||
@@ -137,7 +140,7 @@ internal class AdminMigrationController(
                 SyncFailureKind.AUTHENTICATION to "서버의 Notion 연동 인증을 확인하세요.",
                 SyncFailureKind.ACCESS to "원본 DB와 본문에서 참조한 페이지의 읽기 권한을 확인하세요.",
                 SyncFailureKind.CONFIGURATION to "선택한 데이터 소스와 필드 매핑을 확인하세요.",
-                SyncFailureKind.MAPPING to "본문 또는 필드 값을 읽지 못했습니다. 선택한 작성일이 비어 있지 않은지도 확인하세요.",
+                SyncFailureKind.MAPPING to "본문 또는 글 속성을 변환하지 못했습니다.",
                 SyncFailureKind.MEDIA to "첨부 파일을 보관하지 못했습니다. 원본 파일과 크기를 확인한 뒤 다시 시도하세요.",
             )
     }

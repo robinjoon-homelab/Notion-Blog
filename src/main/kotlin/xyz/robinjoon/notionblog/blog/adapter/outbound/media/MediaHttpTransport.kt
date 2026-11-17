@@ -1,6 +1,5 @@
 package xyz.robinjoon.notionblog.blog.adapter.outbound.media
 
-import xyz.robinjoon.notionblog.blog.application.port.output.media.MediaFetchException
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -32,7 +31,7 @@ internal class MediaHttpTransport(
                     .timeout(timeout)
                     .build()
             } catch (exception: IllegalArgumentException) {
-                throw MediaFetchException("media URL cannot be requested", exception)
+                throw mediaFailure("media URL cannot be requested", "파일 주소로 다운로드 요청을 만들 수 없습니다.", exception)
             }
         val response = awaitWithin(client.sendAsync(request, MediaBodyHandler(maxBytes)), timeout)
         val headers = response.headers()
