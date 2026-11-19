@@ -15,6 +15,7 @@ import xyz.robinjoon.notionblog.blog.application.port.output.source.PostMigratio
 import xyz.robinjoon.notionblog.blog.application.port.output.source.PostRevisionSource
 import xyz.robinjoon.notionblog.blog.application.port.output.source.SourceException
 import xyz.robinjoon.notionblog.blog.application.port.output.source.SourceMappingException
+import xyz.robinjoon.notionblog.blog.domain.SourceRevision
 import xyz.robinjoon.notionblog.blog.domain.sync.SyncFailureKind
 
 // 원본 조회와 파일 다운로드는 트랜잭션 밖에서 하고, 저장만 글별 쓰기 경계에 맡긴다.
@@ -73,10 +74,14 @@ class PostMigrationService(
     }
 
     private fun importPost(command: MigratePostCommand): MigratePostResult {
-        val imported = revisions.fetchRevision(command.sourceDocument, command.selection)
+        val imported = revisions.fetchRevision(command.sourceDocument, command.selection, allowPartial = true)
         require(imported.sourceDocument == command.sourceDocument) { "migration source must match the requested document" }
-        val captured = media.capture(imported.sourceHostedMedia(), emptyMap())
-        return writer.apply(command.selection, imported, captured)
+        val captured = media.captureForMigration(imported.sourceHostedMedia())
+        val warnings = imported.warnings + captured.warnings
+        if (warnings.isEmpty()) return writer.apply(command.selection, imported, captured.media)
+        // 원본 수정 시각이 같아도 접근 복구 후 완전한 리비전을 저장할 수 있어야 한다.
+        val partialRevision = SourceRevision("${imported.sourceRevision.value}:partial-migration")
+        return writer.apply(command.selection, imported.copy(sourceRevision = partialRevision, warnings = warnings), captured.media)
     }
 
     private fun failed(

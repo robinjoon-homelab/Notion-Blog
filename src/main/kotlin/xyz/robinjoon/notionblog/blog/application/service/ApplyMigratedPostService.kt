@@ -4,6 +4,7 @@ import org.springframework.transaction.annotation.Transactional
 import xyz.robinjoon.notionblog.blog.application.model.CapturedMedia
 import xyz.robinjoon.notionblog.blog.application.model.ImportedRevision
 import xyz.robinjoon.notionblog.blog.application.model.MigratePostResult
+import xyz.robinjoon.notionblog.blog.application.model.MigrationFailureStage
 import xyz.robinjoon.notionblog.blog.application.model.MigrationSelection
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.MediaStoragePort
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.PostMigrationMappingRepository
@@ -39,10 +40,14 @@ class ApplyMigratedPostService(
             PostRevision(PostRevisionId(UUID.randomUUID()), post.id, imported.properties, imported.content, imported.sourceRevision, now)
         posts.register(post, revision.title, now)
         mediaStorage.save(media.newRevision, now)
-        posts.saveRevision(revision, media.newRevision.associate { it.sourceKey to it.mediaKey })
+        posts.saveRevision(
+            revision,
+            media.newRevision.associate { it.sourceKey to it.mediaKey },
+            allowMissingMedia = imported.warnings.any { it.stage == MigrationFailureStage.MEDIA },
+        )
         mappings.save(post.id, selection)
         posts.save(post.recordRevision(revision.id), now)
         recorder.recordSuccess(SyncTarget.Post(post.id), now)
-        return MigratePostResult.Imported(post.id)
+        return MigratePostResult.Imported(post.id, imported.warnings)
     }
 }

@@ -39,9 +39,10 @@ internal class NotionRevisionSource(
     override fun fetchRevision(
         reference: SourceDocumentRef,
         migration: MigrationSelection?,
+        allowPartial: Boolean,
     ): ImportedRevision {
         val collected =
-            pages.fetch(reference) { page ->
+            pages.fetch(reference, allowPartial = allowPartial && migration != null) { page ->
                 if (page.inTrash) throw SourceAccessException("Notion page is in the trash")
                 if (migration != null) NotionMigrationSchema.requireParent(page, migration)
             }
@@ -78,6 +79,7 @@ internal class NotionRevisionSource(
             sourceRevision = collected.sourceRevision,
             content = collected.content,
             authoredAt = migration?.let { migrationProperties.authoredAt(collected.page, it.fields) },
+            warnings = collected.warnings,
         )
     }
 }

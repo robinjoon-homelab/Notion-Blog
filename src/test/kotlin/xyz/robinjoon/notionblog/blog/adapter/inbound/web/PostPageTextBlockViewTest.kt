@@ -1,6 +1,7 @@
 package xyz.robinjoon.notionblog.blog.adapter.inbound.web
 
 import org.assertj.core.api.Assertions.assertThat
+import org.jsoup.Jsoup
 import org.junit.jupiter.api.Test
 import org.thymeleaf.context.Context
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.PostPageViewFixtures.assembler
@@ -17,15 +18,36 @@ import xyz.robinjoon.notionblog.blog.domain.post.block.content.LayoutBlockConten
 import xyz.robinjoon.notionblog.blog.domain.post.block.content.ListBlockContent
 import xyz.robinjoon.notionblog.blog.domain.post.block.content.NumberedListFormat
 import xyz.robinjoon.notionblog.blog.domain.post.block.content.TextBlockContent
+import xyz.robinjoon.notionblog.blog.domain.post.block.content.UnsupportedBlockContent
 import xyz.robinjoon.notionblog.blog.domain.post.block.inline.InlineContent
 import xyz.robinjoon.notionblog.blog.domain.post.block.media.MediaSource
 import xyz.robinjoon.notionblog.blog.domain.post.block.style.BlockStyle
 import xyz.robinjoon.notionblog.blog.domain.post.block.style.ColorToken
 import xyz.robinjoon.notionblog.blog.domain.post.block.style.StyleVariant
 import xyz.robinjoon.notionblog.blog.domain.post.block.style.WidthToken
+import xyz.robinjoon.notionblog.support.web.saveRenderedPage
 import java.net.URI
 
 class PostPageTextBlockViewTest {
+    @Test
+    fun `renders omitted content at its original position with a distinct warning`() {
+        val nodes =
+            listOf(
+                node("before", TextBlockContent.Paragraph(listOf(InlineContent.Text("Earlier content")))),
+                node("omitted", UnsupportedBlockContent("embed", unavailable = true)),
+                node("unsupported", UnsupportedBlockContent("future_block")),
+                node("after", TextBlockContent.Paragraph(listOf(InlineContent.Text("Later content")))),
+            )
+
+        val html = render(page(nodes))
+        saveRenderedPage("public-post-with-omitted-block", html)
+        val document = Jsoup.parse(html)
+
+        assertThat(document.select("#before, #omitted, #unsupported, #after").eachText())
+            .containsExactly("Earlier content", "가져오지 못한 블록", "Unsupported block: future_block", "Later content")
+        assertThat(document.select(".notion-unavailable-block").eachAttr("id")).containsExactly("omitted")
+    }
+
     @Test
     fun `maps style tokens through fixed view classes instead of user supplied values`() {
         val page =

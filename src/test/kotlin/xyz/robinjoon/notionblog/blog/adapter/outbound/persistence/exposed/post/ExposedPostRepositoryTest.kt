@@ -161,6 +161,24 @@ class ExposedPostRepositoryTest {
     }
 
     @Test
+    fun `a partial migration draft keeps the captured file and records the missing one`() {
+        val saved = PostFixtures.hosted("saved.png")
+        val missing = PostFixtures.hosted("missing.png")
+        val body = BlockTree(listOf(PostFixtures.image("saved", saved), PostFixtures.image("missing", missing)))
+        val revision = PostFixtures.revision(postId, PostFixtures.revisionId(1), body)
+
+        database.inTransaction {
+            repository.register(Post.register(postId, document), "Untitled", now)
+            storeMedia(listOf(key('a')))
+            repository.saveRevision(revision, mapOf(sourceKey(saved) to key('a')), allowMissingMedia = true)
+
+            assertThat(repository.findRevision(postId, revision.id)).isEqualTo(revision)
+            assertThat(repository.findMediaBindings(setOf(revision.id))).containsEntry(revision.id, mapOf(sourceKey(saved) to key('a')))
+            assertThat(repository.findUnboundMedia(setOf(revision.id))).containsEntry(revision.id, setOf(missing))
+        }
+    }
+
+    @Test
     fun `one source revision is stored at most once per post`() {
         database.inTransaction {
             repository.register(Post.register(postId, document), "Untitled", now)

@@ -107,7 +107,7 @@ internal class PostDocumentViewAssembler(
             is ReferenceBlockContent -> reference(content, node, children)
             is ReusableBlockContent -> reusable(content, id, style, children)
             is SpecialBlockContent.MeetingNotes -> meetingNotes(content, id, style, children)
-            is UnsupportedBlockContent -> UnsupportedView(id, content.blockType, style, children)
+            is UnsupportedBlockContent -> UnsupportedView(id, content.blockType, style, children, content.unavailable)
         }
     }
 

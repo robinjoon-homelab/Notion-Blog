@@ -228,6 +228,25 @@ class AdminMigrationHttpDocumentationTest {
     }
 
     @Test
+    fun `partial import returns the draft link and the omitted content details`() {
+        val block = UUID.fromString("335e2d0a-976a-837d-b9f1-819ca3e19953")
+        val warning =
+            MigrationFailureDetail(MigrationFailureStage.SOURCE, "본문 블록을 읽을 수 없습니다.", "NotFound", block, 404)
+        every { migrations.migrate(MigratePostCommand(selection, source)) } returns MigratePostResult.Imported(postId, listOf(warning))
+
+        mvc
+            .perform(importRequest())
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.status").value("partial"))
+            .andExpect(jsonPath("$.href").value("/admin/posts/${postId.value}"))
+            .andExpect(jsonPath("$.message").value(containsString("일부 가져옴 · 확인할 항목 1개")))
+            .andExpect(jsonPath("$.message").value(containsString("본문 블록을 읽을 수 없습니다.")))
+            .andExpect(jsonPath("$.message").value(containsString("Notion 블록: $block")))
+            .andExpect(jsonPath("$.message").value(containsString("HTTP 상태: 404")))
+            .andDo(document("admin-migrations-partial"))
+    }
+
+    @Test
     fun `safe block identity HTTP status and size details appear in the row message`() {
         val block = UUID.fromString("335e2d0a-976a-837d-b9f1-819ca3e19953")
         val diagnostic =

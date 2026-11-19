@@ -17,6 +17,7 @@ data class MigratePostCommand(
 sealed interface MigratePostResult {
     data class Imported(
         val postId: PostId,
+        val warnings: List<MigrationFailureDetail> = emptyList(),
     ) : MigratePostResult
 
     data class Skipped(

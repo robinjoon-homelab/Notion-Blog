@@ -98,7 +98,7 @@ internal class AdminMigrationController(
     private fun response(result: MigratePostResult): MigrationImportResponse =
         when (result) {
             is MigratePostResult.Imported -> {
-                MigrationImportResponse("imported", "초안으로 가져왔습니다.", "/admin/posts/${result.postId.value}")
+                importedResponse(result)
             }
 
             is MigratePostResult.Skipped -> {
@@ -113,6 +113,12 @@ internal class AdminMigrationController(
                 MigrationImportResponse("failed", MigrationFailureMessages.append(failureMessages.getValue(result.kind), result.diagnostic))
             }
         }
+
+    private fun importedResponse(result: MigratePostResult.Imported): MigrationImportResponse {
+        val href = "/admin/posts/${result.postId.value}"
+        if (result.warnings.isEmpty()) return MigrationImportResponse("imported", "초안으로 가져왔습니다.", href)
+        return MigrationImportResponse("partial", MigrationFailureMessages.partial(result.warnings), href)
+    }
 
     private fun sourceError(exception: MigrationSourceException): String {
         val message =

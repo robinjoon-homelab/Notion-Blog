@@ -134,11 +134,14 @@ class ExposedPostRepository(
     override fun saveRevision(
         revision: PostRevision,
         media: Map<SourceMediaKey, MediaKey>,
+        allowMissingMedia: Boolean,
     ) {
         val files = revision.sourceHostedMedia().associateBy { SourceMediaKey.of(it.url) }
-        require(files.keys.all(media::containsKey)) { "every source-hosted file of a new revision must have a stored copy" }
+        require(
+            allowMissingMedia || files.keys.all(media::containsKey),
+        ) { "every source-hosted file of a new revision must have a stored copy" }
         PostRevisionTable.insert { revisions.write(it, revision) }
-        insertMediaRows(revision.id, files) { key -> media.getValue(key) }
+        insertMediaRows(revision.id, files, media::get)
         PostTable.update({ PostTable.postId eq revision.postId.value }) {
             it[title] = revision.title
             it[updatedAt] = revision.capturedAt.asOffsetDateTime()

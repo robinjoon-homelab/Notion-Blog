@@ -436,6 +436,7 @@ data class UnsupportedView(
     val originalType: String,
     override val style: BlockStyleView,
     override val children: List<BlockView>,
+    val unavailable: Boolean,
 ) : BlockView {
     override val kind = BlockKind.UNSUPPORTED
 }

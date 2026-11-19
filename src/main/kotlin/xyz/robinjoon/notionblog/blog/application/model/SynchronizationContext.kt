@@ -15,7 +15,7 @@ data class PostSynchronizationContext(
     val migrationSelection: MigrationSelection? = null,
 )
 
-// 파일의 저장 사본이 아직 없는 표시 리비전이다(레거시 스냅숏에서 복사한 리비전만 해당한다). 사본은 그 리비전에 저장된 URL에서, 또는
+// 레거시나 부분 이전에서 파일의 저장 사본이 아직 없는 표시 리비전이다. 사본은 그 리비전에 저장된 URL에서, 또는
 // 원본이 여전히 같은 원본 리비전을 제공할 때 원본에서만 받을 수 있다.
 data class MediaRepairTarget(
     val revisionId: PostRevisionId,

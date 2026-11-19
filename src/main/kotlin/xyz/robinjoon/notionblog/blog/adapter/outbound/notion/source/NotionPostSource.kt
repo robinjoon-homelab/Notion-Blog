@@ -16,6 +16,7 @@ import xyz.robinjoon.notionblog.blog.application.model.MigrationFailureDetail
 import xyz.robinjoon.notionblog.blog.application.model.MigrationFailureStage
 import xyz.robinjoon.notionblog.blog.application.port.output.source.RetryableSourceException
 import xyz.robinjoon.notionblog.blog.application.port.output.source.SourceConfigurationException
+import xyz.robinjoon.notionblog.blog.application.port.output.source.SourceException
 import xyz.robinjoon.notionblog.blog.application.port.output.source.SourceMappingException
 import xyz.robinjoon.notionblog.blog.domain.SourceDocumentRef
 import xyz.robinjoon.notionblog.blog.domain.SourceId
@@ -25,6 +26,7 @@ import xyz.robinjoon.notionblog.blog.domain.post.block.BlockNode
 import xyz.robinjoon.notionblog.blog.domain.post.block.BlockTree
 import xyz.robinjoon.notionblog.blog.domain.post.block.content.DataViewContent
 import xyz.robinjoon.notionblog.blog.domain.post.block.content.ReusableBlockContent
+import xyz.robinjoon.notionblog.blog.domain.post.block.content.UnsupportedBlockContent
 import java.time.Duration
 
 internal class NotionPostSource(
@@ -48,6 +50,7 @@ internal class NotionPostSource(
     /** 페이지와 본문을 읽는다. [beforeBody]는 블록을 요청하기 전에 페이지에 대해 먼저 실행된다. */
     fun fetch(
         reference: SourceDocumentRef,
+        allowPartial: Boolean = false,
         beforeBody: (NotionPageResponse) -> Unit = {},
     ): CollectedPost {
         if (reference.sourceId != sourceId) {
@@ -56,7 +59,7 @@ internal class NotionPostSource(
         val startedAt = nanoTime()
         return try {
             val requestedReference = reference.copy(externalId = NotionIdNormalizer.normalize(reference.externalId))
-            Collection(requestedReference, startedAt).fetch(beforeBody)
+            Collection(requestedReference, startedAt, allowPartial).fetch(beforeBody)
         } catch (exception: NotionBlockMappingException) {
             throw SourceMappingException(
                 "Notion block could not be mapped",
@@ -75,6 +78,7 @@ internal class NotionPostSource(
     private inner class Collection(
         private val sourceDocument: SourceDocumentRef,
         private val startedAt: Long,
+        allowPartial: Boolean,
     ) {
         private val visitedPageIds = mutableSetOf(sourceDocument.externalId)
         private val visitedBlockIds = mutableSetOf<String>()
@@ -86,6 +90,7 @@ internal class NotionPostSource(
         private val inlineDatabases = mutableListOf<BlockNode>()
         private var blockCount = 0
         private var materializedBlockCount = 0
+        private val recovery = if (allowPartial) NotionBlockRecovery(::reserveMaterializedBlock) else null
 
         fun fetch(beforeBody: (NotionPageResponse) -> Unit): CollectedPost {
             checkDeadline()
@@ -94,12 +99,14 @@ internal class NotionPostSource(
             beforeBody(page)
             val metadata = pageMapper.map(page, sourceDocument)
             val roots = collectChildren(sourceDocument.externalId, 1, null)
+            if (recovery != null) validateDepth(roots, 1)
             return CollectedPost(
                 page = page,
                 metadata = metadata,
                 sourceRevision = NotionDatabaseRevision.append(metadata.sourceRevision, inlineDatabases),
                 content = BlockTree(roots),
                 containedChildren = containedChildren.toList(),
+                warnings = recovery?.warnings().orEmpty(),
             )
         }
 
@@ -117,8 +124,9 @@ internal class NotionPostSource(
                     return children
                 }
             }
-            if (!collectedChildrenParentIds.add(parentIdentity)) return emptyList()
+            if (parentIdentity in collectedChildrenParentIds) return emptyList()
             val blocks = fetchActiveChildren(parentBlockId)
+            collectedChildrenParentIds += parentIdentity
             blocks.mapNotNullTo(transcriptBlockIds) { block -> NotionMeetingNotesSections.read(block).transcriptBlockId }
             val children =
                 blocks
@@ -133,7 +141,7 @@ internal class NotionPostSource(
 
         private fun fetchActiveChildren(parentBlockId: String): List<NotionBlockEnvelope> {
             checkDeadline()
-            val blocks = client.fetchDirectBlockChildren(parentBlockId)
+            val blocks = client.fetchDirectBlockChildren(parentBlockId, allowPartial = recovery != null)
             checkDeadline()
             if (blocks.isNotEmpty()) parentsWithReturnedChildren += blockIdentity(parentBlockId)
             return blocks.filterNot(NotionBlockEnvelope::inTrash)
@@ -150,11 +158,24 @@ internal class NotionPostSource(
             if (block.type == CHILD_DATABASE_TYPE) return collectDatabase(block, depth)
             val children = collectBlockChildren(block, depth, skipPreviouslyVisitedBlocks)
             val mapped = mapCurrentBlock(block, children, parentType)
-            if (block.type == CHILD_PAGE_TYPE) confirmContainedChild(block)
-            return mapped
+            return if (block.type == CHILD_PAGE_TYPE && mapped.content !is UnsupportedBlockContent) {
+                confirmChildPage(block, mapped)
+            } else {
+                mapped
+            }
         }
 
         private fun mapCurrentBlock(
+            block: NotionBlockEnvelope,
+            children: List<BlockNode>,
+            parentType: String?,
+        ): BlockNode {
+            val layoutChildren = recovery?.layoutChildren(block.type, children) ?: children
+            val mapped = mapBlockData(block, layoutChildren, parentType)
+            return recovery?.mapped(mapped) ?: mapped
+        }
+
+        private fun mapBlockData(
             block: NotionBlockEnvelope,
             children: List<BlockNode>,
             parentType: String?,
@@ -167,26 +188,30 @@ internal class NotionPostSource(
                 }
             } catch (exception: IllegalArgumentException) {
                 val diagnostic = NotionMappingFailureDetails.of(exception, MigrationFailureStage.BODY, block.id)
-                throw SourceMappingException("Notion block could not be mapped", exception, diagnostic)
+                val failure = SourceMappingException("Notion block could not be mapped", exception, diagnostic)
+                recovery?.missingBlock(block, children, failure) ?: throw failure
             } catch (exception: SourceMappingException) {
-                throw SourceMappingException(
-                    "Notion block reference could not be mapped",
-                    exception,
-                    NotionMappingFailureDetails.reference(block.id),
-                )
+                val failure =
+                    SourceMappingException(
+                        "Notion block reference could not be mapped",
+                        exception,
+                        NotionMappingFailureDetails.reference(block.id),
+                    )
+                recovery?.missingBlock(block, children, failure) ?: throw failure
             }
 
         private fun collectDatabase(
             block: NotionBlockEnvelope,
             depth: Int,
         ): BlockNode? {
+            val mapped = mapCurrentBlock(block, emptyList(), null)
+            if (mapped.content is UnsupportedBlockContent) return mapped
             val database =
-                databaseReader.read(
-                    mapCurrentBlock(block, emptyList(), null),
-                    sourceDocument,
-                    checkDeadline = ::checkDeadline,
-                    reserve = ::reserveCollectionItem,
-                )
+                try {
+                    databaseReader.read(mapped, sourceDocument, checkDeadline = ::checkDeadline, reserve = ::reserveCollectionItem)
+                } catch (failure: SourceException) {
+                    return mapped.copy(children = recovery?.missingChildren(block.id, block.type, failure) ?: throw failure)
+                }
             database.containedChildren.forEach { child ->
                 if (!visitedPageIds.add(child.externalId)) {
                     throw SourceMappingException("Notion child page collection contains a cycle or duplicate page")
@@ -207,7 +232,7 @@ internal class NotionPostSource(
         ): List<BlockNode> {
             val ordinaryChildren =
                 if (block.hasChildren && block.type != CHILD_PAGE_TYPE) {
-                    collectChildren(block.id, depth + 1, block.type, skipPreviouslyVisitedBlocks)
+                    collectOrdinaryChildren(block, depth, skipPreviouslyVisitedBlocks)
                 } else {
                     emptyList()
                 }
@@ -218,21 +243,55 @@ internal class NotionPostSource(
                     .asSequence()
                     .filterNot { sectionBlockId -> blockIdentity(sectionBlockId) in transcriptBlockIds }
                     .flatMap { sectionBlockId ->
-                        collectChildren(sectionBlockId, depth + 1, block.type, skipPreviouslyVisitedBlocks = true).asSequence()
+                        collectSectionChildren(sectionBlockId, depth + 1, block.type).asSequence()
                     }.toList()
             val directChildren = ordinaryChildren + sectionChildren
             if (!block.hasChildren || directChildren.isNotEmpty() || blockIdentity(block.id) in parentsWithReturnedChildren) {
                 return directChildren
             }
-            return synchronizedChildren(block, depth) ?: directChildren
+            return synchronizedChildrenOrUnavailable(block, depth) ?: directChildren
         }
+
+        private fun collectOrdinaryChildren(
+            block: NotionBlockEnvelope,
+            depth: Int,
+            skipPreviouslyVisitedBlocks: Boolean,
+        ): List<BlockNode> =
+            try {
+                collectChildren(block.id, depth + 1, block.type, skipPreviouslyVisitedBlocks)
+            } catch (failure: SourceException) {
+                if (recovery?.canRecoverAccess(failure) != true) throw failure
+                synchronizedChildrenOrUnavailable(block, depth)?.takeIf(List<BlockNode>::isNotEmpty)
+                    ?: recovery.missingChildren(block.id, block.type, failure)
+            }
+
+        private fun collectSectionChildren(
+            blockId: String,
+            depth: Int,
+            blockType: String,
+        ): List<BlockNode> =
+            try {
+                collectChildren(blockId, depth, blockType, skipPreviouslyVisitedBlocks = true)
+            } catch (failure: SourceException) {
+                recovery?.missingChildren(blockId, blockType, failure) ?: throw failure
+            }
+
+        private fun synchronizedChildrenOrUnavailable(
+            block: NotionBlockEnvelope,
+            depth: Int,
+        ): List<BlockNode>? =
+            try {
+                synchronizedChildren(block, depth)
+            } catch (failure: SourceException) {
+                recovery?.missingChildren(block.id, block.type, failure) ?: throw failure
+            }
 
         private fun synchronizedChildren(
             block: NotionBlockEnvelope,
             depth: Int,
         ): List<BlockNode>? {
             if (block.type != SYNCED_BLOCK_TYPE) return null
-            val content = blockMapper.map(block, sourceDocument = sourceDocument).content as ReusableBlockContent.Synchronized
+            val content = mapCurrentBlock(block, emptyList(), null).content as? ReusableBlockContent.Synchronized ?: return null
             val originBlockId = content.origin?.blockExternalId ?: return null
             val children = collectChildren(originBlockId, depth + 1, block.type)
             val referenceIdentity = blockIdentity(block.id)
@@ -315,6 +374,17 @@ internal class NotionPostSource(
             }
         }
 
+        private fun confirmChildPage(
+            block: NotionBlockEnvelope,
+            mapped: BlockNode,
+        ): BlockNode =
+            try {
+                confirmContainedChild(block)
+                mapped
+            } catch (failure: SourceException) {
+                mapped.copy(children = recovery?.missingChildren(block.id, block.type, failure) ?: throw failure)
+            }
+
         private fun checkDeadline() {
             if (nanoTime() - startedAt >= collectionTimeout.toNanos()) {
                 val diagnostic = MigrationFailureDetail(MigrationFailureStage.BODY, "본문 전체를 읽는 제한 시간이 초과되었습니다.", "RetryableSourceException")
@@ -341,6 +411,7 @@ internal data class CollectedPost(
     val sourceRevision: SourceRevision,
     val content: BlockTree,
     val containedChildren: List<SourceDocumentRef>,
+    val warnings: List<MigrationFailureDetail> = emptyList(),
 ) {
     val sourceDocument: SourceDocumentRef get() = metadata.sourceDocument
     val title: String get() = metadata.title

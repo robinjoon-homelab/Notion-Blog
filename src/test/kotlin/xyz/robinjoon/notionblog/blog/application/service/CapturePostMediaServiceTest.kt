@@ -7,6 +7,7 @@ import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import xyz.robinjoon.notionblog.blog.application.model.FetchedMedia
+import xyz.robinjoon.notionblog.blog.application.model.MigrationFailureStage
 import xyz.robinjoon.notionblog.blog.application.port.output.diagnostics.OperationFailureReporter
 import xyz.robinjoon.notionblog.blog.application.port.output.media.MediaFetchException
 import xyz.robinjoon.notionblog.blog.application.port.output.media.MediaGateway
@@ -63,6 +64,25 @@ class CapturePostMediaServiceTest {
         assertThatThrownBy { service.capture(listOf(first, second), emptyMap()) }
             .isInstanceOf(MediaFetchException::class.java)
             .hasMessageContaining("total size")
+    }
+
+    @Test
+    fun `initial migration keeps downloadable files and reports the access and size failures`() {
+        val failing = PostFixtures.hosted("fail.png")
+        val first = PostFixtures.hosted("first.png")
+        val tooLarge = PostFixtures.hosted("large.png")
+        val second = PostFixtures.hosted("second.png")
+        every { gateway.fetch(failing) } throws MediaFetchException("private download address")
+        every { gateway.fetch(first) } returns fetched(first, 'a', 6)
+        every { gateway.fetch(tooLarge) } returns fetched(tooLarge, 'b', 5)
+        every { gateway.fetch(second) } returns fetched(second, 'c', 4)
+
+        val captured = service.captureForMigration(listOf(failing, first, tooLarge, second))
+
+        assertThat(captured.media.newRevision.map { it.mediaKey }).containsExactly(key('a'), key('c'))
+        assertThat(captured.warnings.map { it.stage }).containsExactly(MigrationFailureStage.MEDIA, MigrationFailureStage.MEDIA)
+        assertThat(captured.warnings.map { it.limitBytes }).containsExactly(null, 10L)
+        assertThat(captured.warnings.toString()).doesNotContain("private download address")
     }
 
     @Test

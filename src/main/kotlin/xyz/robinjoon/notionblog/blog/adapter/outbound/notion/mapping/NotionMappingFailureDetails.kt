@@ -26,7 +26,7 @@ internal object NotionMappingFailureDetails {
             validatedBlockId(blockId),
         )
 
-    private fun validatedBlockId(value: String?): UUID? {
+    fun validatedBlockId(value: String?): UUID? {
         val normalized = value?.let(NotionIdNormalizer::normalizeOrNull) ?: return null
         return UUID(normalized.substring(0, 16).toULong(16).toLong(), normalized.substring(16).toULong(16).toLong())
     }

@@ -26,17 +26,18 @@ if (page) {
     function updateSummary() {
         const count = (state) => rows.filter((row) => row.dataset.state === state).length;
         const imported = count("imported");
+        const partial = count("partial");
         const skipped = count("skipped");
         const failed = count("failed");
-        progress.value = imported + skipped + failed;
-        summary.textContent = `전체 ${rows.length}개 · 가져옴 ${imported}개 · 기존 글 ${skipped}개 · 실패 ${failed}개`;
+        progress.value = imported + partial + skipped + failed;
+        summary.textContent = `전체 ${rows.length}개 · 가져옴 ${imported}개 · 일부 가져옴 ${partial}개 · 기존 글 ${skipped}개 · 실패 ${failed}개`;
         pause.hidden = !running;
         resume.hidden = running || !rows.some((row) => row.dataset.state === "pending");
         retry.hidden = running || failed === 0;
     }
 
     function showResult(row, result) {
-        const state = ["imported", "skipped", "failed"].includes(result?.status) ? result.status : "failed";
+        const state = ["imported", "partial", "skipped", "failed"].includes(result?.status) ? result.status : "failed";
         row.dataset.state = state;
         row.querySelector("[data-migration-result]").textContent =
             result?.message || "응답을 확인하지 못했습니다. 다시 시도하세요.";

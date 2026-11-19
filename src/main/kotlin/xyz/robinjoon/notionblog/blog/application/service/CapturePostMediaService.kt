@@ -44,6 +44,23 @@ class CapturePostMediaService(
         return CapturedMedia(fetched, repaired)
     }
 
+    internal fun captureForMigration(sources: Collection<MediaSource.SourceHosted>): MigrationMediaCapture {
+        val budget = ImportBudget(maxImportBytes)
+        val warnings = mutableListOf<MigrationFailureDetail>()
+        val fetched =
+            sources.groupBy(::sourceKey).values.mapNotNull { group ->
+                try {
+                    budget.take(fetchConsistent(group)) ?: throw importSizeExceeded()
+                } catch (exception: MediaFetchException) {
+                    if (exception.causedByInterruption()) throw exception
+                    failures.report(RecoveredOperation.POST_MIGRATION, exception)
+                    warnings += MigrationFailureDiagnostics.of(exception)
+                    null
+                }
+            }
+        return MigrationMediaCapture(CapturedMedia(fetched, emptyMap()), warnings.toList())
+    }
+
     // 서명만 다른 URL은 같은 원본 파일을 가리킨다. 한 이름 뒤에 서로 다른 바이트가 있으면 어느 사본도 연결하지 않고 거부한다.
     private fun fetchConsistent(sources: List<MediaSource.SourceHosted>): FetchedMedia {
         val files = sources.distinctBy { it.url }.map(gateway::fetch)
@@ -99,6 +116,11 @@ class CapturePostMediaService(
         }
     }
 }
+
+internal data class MigrationMediaCapture(
+    val media: CapturedMedia,
+    val warnings: List<MigrationFailureDetail> = emptyList(),
+)
 
 // 취소된 스레드는 일반 실패로 기록하지 않고 멈춰야 한다.
 internal fun Throwable.causedByInterruption(): Boolean =

@@ -274,6 +274,7 @@ class JsonBlockTreeSnapshotCodecTest {
                 ),
             ),
             node("unsupported", UnsupportedBlockContent("future_type")),
+            node("unavailable", UnsupportedBlockContent("embed", unavailable = true)),
         )
 
     private fun node(

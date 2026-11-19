@@ -9,5 +9,6 @@ interface PostRevisionSource {
     fun fetchRevision(
         reference: SourceDocumentRef,
         migration: MigrationSelection? = null,
+        allowPartial: Boolean = false,
     ): ImportedRevision
 }

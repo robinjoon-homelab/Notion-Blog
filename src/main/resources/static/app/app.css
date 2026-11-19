@@ -906,6 +906,15 @@ body.blog-public {
     color: var(--ui-success-text);
 }
 
+.nb-migration-results tr[data-state="partial"] [data-migration-result],
+.notion-unavailable-block > p:first-child {
+    color: var(--ui-warning-text);
+}
+
+.notion-unavailable-block > p:first-child {
+    font-weight: 600;
+}
+
 [data-migration-progress] {
     width: 100%;
     accent-color: var(--ui-accent);

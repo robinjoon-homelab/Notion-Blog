@@ -14,6 +14,7 @@ data class ImportedRevision(
     val sourceRevision: SourceRevision,
     val content: BlockTree,
     val authoredAt: Instant? = null,
+    val warnings: List<MigrationFailureDetail> = emptyList(),
 ) {
     fun sourceHostedMedia(): Set<MediaSource.SourceHosted> = sourceHostedMedia(properties, content)
 }

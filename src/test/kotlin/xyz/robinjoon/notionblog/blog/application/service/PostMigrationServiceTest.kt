@@ -18,7 +18,6 @@ import xyz.robinjoon.notionblog.blog.application.model.MigrationFields
 import xyz.robinjoon.notionblog.blog.application.model.MigrationSelection
 import xyz.robinjoon.notionblog.blog.application.port.input.MigrationSourceException
 import xyz.robinjoon.notionblog.blog.application.port.output.diagnostics.OperationFailureReporter
-import xyz.robinjoon.notionblog.blog.application.port.output.media.MediaFetchException
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.DuplicateSourceBindingException
 import xyz.robinjoon.notionblog.blog.application.port.output.source.PostMigrationSource
 import xyz.robinjoon.notionblog.blog.application.port.output.source.PostRevisionSource
@@ -97,9 +96,9 @@ class PostMigrationServiceTest {
         val nextImport = imported.copy(sourceDocument = nextDocument)
         val id = PostFixtures.postId(2)
         every { queries.existing(any()) } returns null
-        every { revisions.fetchRevision(document, selection) } throws SourceAccessException("private diagnostic")
-        every { revisions.fetchRevision(nextDocument, selection) } returns nextImport
-        every { media.capture(any(), any()) } returns CapturedMedia.empty
+        every { revisions.fetchRevision(document, selection, allowPartial = true) } throws SourceAccessException("private diagnostic")
+        every { revisions.fetchRevision(nextDocument, selection, allowPartial = true) } returns nextImport
+        every { media.captureForMigration(any()) } returns MigrationMediaCapture(CapturedMedia.empty)
         every { writer.apply(selection, nextImport, CapturedMedia.empty) } returns MigratePostResult.Imported(id)
 
         assertThat((service.migrate(command) as MigratePostResult.Failed).kind).isEqualTo(SyncFailureKind.ACCESS)
@@ -107,12 +106,25 @@ class PostMigrationServiceTest {
     }
 
     @Test
-    fun `media failure and mismatched source produce distinct failure results`() {
+    fun `body and media warnings accompany a partial draft with a distinct revision`() {
+        val id = PostFixtures.postId(2)
+        val bodyWarning = MigrationFailureDetail(MigrationFailureStage.BODY, "블록을 읽을 수 없습니다.", "NotionBlockMappingException")
+        val mediaWarning = MigrationFailureDetail(MigrationFailureStage.MEDIA, "첨부 파일을 보관하지 못했습니다.", "MediaFetchException")
+        val warnings = listOf(bodyWarning, mediaWarning)
         givenFreshDocument()
-        every { media.capture(any(), any()) } throws MediaFetchException("file too big")
-        assertThat((service.migrate(command) as MigratePostResult.Failed).kind).isEqualTo(SyncFailureKind.MEDIA)
+        every { revisions.fetchRevision(document, selection, allowPartial = true) } returns imported.copy(warnings = listOf(bodyWarning))
+        every { media.captureForMigration(any()) } returns MigrationMediaCapture(CapturedMedia.empty, listOf(mediaWarning))
+        val partial = imported.copy(sourceRevision = SourceRevision("revision:partial-migration"), warnings = warnings)
+        every { writer.apply(selection, partial, CapturedMedia.empty) } returns MigratePostResult.Imported(id, warnings)
 
-        every { revisions.fetchRevision(document, selection) } returns imported.copy(sourceDocument = PostFixtures.document("wrong"))
+        assertThat(service.migrate(command)).isEqualTo(MigratePostResult.Imported(id, warnings))
+    }
+
+    @Test
+    fun `mismatched source produces a mapping failure`() {
+        givenFreshDocument()
+        every { revisions.fetchRevision(document, selection, allowPartial = true) } returns
+            imported.copy(sourceDocument = PostFixtures.document("wrong"))
         assertThat((service.migrate(command) as MigratePostResult.Failed).kind).isEqualTo(SyncFailureKind.MAPPING)
     }
 
@@ -122,7 +134,7 @@ class PostMigrationServiceTest {
         val block = UUID.fromString("335e2d0a-976a-837d-b9f1-819ca3e19953")
         val diagnostic =
             MigrationFailureDetail(MigrationFailureStage.BODY, "번호 목록의 시작 번호가 올바르지 않습니다.", "NotionBlockMappingException", block)
-        every { revisions.fetchRevision(document, selection) } throws
+        every { revisions.fetchRevision(document, selection, allowPartial = true) } throws
             SourceMappingException("private-token https://private.example", diagnostic = diagnostic)
 
         val result = service.migrate(command) as MigratePostResult.Failed
@@ -135,7 +147,7 @@ class PostMigrationServiceTest {
     @Test
     fun `an unclassified exception exposes a fixed fallback and known type instead of its message`() {
         givenFreshDocument()
-        every { revisions.fetchRevision(document, selection) } throws
+        every { revisions.fetchRevision(document, selection, allowPartial = true) } throws
             SourceMappingException("foreign secret message", IllegalArgumentException("nested secret"))
 
         val diagnostic = requireNotNull((service.migrate(command) as MigratePostResult.Failed).diagnostic)
@@ -158,14 +170,14 @@ class PostMigrationServiceTest {
     fun `an interrupted source failure propagates instead of continuing the queue`() {
         val failure = SourceAccessException("cancelled", InterruptedException("stop"))
         givenFreshDocument()
-        every { revisions.fetchRevision(document, selection) } throws failure
+        every { revisions.fetchRevision(document, selection, allowPartial = true) } throws failure
 
         assertThatThrownBy { service.migrate(command) }.isSameAs(failure)
     }
 
     private fun givenFreshDocument() {
         every { queries.existing(document) } returns null
-        every { revisions.fetchRevision(document, selection) } returns imported
-        every { media.capture(any(), any()) } returns CapturedMedia.empty
+        every { revisions.fetchRevision(document, selection, allowPartial = true) } returns imported
+        every { media.captureForMigration(any()) } returns MigrationMediaCapture(CapturedMedia.empty)
     }
 }

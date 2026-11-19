@@ -46,10 +46,11 @@ interface PostRepository {
     // 글의 분류 연결만 post.categoryIds로 바꾼다. 게시 상태·세대·리비전·최초 게시 시각은 쓰지 않는다.
     fun saveCategories(post: Post)
 
-    // 새 리비전을 저장하면서, 그 리비전이 보여 주는 원본 호스팅 파일마다 저장 사본을 연결한다.
+    // 부분 이전 초안만 아직 보관하지 못한 파일을 연결 없이 저장할 수 있다.
     fun saveRevision(
         revision: PostRevision,
         media: Map<SourceMediaKey, MediaKey>,
+        allowMissingMedia: Boolean = false,
     )
 
     // 레거시 스냅숏 JSON을 바꾸지 않고, 파일이 아직 연결되지 않은 리비전으로 복사한다.

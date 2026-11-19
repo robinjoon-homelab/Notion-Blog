@@ -177,15 +177,19 @@ internal class NotionApiClient(
         return responseParser.referencePage(response, "page")
     }
 
-    fun fetchDirectBlockChildren(blockId: String): List<NotionBlockEnvelope> {
+    fun fetchDirectBlockChildren(
+        blockId: String,
+        allowPartial: Boolean = false,
+    ): List<NotionBlockEnvelope> {
         require(blockId.isNotBlank()) { "Notion block ID must not be blank" }
         val startedAt = System.nanoTime()
-        return collectPages(startedAt) { cursor -> fetchBlockChildrenPage(blockId, cursor) }
+        return collectPages(startedAt) { cursor -> fetchBlockChildrenPage(blockId, cursor, allowPartial) }
     }
 
     fun fetchBlockChildrenPage(
         blockId: String,
         cursor: String? = null,
+        allowPartial: Boolean = false,
     ): NotionPaginationResponse<NotionBlockEnvelope> {
         require(blockId.isNotBlank()) { "Notion block ID must not be blank" }
         require(cursor == null || cursor.isNotBlank()) { "Notion block cursor must not be blank" }
@@ -196,7 +200,7 @@ internal class NotionApiClient(
                     .queryParam(PAGE_SIZE_PARAMETER, PAGE_SIZE)
                     .apply { if (cursor != null) queryParam(START_CURSOR_PARAMETER, cursor) }
                     .build(blockId)
-            }.let(responseParser::blockPage)
+            }.let { responseParser.blockPage(it, allowPartial) }
     }
 
     fun fetchSettingsRows(dataSourceId: String): List<NotionSettingsRowResponse> {

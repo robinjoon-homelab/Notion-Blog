@@ -115,14 +115,18 @@ internal class NotionResponseParser {
             parsePagination(node) { parseReference(it, type) }
         }
 
-    fun blockPage(node: JsonNode): NotionPaginationResponse<NotionBlockEnvelope> =
+    fun blockPage(
+        node: JsonNode,
+        allowPartial: Boolean = false,
+    ): NotionPaginationResponse<NotionBlockEnvelope> =
         parsePagination(node) { block ->
+            val type = block.requiredText("type")
             NotionBlockEnvelope(
                 id = block.requiredText("id"),
-                type = block.requiredText("type"),
+                type = type,
                 hasChildren = block.requiredBoolean("has_children"),
                 inTrash = block.requiredBoolean("in_trash"),
-                payload = block.requiredObject(block.requiredText("type")),
+                payload = if (allowPartial) block.path(type) else block.requiredObject(type),
             )
         }
 

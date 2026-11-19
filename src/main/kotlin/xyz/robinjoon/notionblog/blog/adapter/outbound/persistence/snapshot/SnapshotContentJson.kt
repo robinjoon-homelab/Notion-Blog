@@ -35,7 +35,12 @@ internal fun toJsonContent(content: BlockContent): ObjectNode =
         is ReusableBlockContent -> toJsonReusable(content)
         is SpecialBlockContent -> toJsonSpecial(content)
         is DataViewContent -> toJsonDataView(content)
-        is UnsupportedBlockContent -> objectNode().put("blockType", content.blockType)
+        is UnsupportedBlockContent -> toJsonUnsupported(content)
+    }
+
+private fun toJsonUnsupported(content: UnsupportedBlockContent): ObjectNode =
+    objectNode().put("blockType", content.blockType).apply {
+        if (content.unavailable) put("unavailable", true)
     }
 
 internal fun String.isKnownBlockKind(): Boolean = this in knownBlockKinds
@@ -54,7 +59,7 @@ internal fun fromJsonContent(
         in specialBlockKinds -> fromJsonSpecial(kind, content)
         "data_table" -> fromJsonLegacyDataTable(content)
         "data_view" -> fromJsonDataView(content)
-        "unsupported" -> UnsupportedBlockContent(content.requiredText("blockType", kind))
+        "unsupported" -> UnsupportedBlockContent(content.requiredText("blockType", kind), content.optionalBoolean("unavailable") == true)
         else -> UnsupportedBlockContent(kind)
     }
 
