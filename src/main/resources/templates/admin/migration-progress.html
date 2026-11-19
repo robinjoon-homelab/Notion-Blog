@@ -2,33 +2,38 @@
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{ui/layout :: head('글 마이그레이션 진행')}"></head>
 <body th:replace="~{ui/layout :: shell('migrations', ~{::section})}">
-<section class="nb-migration-content" data-post-migration>
+<section class="nb-migration-content" data-post-migration
+    th:attr="data-status-endpoint=@{/admin/migrations/jobs/{jobId}/status(jobId=${view.progress.id})},data-version=${view.version}">
     <div class="ui-page-head">
         <div>
             <h1>글 마이그레이션</h1>
-            <p class="ui-muted nb-lead">글을 하나씩 가져옵니다. 기존 글은 건너뛰고, 새 글은 작성일을 보존한 초안으로 저장합니다.</p>
+            <p class="ui-muted nb-lead">화면을 닫아도 서버에서 작업을 계속합니다. 작업 이력에서 진행 상황을 다시 열 수 있습니다.</p>
         </div>
     </div>
-    <noscript><p class="ui-notice ui-notice-error">자동으로 가져오려면 JavaScript를 활성화하세요. 아직 마이그레이션을 시작하지 않았습니다.</p></noscript>
-    <div data-migration-request th:attr="data-endpoint=@{/admin/migrations/import}" hidden>
-        <input type="hidden" name="dataSourceId" th:value="${view.selection.dataSourceId}">
-        <input type="hidden" name="titlePropertyId" th:value="${view.selection.fields.titlePropertyId}">
-        <input type="hidden" name="summaryPropertyId" th:value="${view.selection.fields.summaryPropertyId}">
-        <input type="hidden" name="tagsPropertyId" th:value="${view.selection.fields.tagsPropertyId}">
-        <input type="hidden" name="authoredAtPropertyId" th:value="${view.selection.fields.authoredAtPropertyId}">
-    </div>
+    <p th:replace="~{ui/layout :: notice(${view.notice?.text}, ${view.notice?.error})}"></p>
     <div class="ui-panel">
         <h2 id="migration-progress-title">진행 상황</h2>
-        <p role="status" aria-live="polite" data-migration-status>마이그레이션을 준비하고 있습니다.</p>
-        <p class="ui-muted" data-migration-summary th:text="${'전체 ' + #lists.size(view.rows) + '개'}">전체 0개</p>
-        <progress data-migration-progress value="0" th:max="${#lists.isEmpty(view.rows) ? 1 : #lists.size(view.rows)}" aria-label="글 마이그레이션 진행률"></progress>
-        <p class="ui-muted nb-small">완료될 때까지 이 화면을 열어 두세요. 화면을 닫아도 저장된 글은 유지되며, 같은 DB로 다시 시작하면 이미 있는 글은 건너뜁니다.</p>
+        <p role="status" aria-live="polite" data-migration-status th:text="${view.progress.status}">대기 중</p>
+        <p class="ui-muted" data-migration-summary th:text="${view.progress.summary}">전체 0개</p>
+        <progress data-migration-progress th:if="${view.progress.total > 0}" th:value="${view.progress.completed}"
+            th:max="${view.progress.total}" aria-label="글 마이그레이션 진행률"></progress>
+        <p class="ui-notice ui-notice-error" role="status" data-migration-connection hidden></p>
         <div class="ui-toolbar">
-            <button class="ui-button" type="button" data-migration-pause>일시 정지</button>
-            <button class="ui-button" type="button" data-migration-resume hidden>남은 글 계속 가져오기</button>
-            <button class="ui-button" type="button" data-migration-retry hidden>실패한 글만 다시 시도</button>
+            <form method="post" th:action="@{/admin/migrations/jobs/{jobId}/action(jobId=${view.progress.id})}" data-migration-pause
+                th:hidden="${!view.progress.actions.pause}">
+                <button class="ui-button" type="submit" name="action" value="PAUSE">일시 정지</button>
+            </form>
+            <form method="post" th:action="@{/admin/migrations/jobs/{jobId}/action(jobId=${view.progress.id})}" data-migration-resume
+                th:hidden="${!view.progress.actions.resume}">
+                <button class="ui-button" type="submit" name="action" value="RESUME">남은 글 계속 가져오기</button>
+            </form>
+            <form method="post" th:action="@{/admin/migrations/jobs/{jobId}/action(jobId=${view.progress.id})}" data-migration-retry
+                th:hidden="${!view.progress.actions.retryFailed}">
+                <button class="ui-button" type="submit" name="action" value="RETRY_FAILED">실패한 글만 다시 시도</button>
+            </form>
+            <a class="ui-button" th:href="@{/admin/migrations/jobs/{jobId}(jobId=${view.progress.id})}">상태 새로고침</a>
             <a class="ui-button" th:href="@{/admin/posts}">글 관리에서 미리보기·발행</a>
-            <a class="ui-button" th:href="@{/admin/migrations}">다른 데이터베이스 가져오기</a>
+            <a class="ui-button" th:href="@{/admin/migrations}">마이그레이션 목록</a>
         </div>
     </div>
     <th:block th:if="${#lists.isEmpty(view.rows)}">
@@ -39,16 +44,16 @@
             <caption>글별 마이그레이션 결과</caption>
             <thead><tr><th scope="col">원본 글</th><th scope="col">처리 결과</th><th scope="col">블로그</th></tr></thead>
             <tbody>
-            <tr th:each="row : ${view.rows}" data-migration-row data-state="pending" th:attr="data-source-id=${row.sourceId},data-external-id=${row.externalId}">
+            <tr th:each="row : ${view.rows}" th:attr="data-migration-row=${row.position},data-state=${row.result.status}">
                 <td><a th:if="${row.sourceHref != null}" th:href="${row.sourceHref}" th:text="${row.title}" target="_blank" rel="noopener noreferrer">원본 글</a>
                     <span th:if="${row.sourceHref == null}" th:text="${row.title}">원본 글</span></td>
-                <td data-migration-result>대기 중</td>
-                <td><a data-migration-post hidden>미리보기</a></td>
+                <td data-migration-result th:text="${row.result.message}">대기 중</td>
+                <td><a data-migration-post th:href="${row.result.href}" th:hidden="${row.result.href == null}">미리보기</a></td>
             </tr>
             </tbody>
         </table>
     </div>
-    <script th:src="@{/app/post-migration.js}" type="module"></script>
+    <script th:if="${view.progress.shouldPoll}" th:src="@{/app/post-migration.js}" type="module"></script>
 </section>
 </body>
 </html>

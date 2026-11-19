@@ -1,5 +1,6 @@
 package xyz.robinjoon.notionblog.blog.application.service
 
+import xyz.robinjoon.notionblog.blog.application.model.ClaimedMigrationItem
 import xyz.robinjoon.notionblog.blog.application.model.MigratePostCommand
 import xyz.robinjoon.notionblog.blog.application.model.MigratePostResult
 import xyz.robinjoon.notionblog.blog.application.model.MigrationEntry
@@ -56,11 +57,15 @@ class PostMigrationService(
             throw MigrationSourceException(SyncFailureKind.CONFIGURATION, exception, MigrationFailureDiagnostics.of(exception))
         }
 
-    override fun migrate(command: MigratePostCommand): MigratePostResult {
+    override fun migrate(
+        command: MigratePostCommand,
+        claim: ClaimedMigrationItem?,
+    ): MigratePostResult? {
+        require(claim == null || claim.command == command) { "migration claim must match the requested command" }
         val existing = queries.existing(command.sourceDocument)
         if (existing != null) return MigratePostResult.Skipped(existing)
         return try {
-            importPost(command)
+            importPost(command, claim)
         } catch (exception: SourceException) {
             failed(exception.toSyncFailureKind(), exception)
         } catch (exception: MediaFetchException) {
@@ -73,15 +78,19 @@ class PostMigrationService(
         }
     }
 
-    private fun importPost(command: MigratePostCommand): MigratePostResult {
+    private fun importPost(
+        command: MigratePostCommand,
+        claim: ClaimedMigrationItem?,
+    ): MigratePostResult? {
         val imported = revisions.fetchRevision(command.sourceDocument, command.selection, allowPartial = true)
         require(imported.sourceDocument == command.sourceDocument) { "migration source must match the requested document" }
         val captured = media.captureForMigration(imported.sourceHostedMedia())
         val warnings = imported.warnings + captured.warnings
-        if (warnings.isEmpty()) return writer.apply(command.selection, imported, captured.media)
+        if (warnings.isEmpty()) return writer.apply(command.selection, imported, captured.media, claim)
         // 원본 수정 시각이 같아도 접근 복구 후 완전한 리비전을 저장할 수 있어야 한다.
         val partialRevision = SourceRevision("${imported.sourceRevision.value}:partial-migration")
-        return writer.apply(command.selection, imported.copy(sourceRevision = partialRevision, warnings = warnings), captured.media)
+        val partial = imported.copy(sourceRevision = partialRevision, warnings = warnings)
+        return writer.apply(command.selection, partial, captured.media, claim)
     }
 
     private fun failed(

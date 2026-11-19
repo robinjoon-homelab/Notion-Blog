@@ -1,5 +1,6 @@
 package xyz.robinjoon.notionblog.blog.application.port.input
 
+import xyz.robinjoon.notionblog.blog.application.model.ClaimedMigrationItem
 import xyz.robinjoon.notionblog.blog.application.model.MigratePostCommand
 import xyz.robinjoon.notionblog.blog.application.model.MigratePostResult
 import xyz.robinjoon.notionblog.blog.application.model.MigrationDatabase
@@ -13,7 +14,11 @@ interface PostMigrationUseCase {
 
     fun prepare(selection: MigrationSelection): MigrationPlan
 
-    fun migrate(command: MigratePostCommand): MigratePostResult
+    // 선점한 글을 가져온 경우 초안과 Imported 결과를 한 번에 저장한다. 선점권을 잃었으면 null을 반환한다.
+    fun migrate(
+        command: MigratePostCommand,
+        claim: ClaimedMigrationItem? = null,
+    ): MigratePostResult?
 }
 
 class MigrationSourceException(

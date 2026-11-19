@@ -1,88 +1,123 @@
 package xyz.robinjoon.notionblog.blog.adapter.inbound.web
 
+import jakarta.servlet.http.HttpServletRequest
+import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ProblemDetail
 import org.springframework.http.ResponseEntity
 import org.springframework.stereotype.Controller
+import org.springframework.transaction.TransactionException
+import org.springframework.ui.Model
+import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseBody
 import org.springframework.web.servlet.ModelAndView
+import org.springframework.web.servlet.mvc.support.RedirectAttributes
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.view.AdminMigrationView
-import xyz.robinjoon.notionblog.blog.adapter.inbound.web.view.MigrationImportResponse
+import xyz.robinjoon.notionblog.blog.adapter.inbound.web.view.MigrationDatabaseView
+import xyz.robinjoon.notionblog.blog.adapter.inbound.web.view.MigrationJobHistoryView
 import xyz.robinjoon.notionblog.blog.adapter.inbound.web.view.NoticeView
-import xyz.robinjoon.notionblog.blog.application.model.MigratePostCommand
-import xyz.robinjoon.notionblog.blog.application.model.MigratePostResult
 import xyz.robinjoon.notionblog.blog.application.model.MigrationFields
+import xyz.robinjoon.notionblog.blog.application.model.MigrationJobAction
+import xyz.robinjoon.notionblog.blog.application.model.MigrationJobStorageException
 import xyz.robinjoon.notionblog.blog.application.model.MigrationSelection
+import xyz.robinjoon.notionblog.blog.application.port.input.MigrationJobsUseCase
 import xyz.robinjoon.notionblog.blog.application.port.input.MigrationSourceException
 import xyz.robinjoon.notionblog.blog.application.port.input.PostMigrationUseCase
-import xyz.robinjoon.notionblog.blog.domain.SourceDocumentRef
-import xyz.robinjoon.notionblog.blog.domain.SourceId
 import xyz.robinjoon.notionblog.blog.domain.sync.SyncFailureKind
+import java.util.UUID
 
 @Controller
 internal class AdminMigrationController(
     private val migrations: PostMigrationUseCase,
+    private val jobs: MigrationJobsUseCase,
 ) {
     @GetMapping("/admin/migrations")
-    fun index(): ModelAndView = editor("")
+    fun index(
+        @RequestParam(defaultValue = "1") page: String,
+    ): ModelAndView = editor("", page = page.toIntOrNull()?.coerceAtLeast(1) ?: 1)
 
     @PostMapping("/admin/migrations/inspect")
     fun inspect(
         @RequestParam(defaultValue = "") databaseUrl: String,
     ): ModelAndView =
         guardedPage(databaseUrl) {
-            val database = migrations.inspect(databaseUrl)
-            editor(
-                databaseUrl,
-            ).addObject(
-                "view",
-                AdminMigrationView(databaseUrl, MigrationNotionLinks.source(databaseUrl), MigrationViewAssembler.database(database), null),
-            )
+            editor(databaseUrl, database = MigrationViewAssembler.database(migrations.inspect(databaseUrl)))
         }
 
     @PostMapping("/admin/migrations/prepare")
-    fun prepare(form: AdminMigrationForm): ModelAndView =
+    fun prepare(
+        form: AdminMigrationForm,
+        attributes: RedirectAttributes,
+    ): ModelAndView =
         guardedPage(form.databaseUrl) {
-            ModelAndView(
-                "admin/migration-progress",
-            ).addObject("view", MigrationViewAssembler.progress(migrations.prepare(form.selection())))
+            val jobId = jobs.start(form.selection())
+            redirect(jobPath(jobId), attributes, "마이그레이션 작업을 등록했습니다.")
         }
 
-    @PostMapping("/admin/migrations/import", consumes = ["application/json"])
-    @ResponseBody
-    fun importPost(
-        @RequestBody request: AdminMigrationImportRequest,
-    ): ResponseEntity<*> {
-        if (request.sourceId.isBlank() || request.externalId.isBlank()) {
-            return rejectedImport("필드 매핑과 원본 글을 확인한 뒤 다시 시도하세요.")
-        }
-        return try {
-            val command = MigratePostCommand(request.mapping.selection(), SourceDocumentRef(SourceId(request.sourceId), request.externalId))
-            ResponseEntity.ok(response(migrations.migrate(command)))
-        } catch (exception: MigrationSourceException) {
-            rethrowInterruption(exception)
-            rejectedImport(sourceError(exception))
-        }
+    @GetMapping("/admin/migrations/jobs/{jobId}")
+    fun progress(
+        @PathVariable jobId: String,
+        model: Model,
+    ): ModelAndView {
+        val job = WebIds.uuid(jobId)?.let(jobs::progress) ?: return missingJob()
+        val view = MigrationViewAssembler.progress(job, model.notice())
+        return ModelAndView("admin/migration-progress").addObject("view", view)
     }
 
-    private fun rejectedImport(message: String): ResponseEntity<ProblemDetail> =
+    @GetMapping("/admin/migrations/jobs/{jobId}/status", produces = ["application/json"])
+    @ResponseBody
+    fun status(
+        @PathVariable jobId: String,
+        @RequestParam(defaultValue = "-1") after: String,
+    ): ResponseEntity<*> {
+        val id = WebIds.uuid(jobId) ?: return missingJobStatus()
+        val version = after.toLongOrNull()?.coerceAtLeast(-1) ?: -1
+        val updates = jobs.updates(id, version) ?: return missingJobStatus()
+        return ResponseEntity.ok(MigrationViewAssembler.status(updates))
+    }
+
+    @PostMapping("/admin/migrations/jobs/{jobId}/action")
+    fun change(
+        @PathVariable jobId: String,
+        @RequestParam action: MigrationJobAction,
+        attributes: RedirectAttributes,
+    ): ModelAndView {
+        val id = WebIds.uuid(jobId) ?: return missingJob()
+        if (!jobs.change(id, action)) return missingJob()
+        return redirect(jobPath(id), attributes, "마이그레이션 작업 상태를 갱신했습니다.")
+    }
+
+    private fun jobPath(jobId: UUID): String = "/admin/migrations/jobs/$jobId"
+
+    private fun missingJob(): ModelAndView = errorView("error/404", HttpStatus.NOT_FOUND)
+
+    private fun missingJobStatus(): ResponseEntity<ProblemDetail> =
         ResponseEntity
-            .badRequest()
+            .status(HttpStatus.NOT_FOUND)
             .contentType(MediaType.APPLICATION_PROBLEM_JSON)
-            .body(ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, message))
+            .body(ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, "마이그레이션 작업을 찾을 수 없습니다."))
 
     private fun editor(
         databaseUrl: String,
         notice: NoticeView? = null,
-    ): ModelAndView =
-        ModelAndView(
-            "admin/migration",
-        ).addObject("view", AdminMigrationView(databaseUrl, MigrationNotionLinks.source(databaseUrl), null, notice))
+        database: MigrationDatabaseView? = null,
+        page: Int = 1,
+    ): ModelAndView {
+        val view =
+            AdminMigrationView(
+                databaseUrl,
+                MigrationNotionLinks.source(databaseUrl),
+                database,
+                notice,
+                MigrationViewAssembler.history(page, jobs.history(page)),
+            )
+        return ModelAndView("admin/migration").addObject("view", view)
+    }
 
     private fun guardedPage(
         databaseUrl: String,
@@ -95,29 +130,22 @@ internal class AdminMigrationController(
             editor(databaseUrl, NoticeView(sourceError(exception), true)).apply { status = HttpStatus.BAD_REQUEST }
         }
 
-    private fun response(result: MigratePostResult): MigrationImportResponse =
-        when (result) {
-            is MigratePostResult.Imported -> {
-                importedResponse(result)
-            }
-
-            is MigratePostResult.Skipped -> {
-                MigrationImportResponse(
-                    "skipped",
-                    "이미 있는 원본 글입니다. 기존 글을 유지했습니다.",
-                    "/admin/posts/${result.postId.value}",
-                )
-            }
-
-            is MigratePostResult.Failed -> {
-                MigrationImportResponse("failed", MigrationFailureMessages.append(failureMessages.getValue(result.kind), result.diagnostic))
-            }
-        }
-
-    private fun importedResponse(result: MigratePostResult.Imported): MigrationImportResponse {
-        val href = "/admin/posts/${result.postId.value}"
-        if (result.warnings.isEmpty()) return MigrationImportResponse("imported", "초안으로 가져왔습니다.", href)
-        return MigrationImportResponse("partial", MigrationFailureMessages.partial(result.warnings), href)
+    @ExceptionHandler(MigrationJobStorageException::class, TransactionException::class)
+    fun unavailable(
+        request: HttpServletRequest,
+        exception: RuntimeException,
+    ): ModelAndView {
+        if (wasInterrupted(exception)) Thread.currentThread().interrupt()
+        logger.warn(
+            "Migration job storage unavailable errorType={} causeType={}",
+            exception.javaClass.name,
+            exception.cause?.javaClass?.name ?: "none",
+        )
+        val databaseUrl = request.getParameter("databaseUrl").orEmpty()
+        val notice = NoticeView("마이그레이션 작업을 확인하지 못했습니다. 다시 시도하기 전에 최근 작업 목록을 확인하세요.", true)
+        val history = MigrationJobHistoryView(1, emptyList(), hasNext = false)
+        val view = AdminMigrationView(databaseUrl, MigrationNotionLinks.source(databaseUrl), null, notice, history)
+        return ModelAndView("admin/migration", mapOf("view" to view), HttpStatus.SERVICE_UNAVAILABLE)
     }
 
     private fun sourceError(exception: MigrationSourceException): String {
@@ -132,31 +160,16 @@ internal class AdminMigrationController(
     }
 
     private fun rethrowInterruption(exception: MigrationSourceException) {
-        if (Thread.currentThread().isInterrupted ||
-            generateSequence<Throwable>(exception) { it.cause }.any { it is InterruptedException }
-        ) {
-            throw exception
-        }
+        if (wasInterrupted(exception)) throw exception
     }
+
+    private fun wasInterrupted(failure: RuntimeException): Boolean =
+        Thread.currentThread().isInterrupted || generateSequence<Throwable>(failure) { it.cause }.any { it is InterruptedException }
 
     private companion object {
-        val failureMessages =
-            mapOf(
-                SyncFailureKind.RETRYABLE_SOURCE to "Notion 응답을 받지 못했습니다. 잠시 후 다시 시도하세요.",
-                SyncFailureKind.AUTHENTICATION to "서버의 Notion 연동 인증을 확인하세요.",
-                SyncFailureKind.ACCESS to "원본 DB와 본문에서 참조한 페이지의 읽기 권한을 확인하세요.",
-                SyncFailureKind.CONFIGURATION to "선택한 데이터 소스와 필드 매핑을 확인하세요.",
-                SyncFailureKind.MAPPING to "본문 또는 글 속성을 변환하지 못했습니다.",
-                SyncFailureKind.MEDIA to "첨부 파일을 보관하지 못했습니다. 원본 파일과 크기를 확인한 뒤 다시 시도하세요.",
-            )
+        val logger = LoggerFactory.getLogger(AdminMigrationController::class.java)
     }
 }
-
-internal data class AdminMigrationImportRequest(
-    val mapping: AdminMigrationForm = AdminMigrationForm(),
-    val sourceId: String = "",
-    val externalId: String = "",
-)
 
 internal data class AdminMigrationForm(
     val dataSourceId: String = "",

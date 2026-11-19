@@ -8,6 +8,8 @@ import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.CategoryTable
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.HomeConfigurationTable
+import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.MigrationJobItemTable
+import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.MigrationJobTable
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.OwnedMediaTable
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.PostAvailabilityTable
 import xyz.robinjoon.notionblog.blog.adapter.outbound.persistence.exposed.table.PostCategoryTable
@@ -61,6 +63,8 @@ class ExposedH2Database : AutoCloseable {
                 PostRevisionTable,
                 PostPublicationTable,
                 PostMigrationMappingTable,
+                MigrationJobTable,
+                MigrationJobItemTable,
                 OwnedMediaTable,
                 PostRevisionMediaTable,
                 HomeConfigurationTable,

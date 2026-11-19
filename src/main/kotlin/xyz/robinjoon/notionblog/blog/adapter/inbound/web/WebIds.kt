@@ -22,5 +22,5 @@ internal object WebIds {
 
     fun mediaKey(value: String): MediaKey? = value.takeIf(mediaKeyPattern::matches)?.let(::MediaKey)
 
-    private fun uuid(value: String): UUID? = value.takeIf(uuidPattern::matches)?.let(UUID::fromString)
+    fun uuid(value: String): UUID? = value.takeIf(uuidPattern::matches)?.let(UUID::fromString)
 }

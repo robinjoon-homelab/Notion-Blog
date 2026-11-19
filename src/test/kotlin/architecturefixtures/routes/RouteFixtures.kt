@@ -54,8 +54,14 @@ class DeclaredRoutes {
     @PostMapping("/admin/migrations/prepare")
     fun prepareMigration() = Unit
 
-    @PostMapping("/admin/migrations/import")
-    fun importMigrationPost() = Unit
+    @GetMapping("/admin/migrations/jobs/{jobId}")
+    fun migrationProgress() = Unit
+
+    @GetMapping("/admin/migrations/jobs/{jobId}/status")
+    fun migrationStatus() = Unit
+
+    @PostMapping("/admin/migrations/jobs/{jobId}/action")
+    fun changeMigrationJob() = Unit
 
     @GetMapping("/admin/categories")
     fun categories() = Unit

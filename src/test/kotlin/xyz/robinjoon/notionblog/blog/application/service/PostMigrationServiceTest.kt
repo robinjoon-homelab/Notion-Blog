@@ -101,7 +101,7 @@ class PostMigrationServiceTest {
         every { media.captureForMigration(any()) } returns MigrationMediaCapture(CapturedMedia.empty)
         every { writer.apply(selection, nextImport, CapturedMedia.empty) } returns MigratePostResult.Imported(id)
 
-        assertThat((service.migrate(command) as MigratePostResult.Failed).kind).isEqualTo(SyncFailureKind.ACCESS)
+        assertThat(failedMigration().kind).isEqualTo(SyncFailureKind.ACCESS)
         assertThat(service.migrate(MigratePostCommand(selection, nextDocument))).isEqualTo(MigratePostResult.Imported(id))
     }
 
@@ -125,7 +125,7 @@ class PostMigrationServiceTest {
         givenFreshDocument()
         every { revisions.fetchRevision(document, selection, allowPartial = true) } returns
             imported.copy(sourceDocument = PostFixtures.document("wrong"))
-        assertThat((service.migrate(command) as MigratePostResult.Failed).kind).isEqualTo(SyncFailureKind.MAPPING)
+        assertThat(failedMigration().kind).isEqualTo(SyncFailureKind.MAPPING)
     }
 
     @Test
@@ -137,7 +137,7 @@ class PostMigrationServiceTest {
         every { revisions.fetchRevision(document, selection, allowPartial = true) } throws
             SourceMappingException("private-token https://private.example", diagnostic = diagnostic)
 
-        val result = service.migrate(command) as MigratePostResult.Failed
+        val result = failedMigration()
 
         assertThat(result.kind).isEqualTo(SyncFailureKind.MAPPING)
         assertThat(result.diagnostic).isEqualTo(diagnostic)
@@ -150,7 +150,7 @@ class PostMigrationServiceTest {
         every { revisions.fetchRevision(document, selection, allowPartial = true) } throws
             SourceMappingException("foreign secret message", IllegalArgumentException("nested secret"))
 
-        val diagnostic = requireNotNull((service.migrate(command) as MigratePostResult.Failed).diagnostic)
+        val diagnostic = requireNotNull(failedMigration().diagnostic)
 
         assertThat(diagnostic.exceptionType).isEqualTo("SourceMappingException")
         assertThat(diagnostic.toString()).doesNotContain("foreign secret", "nested secret")
@@ -174,6 +174,9 @@ class PostMigrationServiceTest {
 
         assertThatThrownBy { service.migrate(command) }.isSameAs(failure)
     }
+
+    private fun failedMigration(): MigratePostResult.Failed =
+        requireNotNull(service.migrate(command) as? MigratePostResult.Failed) { "expected migration failure" }
 
     private fun givenFreshDocument() {
         every { queries.existing(document) } returns null

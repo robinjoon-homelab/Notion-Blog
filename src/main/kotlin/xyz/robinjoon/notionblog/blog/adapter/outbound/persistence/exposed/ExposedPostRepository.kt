@@ -98,7 +98,7 @@ class ExposedPostRepository(
         post: Post,
         title: String,
         registeredAt: Instant,
-    ) {
+    ) = postDataWrite {
         ensureBindable(post.id, post.source)
         if (!postRowExists(post.id)) {
             insertPostRow(post, title, registeredAt)
@@ -135,7 +135,7 @@ class ExposedPostRepository(
         revision: PostRevision,
         media: Map<SourceMediaKey, MediaKey>,
         allowMissingMedia: Boolean,
-    ) {
+    ) = postDataWrite {
         val files = revision.sourceHostedMedia().associateBy { SourceMediaKey.of(it.url) }
         require(
             allowMissingMedia || files.keys.all(media::containsKey),
@@ -290,7 +290,7 @@ class ExposedPostRepository(
     }
 
     private fun insertBinding(post: Post) {
-        if (findBinding(post.source) != null) return
+        if (isBoundTo(post.id, post.source)) return
         try {
             PostSourceBindingTable.insert {
                 it[sourceId] = post.source.sourceId.value
@@ -298,7 +298,10 @@ class ExposedPostRepository(
                 it[postId] = post.id.value
             }
         } catch (exception: ExposedSQLException) {
-            throw DuplicateSourceBindingException("source document was bound concurrently", exception)
+            if (exception.sqlState == "23505") {
+                throw DuplicateSourceBindingException("source document was bound concurrently", exception)
+            }
+            throw exception
         }
     }
 
@@ -306,14 +309,20 @@ class ExposedPostRepository(
         postId: PostId,
         source: SourceDocumentRef,
     ) {
-        val sourceBinding = findBinding(source)
-        if (sourceBinding != null && sourceBinding.postId != postId) {
-            throw DuplicateSourceBindingException("source document is already bound to post ${sourceBinding.postId.value}")
-        }
+        isBoundTo(postId, source)
         val postBinding = PostSourceBindingTable.selectAll().where { PostSourceBindingTable.postId eq postId.value }.singleOrNull()
         if (postBinding != null && postBinding.toBinding().sourceDocument != source) {
             throw DuplicateSourceBindingException("post ${postId.value} is already bound to another source document")
         }
+    }
+
+    private fun isBoundTo(
+        postId: PostId,
+        source: SourceDocumentRef,
+    ): Boolean {
+        val binding = findBinding(source) ?: return false
+        if (binding.postId != postId) throw DuplicateSourceBindingException("source document is already bound to another post")
+        return true
     }
 
     private fun insertMediaRows(

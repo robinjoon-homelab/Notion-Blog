@@ -2,11 +2,13 @@ package xyz.robinjoon.notionblog.blog.application.service
 
 import org.springframework.transaction.annotation.Transactional
 import xyz.robinjoon.notionblog.blog.application.model.CapturedMedia
+import xyz.robinjoon.notionblog.blog.application.model.ClaimedMigrationItem
 import xyz.robinjoon.notionblog.blog.application.model.ImportedRevision
 import xyz.robinjoon.notionblog.blog.application.model.MigratePostResult
 import xyz.robinjoon.notionblog.blog.application.model.MigrationFailureStage
 import xyz.robinjoon.notionblog.blog.application.model.MigrationSelection
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.MediaStoragePort
+import xyz.robinjoon.notionblog.blog.application.port.output.persistence.MigrationJobRepository
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.PostMigrationMappingRepository
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.PostRepository
 import xyz.robinjoon.notionblog.blog.domain.post.Post
@@ -25,15 +27,28 @@ class ApplyMigratedPostService(
     private val mediaStorage: MediaStoragePort,
     private val recorder: SyncStateRecorder,
     private val clock: Clock,
+    private val jobs: MigrationJobRepository,
 ) {
     @Transactional(rollbackFor = [Exception::class])
     fun apply(
         selection: MigrationSelection,
         imported: ImportedRevision,
         media: CapturedMedia,
-    ): MigratePostResult {
+        claim: ClaimedMigrationItem? = null,
+    ): MigratePostResult? {
+        if (claim != null && !jobs.lockClaim(claim)) return null
         val existing = posts.findBinding(imported.sourceDocument)
         if (existing != null) return MigratePostResult.Skipped(existing.postId)
+        val result = saveDraft(selection, imported, media)
+        if (claim != null) jobs.complete(claim, result)
+        return result
+    }
+
+    private fun saveDraft(
+        selection: MigrationSelection,
+        imported: ImportedRevision,
+        media: CapturedMedia,
+    ): MigratePostResult.Imported {
         val now = clock.instant()
         val post = Post.register(PostId(UUID.randomUUID()), imported.sourceDocument, imported.authoredAt)
         val revision =

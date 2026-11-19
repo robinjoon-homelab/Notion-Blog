@@ -2,15 +2,20 @@ package xyz.robinjoon.notionblog.config
 
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import xyz.robinjoon.notionblog.blog.adapter.inbound.scheduling.PostMigrationScheduler
 import xyz.robinjoon.notionblog.blog.application.port.input.PostMigrationUseCase
+import xyz.robinjoon.notionblog.blog.application.port.input.RunNextMigrationItemUseCase
 import xyz.robinjoon.notionblog.blog.application.port.output.diagnostics.OperationFailureReporter
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.MediaStoragePort
+import xyz.robinjoon.notionblog.blog.application.port.output.persistence.MigrationJobRepository
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.PostMigrationMappingRepository
 import xyz.robinjoon.notionblog.blog.application.port.output.persistence.PostRepository
 import xyz.robinjoon.notionblog.blog.application.port.output.source.PostMigrationSource
 import xyz.robinjoon.notionblog.blog.application.port.output.source.PostRevisionSource
 import xyz.robinjoon.notionblog.blog.application.service.ApplyMigratedPostService
 import xyz.robinjoon.notionblog.blog.application.service.CapturePostMediaService
+import xyz.robinjoon.notionblog.blog.application.service.MigrationJobStateService
+import xyz.robinjoon.notionblog.blog.application.service.MigrationJobsService
 import xyz.robinjoon.notionblog.blog.application.service.MigrationPostQueryService
 import xyz.robinjoon.notionblog.blog.application.service.PostMigrationService
 import xyz.robinjoon.notionblog.blog.application.service.SyncStateRecorder
@@ -32,7 +37,8 @@ internal class PostMigrationConfig(
     fun applyMigratedPostService(
         media: MediaStoragePort,
         recorder: SyncStateRecorder,
-    ): ApplyMigratedPostService = ApplyMigratedPostService(posts, mappings, media, recorder, clock)
+        jobs: MigrationJobRepository,
+    ): ApplyMigratedPostService = ApplyMigratedPostService(posts, mappings, media, recorder, clock, jobs)
 
     @Bean
     fun postMigrationUseCase(
@@ -40,4 +46,16 @@ internal class PostMigrationConfig(
         media: CapturePostMediaService,
         writer: ApplyMigratedPostService,
     ): PostMigrationUseCase = PostMigrationService(catalog, revisions, queries, media, writer, failures)
+
+    @Bean
+    fun migrationJobState(jobs: MigrationJobRepository): MigrationJobStateService = MigrationJobStateService(jobs, clock)
+
+    @Bean
+    fun migrationJobs(
+        migrations: PostMigrationUseCase,
+        state: MigrationJobStateService,
+    ): MigrationJobsService = MigrationJobsService(migrations, state)
+
+    @Bean(destroyMethod = "close")
+    fun postMigrationScheduler(jobs: RunNextMigrationItemUseCase): PostMigrationScheduler = PostMigrationScheduler(jobs)
 }

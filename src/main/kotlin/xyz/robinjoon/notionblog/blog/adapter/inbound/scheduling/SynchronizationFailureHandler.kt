@@ -5,12 +5,11 @@ import org.springframework.scheduling.support.TaskUtils
 import org.springframework.util.ErrorHandler
 import java.lang.reflect.UndeclaredThrowableException
 
-// Spring's failure contract for scheduled work, applied to one synchronization boundary. A RuntimeException is logged
-// by kind and type only, never by message or stack, so the remaining targets still run and the next tick retries.
-// A RuntimeException caused by an interruption restores the interrupt flag and is rethrown unchanged, as is every
-// other Throwable.
+// Recoverable failures are logged by kind and type only. Migration opts in for checked database failures, whose
+// causes may include JDBC parameters. Interruptions restore the flag and propagate.
 internal class SynchronizationFailureHandler(
     private val targetKind: String,
+    private val isolateCheckedExceptions: Boolean = false,
 ) : ErrorHandler {
     // Runs the work on the calling thread inside Spring's error handling runnable. Spring would hand this handler the
     // cause of an UndeclaredThrowableException, which may be null, so that wrapper is kept for this call only and
@@ -33,7 +32,7 @@ internal class SynchronizationFailureHandler(
     }
 
     override fun handleError(failure: Throwable) {
-        if (failure !is RuntimeException) {
+        if (failure !is RuntimeException && (!isolateCheckedExceptions || failure !is Exception)) {
             throw failure
         }
         if (Thread.currentThread().isInterrupted || causedByInterruption(failure)) {
@@ -47,7 +46,7 @@ internal class SynchronizationFailureHandler(
         )
     }
 
-    private fun causedByInterruption(failure: RuntimeException): Boolean {
+    private fun causedByInterruption(failure: Throwable): Boolean {
         val seen = mutableSetOf<Throwable>()
         return generateSequence<Throwable>(failure) { it.cause }
             .takeWhile(seen::add)

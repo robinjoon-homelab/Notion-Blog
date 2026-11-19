@@ -40,6 +40,17 @@ class SynchronizationFailureHandlerTest {
     }
 
     @Test
+    fun `migration logs a checked failure by type without exposing its cause or message`(output: CapturedOutput) {
+        val migration = SynchronizationFailureHandler("MIGRATION", isolateCheckedExceptions = true)
+
+        migration.run { throw IOException("signed-url=do-not-log", IllegalStateException("batch-value=private")) }
+
+        assertThat(output.out + output.err)
+            .contains("targetKind=MIGRATION", "errorType=IOException")
+            .doesNotContain("signed-url=do-not-log", "batch-value=private")
+    }
+
+    @Test
     fun `direct interruption propagates unchanged`() {
         val interruption = InterruptedException("stop")
 
