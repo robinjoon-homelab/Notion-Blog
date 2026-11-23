@@ -15,11 +15,12 @@ class RepositoryBoundaryTest {
     fun `docker image runs the verified application with JVM defaults`() {
         val dockerfile = Files.readString(Path.of("Dockerfile"))
         val dockerignore = Files.readString(Path.of(".dockerignore"))
+        val runtimeStage = "FROM eclipse-temurin:25.0.5.1_2-jre-noble"
 
-        assertThat(dockerfile).contains("FROM eclipse-temurin:25-jre-noble")
+        assertThat(dockerfile).contains("FROM eclipse-temurin:25.0.5.1_2-jdk-noble AS trust-tools", runtimeStage)
         assertThat(dockerfile).contains("COPY --chown=10001:10001 build/libs/application.jar application.jar")
         assertThat(dockerfile).contains("USER 10001:10001", "ENTRYPOINT [\"java\", \"-jar\", \"/app/application.jar\"]")
-        assertThat(dockerfile.substringAfter("FROM eclipse-temurin:25-jre-noble")).doesNotContain("25-jdk", "./gradlew", "bootJar")
+        assertThat(dockerfile.substringAfter(runtimeStage)).doesNotContain("-jdk", "./gradlew", "bootJar")
         assertThat(dockerfile).contains("RuntimeTrust sanitize", "RuntimeTrust roots")
         assertThat(dockerfile).doesNotContain(
             "JAVA_TOOL_OPTIONS",
