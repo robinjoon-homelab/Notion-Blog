@@ -1,8 +1,8 @@
-FROM eclipse-temurin:25-jdk-noble AS trust-tools
+FROM eclipse-temurin:25.0.5.1_2-jdk-noble AS trust-tools
 COPY scripts/security/RuntimeTrust.java /tmp/RuntimeTrust.java
 RUN javac --release 25 -d /trust-tools /tmp/RuntimeTrust.java
 
-FROM eclipse-temurin:25-jre-noble
+FROM eclipse-temurin:25.0.5.1_2-jre-noble
 
 # Run again whenever the base or mitigation changes; keep unrelated build caches.
 COPY --from=trust-tools /trust-tools /tmp/trust-tools
